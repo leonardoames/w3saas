@@ -14,7 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      metrics_diarias: {
+        Row: {
+          created_at: string
+          data: string
+          faturamento: number | null
+          id: string
+          investimento_trafego: number | null
+          sessoes: number | null
+          updated_at: string
+          user_id: string
+          vendas_quantidade: number | null
+          vendas_valor: number | null
+        }
+        Insert: {
+          created_at?: string
+          data: string
+          faturamento?: number | null
+          id?: string
+          investimento_trafego?: number | null
+          sessoes?: number | null
+          updated_at?: string
+          user_id: string
+          vendas_quantidade?: number | null
+          vendas_valor?: number | null
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          faturamento?: number | null
+          id?: string
+          investimento_trafego?: number | null
+          sessoes?: number | null
+          updated_at?: string
+          user_id?: string
+          vendas_quantidade?: number | null
+          vendas_valor?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
