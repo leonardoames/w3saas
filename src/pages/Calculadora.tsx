@@ -20,7 +20,9 @@ function PercentageInput({ id, label, value, sellingPrice, onChange }: Percentag
 
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-sm">{label}</Label>
+      <Label htmlFor={id} className="text-sm">
+        {label}
+      </Label>
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
           <Input
@@ -33,9 +35,7 @@ function PercentageInput({ id, label, value, sellingPrice, onChange }: Percentag
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
         </div>
-        <span className="text-sm text-muted-foreground min-w-[80px] text-right">
-          = R$ {calculatedValue.toFixed(2)}
-        </span>
+        <span className="text-sm text-muted-foreground min-w-[80px] text-right">= R$ {calculatedValue.toFixed(2)}</span>
       </div>
     </div>
   );
@@ -52,7 +52,9 @@ interface CurrencyInputProps {
 function CurrencyInput({ id, label, value, onChange, placeholder = "0.00" }: CurrencyInputProps) {
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-sm">{label}</Label>
+      <Label htmlFor={id} className="text-sm">
+        {label}
+      </Label>
       <div className="relative">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
         <Input
@@ -99,7 +101,8 @@ export default function Calculadora() {
     const platformFeeValue = (sellingPrice * parseFloat(inputs.platformFee || "0")) / 100;
     const extraFeesValue = (sellingPrice * parseFloat(inputs.extraFees || "0")) / 100;
 
-    const totalOperationalCost = mediaCostValue + fixedCostsValue + taxesValue + gatewayFeeValue + platformFeeValue + extraFeesValue;
+    const totalOperationalCost =
+      mediaCostValue + fixedCostsValue + taxesValue + gatewayFeeValue + platformFeeValue + extraFeesValue;
     const totalCost = productCost + cac + totalOperationalCost;
     const profitPerUnit = sellingPrice - totalCost;
     const margin = sellingPrice > 0 ? (profitPerUnit / sellingPrice) * 100 : 0;
@@ -134,7 +137,9 @@ export default function Calculadora() {
           <Card>
             <CardHeader className="pb-4">
               <CardTitle className="text-lg">Produto e Meta</CardTitle>
-              <p className="text-sm text-muted-foreground">Defina o preço de venda e a margem que você deseja atingir.</p>
+              <p className="text-sm text-muted-foreground">
+                Defina o preço de venda e a margem que você deseja atingir.
+              </p>
             </CardHeader>
             <CardContent className="space-y-4">
               <CurrencyInput
@@ -144,7 +149,9 @@ export default function Calculadora() {
                 onChange={(v) => updateInput("sellingPrice", v)}
               />
               <div className="space-y-1.5">
-                <Label htmlFor="desiredMargin" className="text-sm">Margem Desejada</Label>
+                <Label htmlFor="desiredMargin" className="text-sm">
+                  Margem Desejada
+                </Label>
                 <div className="relative">
                   <Input
                     id="desiredMargin"
@@ -185,7 +192,7 @@ export default function Calculadora() {
           {/* Operational Costs (Percentages) */}
           <Card>
             <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Custos Operacionais</CardTitle>
+              <CardTitle className="text-lg">Custos</CardTitle>
               <p className="text-sm text-muted-foreground">Percentuais aplicados sobre o preço de venda.</p>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -248,22 +255,18 @@ export default function Calculadora() {
                 <>
                   <div className="rounded-lg bg-muted/50 p-6 text-center">
                     <p className="text-sm text-muted-foreground mb-1">Custo Total</p>
-                    <p className="text-4xl font-bold tracking-tight">
-                      R$ {results.totalCost.toFixed(2)}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Soma de todos os custos por unidade
-                    </p>
+                    <p className="text-4xl font-bold tracking-tight">R$ {results.totalCost.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground mt-2">Soma de todos os custos por unidade</p>
                   </div>
 
                   <div className="rounded-lg bg-muted/50 p-6 text-center">
                     <p className="text-sm text-muted-foreground mb-1">Lucro por Unidade</p>
-                    <p className={`text-4xl font-bold tracking-tight ${results.profitPerUnit >= 0 ? "text-success" : "text-destructive"}`}>
+                    <p
+                      className={`text-4xl font-bold tracking-tight ${results.profitPerUnit >= 0 ? "text-success" : "text-destructive"}`}
+                    >
                       R$ {results.profitPerUnit.toFixed(2)}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Preço de venda menos custo total
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">Preço de venda menos custo total</p>
                   </div>
 
                   <div className="rounded-lg bg-muted/50 p-6 text-center">
@@ -272,11 +275,10 @@ export default function Calculadora() {
                       {results.margin.toFixed(1)}%
                     </p>
                     <p className="text-xs text-muted-foreground mt-2">
-                      {parseFloat(inputs.desiredMargin || "0") > 0 && (
-                        results.margin >= parseFloat(inputs.desiredMargin)
+                      {parseFloat(inputs.desiredMargin || "0") > 0 &&
+                        (results.margin >= parseFloat(inputs.desiredMargin)
                           ? "✓ Acima da meta"
-                          : `Meta: ${inputs.desiredMargin}%`
-                      )}
+                          : `Meta: ${inputs.desiredMargin}%`)}
                     </p>
                   </div>
                 </>
