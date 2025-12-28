@@ -8,6 +8,7 @@ import {
   Sparkles,
   Store,
   ShoppingBag,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +37,11 @@ const menuItems = [
     title: "Simulação de Cenários",
     icon: GitCompare,
     path: "/simulacao",
+  },
+  {
+    title: "CRM de Influenciadores",
+    icon: Users,
+    path: "/crm-influenciadores",
   },
   {
     title: "IA W3",
