@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink } from "@/components/NavLink";
 import {
   LayoutDashboard,
@@ -12,6 +12,7 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const menuItems = [
   {
@@ -73,13 +75,92 @@ const menuItems = [
 interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
+  isMobileOpen: boolean;
+  onMobileClose: () => void;
 }
 
-export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
+export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: SidebarProps) {
   const [isHovering, setIsHovering] = useState(false);
+  const isMobile = useIsMobile();
 
-  const isExpanded = !isCollapsed || isHovering;
+  const isExpanded = isMobile ? true : (!isCollapsed || isHovering);
 
+  // Close mobile menu on navigation
+  const handleNavClick = () => {
+    if (isMobile) {
+      onMobileClose();
+    }
+  };
+
+  // Mobile drawer
+  if (isMobile) {
+    return (
+      <>
+        {/* Overlay */}
+        <div
+          className={cn(
+            "fixed inset-0 z-40 bg-background/80 backdrop-blur-sm transition-opacity",
+            isMobileOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          )}
+          onClick={onMobileClose}
+        />
+
+        {/* Drawer */}
+        <aside
+          className={cn(
+            "fixed left-0 top-0 z-50 h-screen w-72 border-r border-sidebar-border bg-sidebar-background transition-transform duration-300",
+            isMobileOpen ? "translate-x-0" : "-translate-x-full"
+          )}
+        >
+          <div className="flex h-full flex-col">
+            {/* Logo */}
+            <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-6">
+              <h1 className="text-xl font-bold text-sidebar-primary">SaaS da W3</h1>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={onMobileClose}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Menu Navigation */}
+            <nav className="flex-1 space-y-1 overflow-y-auto p-4">
+              {menuItems.map((item) => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={handleNavClick}
+                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+                >
+                  <item.icon className="h-5 w-5 shrink-0" />
+                  <span className="text-base">{item.title}</span>
+                </NavLink>
+              ))}
+            </nav>
+
+            {/* User info */}
+            <div className="border-t border-sidebar-border p-4">
+              <div className="flex items-center gap-3 rounded-lg bg-sidebar-accent px-4 py-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <span className="text-sm font-semibold">U</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-sidebar-foreground">Usuário</p>
+                  <p className="text-xs text-muted-foreground">Mentorado</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </>
+    );
+  }
+
+  // Desktop sidebar
   return (
     <TooltipProvider delayDuration={0}>
       <aside
@@ -152,7 +233,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             ))}
           </nav>
 
-          {/* User info placeholder */}
+          {/* User info */}
           <div className={cn(
             "border-t border-sidebar-border",
             isExpanded ? "p-4" : "p-2"
