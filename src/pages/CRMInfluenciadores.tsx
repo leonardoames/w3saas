@@ -424,21 +424,21 @@ const CRMInfluenciadores = () => {
     <div className="flex flex-col h-[calc(100vh-120px)]">
       {/* Header */}
       <div className="flex flex-col gap-4 pb-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">CRM de Influenciadores</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">CRM de Influenciadores</h1>
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
               Gerencie suas parcerias com influenciadores
             </p>
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2">
+              <Button className="gap-2 w-full sm:w-auto">
                 <Plus className="h-4 w-4" />
                 Adicionar Influenciador
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-[95vw] sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>Adicionar Influenciador</DialogTitle>
               </DialogHeader>
@@ -497,8 +497,8 @@ const CRMInfluenciadores = () => {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar influenciador..."
@@ -508,8 +508,9 @@ const CRMInfluenciadores = () => {
             />
           </div>
 
+          <div className="flex gap-2 flex-wrap sm:flex-nowrap">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-full sm:w-[160px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -521,7 +522,7 @@ const CRMInfluenciadores = () => {
           </Select>
 
           <Select value={selectedTagFilter} onValueChange={setSelectedTagFilter}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-full sm:w-[160px]">
               <SelectValue placeholder="Filtrar por tag" />
             </SelectTrigger>
             <SelectContent>
@@ -533,20 +534,21 @@ const CRMInfluenciadores = () => {
           </Select>
 
           {(searchQuery || selectedTagFilter || statusFilter !== "em_aberto") && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 whitespace-nowrap">
               <X className="h-4 w-4" />
-              Limpar filtros
+              Limpar
             </Button>
           )}
+          </div>
         </div>
       </div>
 
       {/* Kanban Board */}
-      <div className="flex gap-4 overflow-x-auto flex-1 pb-4">
+      <div className="flex gap-3 md:gap-4 overflow-x-auto flex-1 pb-4 -mx-4 px-4 md:mx-0 md:px-0">
         {STAGES.map((stage) => (
           <div
             key={stage.id}
-            className="flex-shrink-0 w-72 flex flex-col"
+            className="flex-shrink-0 w-64 sm:w-72 flex flex-col"
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, stage.id)}
           >
