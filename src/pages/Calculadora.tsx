@@ -75,7 +75,6 @@ export default function Calculadora() {
     sellingPrice: "",
     desiredMargin: "",
     productCost: "",
-    cac: "",
     mediaCost: "",
     fixedCosts: "",
     taxes: "",
@@ -91,7 +90,6 @@ export default function Calculadora() {
   const results = useMemo(() => {
     const sellingPrice = parseFloat(inputs.sellingPrice || "0");
     const productCost = parseFloat(inputs.productCost || "0");
-    const cac = parseFloat(inputs.cac || "0");
 
     // Convert percentages to currency
     const mediaCostValue = (sellingPrice * parseFloat(inputs.mediaCost || "0")) / 100;
@@ -103,7 +101,7 @@ export default function Calculadora() {
 
     const totalOperationalCost =
       mediaCostValue + fixedCostsValue + taxesValue + gatewayFeeValue + platformFeeValue + extraFeesValue;
-    const totalCost = productCost + cac + totalOperationalCost;
+    const totalCost = productCost + totalOperationalCost;
     const profitPerUnit = sellingPrice - totalCost;
     const margin = sellingPrice > 0 ? (profitPerUnit / sellingPrice) * 100 : 0;
 
@@ -138,7 +136,7 @@ export default function Calculadora() {
             <CardHeader className="pb-4">
               <CardTitle className="text-lg">Produto e Meta</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Defina o preço de venda e a margem que você deseja atingir.
+                Defina o preço de venda, o custo do produto e a margem que você deseja atingir.
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -147,6 +145,12 @@ export default function Calculadora() {
                 label="Preço de Venda"
                 value={inputs.sellingPrice}
                 onChange={(v) => updateInput("sellingPrice", v)}
+              />
+              <CurrencyInput
+                id="productCost"
+                label="Custo do Produto"
+                value={inputs.productCost}
+                onChange={(v) => updateInput("productCost", v)}
               />
               <div className="space-y-1.5">
                 <Label htmlFor="desiredMargin" className="text-sm">
@@ -164,28 +168,6 @@ export default function Calculadora() {
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Direct Costs */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Custos Diretos</CardTitle>
-              <p className="text-sm text-muted-foreground">Valores fixos por unidade vendida.</p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <CurrencyInput
-                id="productCost"
-                label="Custo do Produto"
-                value={inputs.productCost}
-                onChange={(v) => updateInput("productCost", v)}
-              />
-              <CurrencyInput
-                id="cac"
-                label="CAC (Custo de Aquisição de Cliente)"
-                value={inputs.cac}
-                onChange={(v) => updateInput("cac", v)}
-              />
             </CardContent>
           </Card>
 
