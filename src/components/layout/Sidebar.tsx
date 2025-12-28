@@ -10,6 +10,7 @@ import {
   Store,
   ShoppingBag,
   Users,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   X,
@@ -59,6 +60,11 @@ const menuItems = [
     title: "IA W3",
     icon: Sparkles,
     path: "/ia-w3",
+  },
+  {
+    title: "Calendário Comercial",
+    icon: CalendarDays,
+    path: "/calendario",
   },
   {
     title: "Catálogo de Marcas",

@@ -15,6 +15,7 @@ import CRMInfluenciadores from "./pages/CRMInfluenciadores";
 import IAW3 from "./pages/IAW3";
 import Catalogo from "./pages/Catalogo";
 import Produtos from "./pages/Produtos";
+import CalendarioComercial from "./pages/CalendarioComercial";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -44,6 +45,7 @@ const App = () => (
                       <Route path="/ia-w3" element={<IAW3 />} />
                       <Route path="/catalogo" element={<Catalogo />} />
                       <Route path="/produtos" element={<Produtos />} />
+                      <Route path="/calendario" element={<CalendarioComercial />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </MainLayout>
