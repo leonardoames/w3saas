@@ -1,57 +1,121 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Calculator as CalculatorIcon } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Separator } from "@/components/ui/separator";
+
+interface PercentageInputProps {
+  id: string;
+  label: string;
+  value: string;
+  sellingPrice: number;
+  onChange: (value: string) => void;
+}
+
+function PercentageInput({ id, label, value, sellingPrice, onChange }: PercentageInputProps) {
+  const calculatedValue = useMemo(() => {
+    const percentage = parseFloat(value || "0");
+    return (sellingPrice * percentage) / 100;
+  }, [value, sellingPrice]);
+
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id} className="text-sm">{label}</Label>
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Input
+            id={id}
+            type="number"
+            placeholder="0"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="pr-8"
+          />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+        </div>
+        <span className="text-sm text-muted-foreground min-w-[80px] text-right">
+          = R$ {calculatedValue.toFixed(2)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+interface CurrencyInputProps {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}
+
+function CurrencyInput({ id, label, value, onChange, placeholder = "0.00" }: CurrencyInputProps) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id} className="text-sm">{label}</Label>
+      <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+        <Input
+          id={id}
+          type="number"
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function Calculadora() {
   const [inputs, setInputs] = useState({
-    productCost: "",
-    productionCost: "",
-    fees: "",
-    fixedCosts: "",
-    variableCosts: "",
-    cac: "",
-    investment: "",
+    sellingPrice: "",
     desiredMargin: "",
+    productCost: "",
+    cac: "",
+    mediaCost: "",
+    fixedCosts: "",
+    taxes: "",
+    gatewayFee: "",
+    platformFee: "",
+    extraFees: "",
   });
 
-  const [results, setResults] = useState<{
-    idealPrice: number;
-    breakEven: number;
-    profitPerUnit: number;
-    netMargin: number;
-    requiredRoas: number;
-  } | null>(null);
+  const updateInput = (key: keyof typeof inputs, value: string) => {
+    setInputs((prev) => ({ ...prev, [key]: value }));
+  };
 
-  const handleCalculate = () => {
-    // Lógica de cálculo simplificada - será refinada depois
-    const totalCost = 
-      parseFloat(inputs.productCost || "0") + 
-      parseFloat(inputs.productionCost || "0") +
-      parseFloat(inputs.fees || "0") +
-      parseFloat(inputs.fixedCosts || "0") +
-      parseFloat(inputs.variableCosts || "0");
-
-    const margin = parseFloat(inputs.desiredMargin || "30") / 100;
-    const idealPrice = totalCost / (1 - margin);
-    const profitPerUnit = idealPrice - totalCost;
-    const netMargin = (profitPerUnit / idealPrice) * 100;
-    
+  const results = useMemo(() => {
+    const sellingPrice = parseFloat(inputs.sellingPrice || "0");
+    const productCost = parseFloat(inputs.productCost || "0");
     const cac = parseFloat(inputs.cac || "0");
-    const breakEven = cac > 0 ? Math.ceil(cac / profitPerUnit) : 0;
-    
-    const investment = parseFloat(inputs.investment || "0");
-    const requiredRoas = investment > 0 ? idealPrice / (investment + cac) : 0;
 
-    setResults({
-      idealPrice,
-      breakEven,
+    // Convert percentages to currency
+    const mediaCostValue = (sellingPrice * parseFloat(inputs.mediaCost || "0")) / 100;
+    const fixedCostsValue = (sellingPrice * parseFloat(inputs.fixedCosts || "0")) / 100;
+    const taxesValue = (sellingPrice * parseFloat(inputs.taxes || "0")) / 100;
+    const gatewayFeeValue = (sellingPrice * parseFloat(inputs.gatewayFee || "0")) / 100;
+    const platformFeeValue = (sellingPrice * parseFloat(inputs.platformFee || "0")) / 100;
+    const extraFeesValue = (sellingPrice * parseFloat(inputs.extraFees || "0")) / 100;
+
+    const totalOperationalCost = mediaCostValue + fixedCostsValue + taxesValue + gatewayFeeValue + platformFeeValue + extraFeesValue;
+    const totalCost = productCost + cac + totalOperationalCost;
+    const profitPerUnit = sellingPrice - totalCost;
+    const margin = sellingPrice > 0 ? (profitPerUnit / sellingPrice) * 100 : 0;
+
+    return {
+      totalCost,
       profitPerUnit,
-      netMargin,
-      requiredRoas,
-    });
+      margin,
+      isValid: sellingPrice > 0,
+    };
+  }, [inputs]);
+
+  const getMarginColor = () => {
+    if (results.margin >= parseFloat(inputs.desiredMargin || "0")) return "text-success";
+    if (results.margin > 0) return "text-warning";
+    return "text-destructive";
   };
 
   return (
@@ -59,161 +123,166 @@ export default function Calculadora() {
       <div>
         <h1 className="text-3xl font-bold text-foreground">Calculadora de E-commerce</h1>
         <p className="mt-2 text-muted-foreground">
-          Calcule o preço ideal, margem de lucro e ROAS necessário para seu produto
+          Descubra rapidamente se o seu preço de venda cobre todos os custos e gera o lucro desejado.
         </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Input Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Dados do Produto</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="productCost">Custo do Produto (R$)</Label>
-              <Input
-                id="productCost"
-                type="number"
-                placeholder="0.00"
-                value={inputs.productCost}
-                onChange={(e) => setInputs({ ...inputs, productCost: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="productionCost">Custo de Produção/Compra (R$)</Label>
-              <Input
-                id="productionCost"
-                type="number"
-                placeholder="0.00"
-                value={inputs.productionCost}
-                onChange={(e) => setInputs({ ...inputs, productionCost: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="fees">Taxas (R$)</Label>
-              <Input
-                id="fees"
-                type="number"
-                placeholder="0.00"
-                value={inputs.fees}
-                onChange={(e) => setInputs({ ...inputs, fees: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="fixedCosts">Custos Fixos (R$)</Label>
-              <Input
-                id="fixedCosts"
-                type="number"
-                placeholder="0.00"
-                value={inputs.fixedCosts}
-                onChange={(e) => setInputs({ ...inputs, fixedCosts: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="variableCosts">Custos Variáveis (R$)</Label>
-              <Input
-                id="variableCosts"
-                type="number"
-                placeholder="0.00"
-                value={inputs.variableCosts}
-                onChange={(e) => setInputs({ ...inputs, variableCosts: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="cac">CAC Hipotético (R$)</Label>
-              <Input
-                id="cac"
-                type="number"
-                placeholder="0.00"
-                value={inputs.cac}
-                onChange={(e) => setInputs({ ...inputs, cac: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="investment">Investimento Esperado (R$)</Label>
-              <Input
-                id="investment"
-                type="number"
-                placeholder="0.00"
-                value={inputs.investment}
-                onChange={(e) => setInputs({ ...inputs, investment: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="desiredMargin">Margem Desejada (%)</Label>
-              <Input
-                id="desiredMargin"
-                type="number"
-                placeholder="30"
-                value={inputs.desiredMargin}
-                onChange={(e) => setInputs({ ...inputs, desiredMargin: e.target.value })}
-              />
-            </div>
-
-            <Button onClick={handleCalculate} className="w-full" size="lg">
-              <CalculatorIcon className="mr-2 h-5 w-5" />
-              Calcular
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Results */}
-        <div className="space-y-4">
+        {/* Left: Inputs */}
+        <div className="space-y-6">
+          {/* Product & Target */}
           <Card>
-            <CardHeader>
-              <CardTitle>Resultados</CardTitle>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Produto e Meta</CardTitle>
+              <p className="text-sm text-muted-foreground">Defina o preço de venda e a margem que você deseja atingir.</p>
             </CardHeader>
-            <CardContent>
-              {results ? (
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">Preço Ideal</p>
-                    <p className="text-3xl font-bold text-primary">
-                      R$ {results.idealPrice.toFixed(2)}
+            <CardContent className="space-y-4">
+              <CurrencyInput
+                id="sellingPrice"
+                label="Preço de Venda"
+                value={inputs.sellingPrice}
+                onChange={(v) => updateInput("sellingPrice", v)}
+              />
+              <div className="space-y-1.5">
+                <Label htmlFor="desiredMargin" className="text-sm">Margem Desejada</Label>
+                <div className="relative">
+                  <Input
+                    id="desiredMargin"
+                    type="number"
+                    placeholder="30"
+                    value={inputs.desiredMargin}
+                    onChange={(e) => updateInput("desiredMargin", e.target.value)}
+                    className="pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Direct Costs */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Custos Diretos</CardTitle>
+              <p className="text-sm text-muted-foreground">Valores fixos por unidade vendida.</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <CurrencyInput
+                id="productCost"
+                label="Custo do Produto"
+                value={inputs.productCost}
+                onChange={(v) => updateInput("productCost", v)}
+              />
+              <CurrencyInput
+                id="cac"
+                label="CAC (Custo de Aquisição de Cliente)"
+                value={inputs.cac}
+                onChange={(v) => updateInput("cac", v)}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Operational Costs (Percentages) */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Custos Operacionais</CardTitle>
+              <p className="text-sm text-muted-foreground">Percentuais aplicados sobre o preço de venda.</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <PercentageInput
+                id="mediaCost"
+                label="Custo de Mídia"
+                value={inputs.mediaCost}
+                sellingPrice={parseFloat(inputs.sellingPrice || "0")}
+                onChange={(v) => updateInput("mediaCost", v)}
+              />
+              <PercentageInput
+                id="fixedCosts"
+                label="Custos Fixos"
+                value={inputs.fixedCosts}
+                sellingPrice={parseFloat(inputs.sellingPrice || "0")}
+                onChange={(v) => updateInput("fixedCosts", v)}
+              />
+              <PercentageInput
+                id="taxes"
+                label="Impostos"
+                value={inputs.taxes}
+                sellingPrice={parseFloat(inputs.sellingPrice || "0")}
+                onChange={(v) => updateInput("taxes", v)}
+              />
+              <Separator className="my-2" />
+              <PercentageInput
+                id="gatewayFee"
+                label="Taxa do Gateway de Pagamento"
+                value={inputs.gatewayFee}
+                sellingPrice={parseFloat(inputs.sellingPrice || "0")}
+                onChange={(v) => updateInput("gatewayFee", v)}
+              />
+              <PercentageInput
+                id="platformFee"
+                label="Taxa da Plataforma de E-commerce"
+                value={inputs.platformFee}
+                sellingPrice={parseFloat(inputs.sellingPrice || "0")}
+                onChange={(v) => updateInput("platformFee", v)}
+              />
+              <PercentageInput
+                id="extraFees"
+                label="Taxas Extras"
+                value={inputs.extraFees}
+                sellingPrice={parseFloat(inputs.sellingPrice || "0")}
+                onChange={(v) => updateInput("extraFees", v)}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right: Results */}
+        <div className="space-y-6">
+          <Card className="sticky top-6">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Resultados</CardTitle>
+              <p className="text-sm text-muted-foreground">Atualizados automaticamente conforme você preenche.</p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {results.isValid ? (
+                <>
+                  <div className="rounded-lg bg-muted/50 p-6 text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Custo Total</p>
+                    <p className="text-4xl font-bold tracking-tight">
+                      R$ {results.totalCost.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Soma de todos os custos por unidade
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">Lucro por Unidade</p>
-                      <p className="text-xl font-semibold text-success">
-                        R$ {results.profitPerUnit.toFixed(2)}
-                      </p>
-                    </div>
-
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">Margem Líquida</p>
-                      <p className="text-xl font-semibold">
-                        {results.netMargin.toFixed(1)}%
-                      </p>
-                    </div>
-
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">Ponto de Equilíbrio</p>
-                      <p className="text-xl font-semibold">
-                        {results.breakEven} vendas
-                      </p>
-                    </div>
-
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">ROAS Necessário</p>
-                      <p className="text-xl font-semibold text-accent">
-                        {results.requiredRoas.toFixed(2)}
-                      </p>
-                    </div>
+                  <div className="rounded-lg bg-muted/50 p-6 text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Lucro por Unidade</p>
+                    <p className={`text-4xl font-bold tracking-tight ${results.profitPerUnit >= 0 ? "text-success" : "text-destructive"}`}>
+                      R$ {results.profitPerUnit.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Preço de venda menos custo total
+                    </p>
                   </div>
-                </div>
+
+                  <div className="rounded-lg bg-muted/50 p-6 text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Margem Real</p>
+                    <p className={`text-4xl font-bold tracking-tight ${getMarginColor()}`}>
+                      {results.margin.toFixed(1)}%
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {parseFloat(inputs.desiredMargin || "0") > 0 && (
+                        results.margin >= parseFloat(inputs.desiredMargin)
+                          ? "✓ Acima da meta"
+                          : `Meta: ${inputs.desiredMargin}%`
+                      )}
+                    </p>
+                  </div>
+                </>
               ) : (
-                <div className="flex h-64 items-center justify-center text-muted-foreground">
-                  Preencha os dados e clique em Calcular
+                <div className="flex h-64 items-center justify-center text-muted-foreground text-center">
+                  <p>Preencha o preço de venda para ver os resultados</p>
                 </div>
               )}
             </CardContent>
