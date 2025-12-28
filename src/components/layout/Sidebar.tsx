@@ -1,13 +1,13 @@
 import { NavLink } from "@/components/NavLink";
-import { 
-  LayoutDashboard, 
-  GraduationCap, 
-  ListChecks, 
-  Calculator, 
+import {
+  LayoutDashboard,
+  GraduationCap,
+  ListChecks,
+  Calculator,
   GitCompare,
-  Sparkles, 
-  Store, 
-  ShoppingBag 
+  Sparkles,
+  Store,
+  ShoppingBag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -48,7 +48,7 @@ const menuItems = [
     path: "/catalogo",
   },
   {
-    title: "Produtos da Mentoria",
+    title: "Soluções da W3",
     icon: ShoppingBag,
     path: "/produtos",
   },
