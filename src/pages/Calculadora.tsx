@@ -148,7 +148,7 @@ export default function Calculadora() {
               />
               <CurrencyInput
                 id="productCost"
-                label="Custo do Produto"
+                label="Custo do Produto (fabricação ou compra)"
                 value={inputs.productCost}
                 onChange={(v) => updateInput("productCost", v)}
               />
