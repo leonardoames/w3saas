@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Copy, Loader2, FileText, ShoppingBag, Search, BarChart3, Megaphone } from "lucide-react";
+import { Sparkles, Copy, Loader2, FileText, ShoppingBag, Search, BarChart3, Megaphone, Video } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,14 +15,16 @@ interface Mode {
   id: string;
   label: string;
   icon: React.ReactNode;
+  description: string;
 }
 
 const MODES: Mode[] = [
-  { id: "copy-site", label: "Copy Produto (Site)", icon: <FileText className="h-4 w-4" /> },
-  { id: "copy-marketplace", label: "Copy Marketplace", icon: <ShoppingBag className="h-4 w-4" /> },
-  { id: "seo", label: "SEO", icon: <Search className="h-4 w-4" /> },
-  { id: "diagnostico", label: "Diagnóstico", icon: <BarChart3 className="h-4 w-4" /> },
-  { id: "anuncios", label: "Anúncios", icon: <Megaphone className="h-4 w-4" /> },
+  { id: "copy-site", label: "Copy Site", icon: <FileText className="h-4 w-4" />, description: "Descrição HTML premium para e-commerce" },
+  { id: "copy-marketplace", label: "Marketplace", icon: <ShoppingBag className="h-4 w-4" />, description: "Texto otimizado para ML/Shopee" },
+  { id: "seo", label: "SEO", icon: <Search className="h-4 w-4" />, description: "Otimização para buscadores" },
+  { id: "diagnostico", label: "Diagnóstico", icon: <BarChart3 className="h-4 w-4" />, description: "Análise de métricas e gargalos" },
+  { id: "anuncios", label: "Anúncios", icon: <Megaphone className="h-4 w-4" />, description: "Copy para Meta/Google Ads" },
+  { id: "roteiro-influencer", label: "Influencer", icon: <Video className="h-4 w-4" />, description: "Roteiro storytelling em dias" },
 ];
 
 export default function IAW3() {
@@ -111,7 +113,7 @@ export default function IAW3() {
     navigator.clipboard.writeText(output);
     toast({
       title: "Copiado!",
-      description: "HTML copiado para a área de transferência",
+      description: "Conteúdo copiado para a área de transferência",
     });
   };
 
@@ -129,6 +131,27 @@ export default function IAW3() {
     });
   };
 
+  const getPlaceholder = () => {
+    switch (selectedMode) {
+      case "copy-site":
+        return "Descreva o produto: nome, benefícios, público-alvo, diferenciais... A IA vai gerar HTML premium de alta conversão.";
+      case "copy-marketplace":
+        return "Descreva o produto para criar anúncio otimizado para Mercado Livre, Shopee, etc. Foco em palavras-chave.";
+      case "seo":
+        return "Cole a URL ou descreva a página que quer otimizar para buscadores...";
+      case "diagnostico":
+        return "Descreva o problema ou cole suas métricas (faturamento, conversão, ROAS, etc.)...";
+      case "anuncios":
+        return "Descreva a campanha, objetivo, público e produto para criar copies de anúncios...";
+      case "roteiro-influencer":
+        return "Descreva o produto, objetivo da campanha e perfil do influenciador. A IA criará um roteiro de storytelling em múltiplos dias com Reels.";
+      default:
+        return "Ex: Preciso melhorar minha taxa de conversão, está em 1.2% e quero chegar em 2%...";
+    }
+  };
+
+  const selectedModeData = MODES.find(m => m.id === selectedMode);
+
   return (
     <div className="space-y-6">
       <div>
@@ -139,28 +162,36 @@ export default function IAW3() {
       </div>
 
       {/* Mode Selector */}
-      <div className="flex flex-wrap gap-2">
-        {MODES.map((mode) => (
-          <Button
-            key={mode.id}
-            variant={selectedMode === mode.id ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSelectedMode(selectedMode === mode.id ? null : mode.id)}
-            className="gap-2"
-          >
-            {mode.icon}
-            <span className="hidden sm:inline">{mode.label}</span>
-          </Button>
-        ))}
-        {chatHistory.length > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleClearHistory}
-            className="ml-auto text-muted-foreground"
-          >
-            Limpar conversa
-          </Button>
+      <div className="space-y-2">
+        <div className="flex flex-wrap gap-2">
+          {MODES.map((mode) => (
+            <Button
+              key={mode.id}
+              variant={selectedMode === mode.id ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedMode(selectedMode === mode.id ? null : mode.id)}
+              className="gap-2"
+              title={mode.description}
+            >
+              {mode.icon}
+              <span className="hidden sm:inline">{mode.label}</span>
+            </Button>
+          ))}
+          {chatHistory.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearHistory}
+              className="ml-auto text-muted-foreground"
+            >
+              Limpar conversa
+            </Button>
+          )}
+        </div>
+        {selectedModeData && (
+          <p className="text-sm text-muted-foreground">
+            <strong>{selectedModeData.label}:</strong> {selectedModeData.description}
+          </p>
         )}
       </div>
 
@@ -169,24 +200,14 @@ export default function IAW3() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {selectedMode 
-                ? `Modo: ${MODES.find(m => m.id === selectedMode)?.label}` 
+              {selectedModeData 
+                ? `Modo: ${selectedModeData.label}` 
                 : "O que você precisa?"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Textarea
-              placeholder={
-                selectedMode === "copy-site" || selectedMode === "copy-marketplace"
-                  ? "Descreva o produto: nome, benefícios, público-alvo, diferenciais..."
-                  : selectedMode === "seo"
-                  ? "Cole a URL ou descreva a página que quer otimizar..."
-                  : selectedMode === "diagnostico"
-                  ? "Descreva o problema ou cole suas métricas..."
-                  : selectedMode === "anuncios"
-                  ? "Descreva a campanha, objetivo e público..."
-                  : "Ex: Preciso melhorar minha taxa de conversão, está em 1.2% e quero chegar em 2%..."
-              }
+              placeholder={getPlaceholder()}
               className="min-h-[200px] resize-none"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
@@ -218,9 +239,9 @@ export default function IAW3() {
             <div className="rounded-lg p-4 bg-muted/50">
               <p className="text-sm font-medium text-foreground">Dicas de uso:</p>
               <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                <li>• Selecione um modo acima para respostas mais direcionadas</li>
-                <li>• Forneça métricas quando possível para diagnósticos precisos</li>
-                <li>• A IA mantém contexto das últimas 10 mensagens</li>
+                <li>• Selecione um modo acima para respostas direcionadas</li>
+                <li>• <strong>Copy Site:</strong> gera HTML premium com alta conversão</li>
+                <li>• <strong>Influencer:</strong> cria roteiro de storytelling em dias</li>
                 <li>• Use ⌘+Enter para enviar rapidamente</li>
               </ul>
             </div>
@@ -258,7 +279,7 @@ export default function IAW3() {
             {output && (
               <Button variant="outline" size="sm" onClick={handleCopyHTML}>
                 <Copy className="mr-2 h-4 w-4" />
-                Copiar HTML
+                Copiar
               </Button>
             )}
           </CardHeader>
@@ -277,7 +298,7 @@ export default function IAW3() {
                   className="rounded-lg border border-border bg-muted/50 p-4 max-h-[350px] overflow-y-auto"
                 >
                   <div 
-                    className="prose prose-sm max-w-none dark:prose-invert"
+                    className="prose prose-sm max-w-none dark:prose-invert prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2 prose-ul:my-2 prose-li:my-0"
                     dangerouslySetInnerHTML={{ __html: output }}
                   />
                 </div>
@@ -299,12 +320,15 @@ export default function IAW3() {
                   </div>
                 )}
 
-                <div className="rounded-lg bg-card border border-border p-4">
-                  <p className="mb-2 text-sm font-medium text-foreground">Código HTML:</p>
-                  <pre className="overflow-x-auto text-xs text-muted-foreground max-h-[150px]">
-                    <code>{output}</code>
-                  </pre>
-                </div>
+                {/* Show HTML code only for copy-site mode */}
+                {selectedMode === "copy-site" && (
+                  <div className="rounded-lg bg-card border border-border p-4">
+                    <p className="mb-2 text-sm font-medium text-foreground">Código HTML:</p>
+                    <pre className="overflow-x-auto text-xs text-muted-foreground max-h-[150px]">
+                      <code>{output}</code>
+                    </pre>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex h-[400px] items-center justify-center text-muted-foreground">
