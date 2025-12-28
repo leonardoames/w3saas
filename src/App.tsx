@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
 import { MainLayout } from "./components/layout/MainLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
@@ -19,34 +20,36 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/auth" element={<Auth />} />
-          <Route
-            path="/*"
-            element={
-              <ProtectedRoute>
-                <MainLayout>
-                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/aulas" element={<Aulas />} />
-                    <Route path="/plano-acao" element={<PlanoAcao />} />
-                    <Route path="/calculadora" element={<Calculadora />} />
-                    <Route path="/ia-w3" element={<IAW3 />} />
-                    <Route path="/catalogo" element={<Catalogo />} />
-                    <Route path="/produtos" element={<Produtos />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </MainLayout>
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route
+              path="/*"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/aulas" element={<Aulas />} />
+                      <Route path="/plano-acao" element={<PlanoAcao />} />
+                      <Route path="/calculadora" element={<Calculadora />} />
+                      <Route path="/ia-w3" element={<IAW3 />} />
+                      <Route path="/catalogo" element={<Catalogo />} />
+                      <Route path="/produtos" element={<Produtos />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
