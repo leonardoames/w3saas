@@ -27,18 +27,18 @@ All colors MUST be HSL.
     --popover-foreground: 0 0% 9%;
 
     /* Brand W3 - Azul profundo */
-    --primary: 27 91% 52%;
+    --primary: 20 90% 48%;
     --primary-foreground: 33 100% 96%;
 
     /* Verde W3 - Acento */
-    --secondary: 0 0% 32%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 27 91% 52%;
+    --secondary-foreground: 0 0% 0%;
 
     --muted: 0 0% 63%;
     --muted-foreground: 0 0% 9%;
 
     --accent: 47 100% 96%;
-    --accent-foreground: 27 91% 52%;
+    --accent-foreground: 37 92% 50%;
 
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 85% 97%;
