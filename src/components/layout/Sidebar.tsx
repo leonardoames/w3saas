@@ -4,6 +4,7 @@ import {
   GraduationCap, 
   ListChecks, 
   Calculator, 
+  GitCompare,
   Sparkles, 
   Store, 
   ShoppingBag 
@@ -30,6 +31,11 @@ const menuItems = [
     title: "Calculadora",
     icon: Calculator,
     path: "/calculadora",
+  },
+  {
+    title: "Simulação de Cenários",
+    icon: GitCompare,
+    path: "/simulacao",
   },
   {
     title: "IA W3",

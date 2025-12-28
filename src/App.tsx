@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Aulas from "./pages/Aulas";
 import PlanoAcao from "./pages/PlanoAcao";
 import Calculadora from "./pages/Calculadora";
+import SimulacaoCenarios from "./pages/SimulacaoCenarios";
 import IAW3 from "./pages/IAW3";
 import Catalogo from "./pages/Catalogo";
 import Produtos from "./pages/Produtos";
@@ -37,6 +38,7 @@ const App = () => (
                       <Route path="/aulas" element={<Aulas />} />
                       <Route path="/plano-acao" element={<PlanoAcao />} />
                       <Route path="/calculadora" element={<Calculadora />} />
+                      <Route path="/simulacao" element={<SimulacaoCenarios />} />
                       <Route path="/ia-w3" element={<IAW3 />} />
                       <Route path="/catalogo" element={<Catalogo />} />
                       <Route path="/produtos" element={<Produtos />} />
