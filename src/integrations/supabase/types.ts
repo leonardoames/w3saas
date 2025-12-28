@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      influenciadores: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          observacoes: string | null
+          social_handle: string | null
+          stage: string
+          stage_order: number
+          telefone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          observacoes?: string | null
+          social_handle?: string | null
+          stage?: string
+          stage_order?: number
+          telefone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          social_handle?: string | null
+          stage?: string
+          stage_order?: number
+          telefone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       metrics_diarias: {
         Row: {
           created_at: string
