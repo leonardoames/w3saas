@@ -48,8 +48,8 @@ const menuItems = [
     path: "/catalogo",
   },
   {
-    title: "Produtos da Mentoria",
-    icon: TrendingUp,
+    title: "Soluções da W3",
+    icon: ShoppingBag,
     path: "/produtos",
   },
 ];
