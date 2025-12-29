@@ -11,6 +11,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 // Public pages
 import Landing from "./pages/Landing";
 import Checkout from "./pages/Checkout";
+import CheckoutSuccess from "./pages/CheckoutSuccess";
 import Auth from "./pages/Auth";
 import AcessoBloqueado from "./pages/AcessoBloqueado";
 
@@ -46,6 +47,7 @@ const App = () => (
               {/* Public routes */}
               <Route path="/" element={<Landing />} />
               <Route path="/checkout" element={<Checkout />} />
+              <Route path="/checkout/sucesso" element={<CheckoutSuccess />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/acesso-bloqueado" element={<AcessoBloqueado />} />
 
