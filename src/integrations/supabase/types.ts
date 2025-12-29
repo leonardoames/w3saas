@@ -176,6 +176,51 @@ export type Database = {
         }
         Relationships: []
       }
+      tarefas: {
+        Row: {
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          order_index: number
+          origin: Database["public"]["Enums"]["task_origin"]
+          priority: string | null
+          section: string
+          status: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          order_index?: number
+          origin?: Database["public"]["Enums"]["task_origin"]
+          priority?: string | null
+          section: string
+          status?: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          order_index?: number
+          origin?: Database["public"]["Enums"]["task_origin"]
+          priority?: string | null
+          section?: string
+          status?: Database["public"]["Enums"]["task_status"]
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_calendar_events: {
         Row: {
           created_at: string
@@ -249,6 +294,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      task_origin: "sistema" | "admin" | "mentorado"
+      task_status: "a_fazer" | "em_andamento" | "concluida" | "cancelada"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -377,6 +424,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      task_origin: ["sistema", "admin", "mentorado"],
+      task_status: ["a_fazer", "em_andamento", "concluida", "cancelada"],
     },
   },
 } as const
