@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { MainLayout } from "@/components/layout/MainLayout";
 import { CalendarMonthSelector } from "@/components/calendar/CalendarMonthSelector";
 import { CalendarGrid } from "@/components/calendar/CalendarGrid";
 import { ComercialEventCard } from "@/components/calendar/ComercialEventCard";
@@ -164,73 +163,71 @@ export default function CalendarioComercial() {
   };
 
   return (
-    <MainLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Calendário Comercial 2026</h1>
-            <p className="text-muted-foreground mt-1">
-              Planejamento mensal para e-commerce brasileiro
-            </p>
-          </div>
-          <AddUserEventDialog onAdd={handleAddEvent} selectedMonth={selectedMonth} />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Calendário Comercial 2026</h1>
+          <p className="text-muted-foreground mt-1">
+            Planejamento mensal para e-commerce brasileiro
+          </p>
         </div>
+        <AddUserEventDialog onAdd={handleAddEvent} selectedMonth={selectedMonth} />
+      </div>
 
-        <CalendarMonthSelector 
-          selectedMonth={selectedMonth} 
-          onMonthChange={setSelectedMonth} 
-        />
+      <CalendarMonthSelector 
+        selectedMonth={selectedMonth} 
+        onMonthChange={setSelectedMonth} 
+      />
 
-        <CalendarGrid 
-          selectedMonth={selectedMonth} 
-          userEvents={userEvents}
-        />
+      <CalendarGrid 
+        selectedMonth={selectedMonth} 
+        userEvents={userEvents}
+      />
 
-        <div className="space-y-6">
-          {/* System Events */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <CalendarDays className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold">
-                Eventos Comerciais - {MONTH_NAMES[selectedMonth]} 2026
-              </h2>
-            </div>
-            {comercialEvents.length === 0 ? (
-              <p className="text-muted-foreground">Nenhum evento comercial neste mês.</p>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2">
-                {comercialEvents.map(event => (
-                  <ComercialEventCard key={event.id} event={event} />
-                ))}
-              </div>
-            )}
+      <div className="space-y-6">
+        {/* System Events */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <CalendarDays className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-semibold">
+              Eventos Comerciais - {MONTH_NAMES[selectedMonth]} 2026
+            </h2>
           </div>
-
-          {/* User Events */}
-          {userEventsForMonth.length > 0 && (
-            <>
-              <Separator />
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <User className="h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-semibold">
-                    Seus Eventos - {MONTH_NAMES[selectedMonth]} 2026
-                  </h2>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {userEventsForMonth.map(event => (
-                    <UserEventCard 
-                      key={event.id} 
-                      event={event} 
-                      onDelete={handleDeleteEvent}
-                    />
-                  ))}
-                </div>
-              </div>
-            </>
+          {comercialEvents.length === 0 ? (
+            <p className="text-muted-foreground">Nenhum evento comercial neste mês.</p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {comercialEvents.map(event => (
+                <ComercialEventCard key={event.id} event={event} />
+              ))}
+            </div>
           )}
         </div>
+
+        {/* User Events */}
+        {userEventsForMonth.length > 0 && (
+          <>
+            <Separator />
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <User className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold">
+                  Seus Eventos - {MONTH_NAMES[selectedMonth]} 2026
+                </h2>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {userEventsForMonth.map(event => (
+                  <UserEventCard 
+                    key={event.id} 
+                    event={event} 
+                    onDelete={handleDeleteEvent}
+                  />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
-    </MainLayout>
+    </div>
   );
 }
