@@ -6,7 +6,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 import { 
   ArrowLeft, 
-  LayoutDashboard, 
+  ClipboardList,
   LogOut, 
   Settings, 
   Users 
@@ -19,6 +19,7 @@ interface AdminLayoutProps {
 const adminLinks = [
   { href: "/admin", label: "Usuários", icon: Users },
   { href: "/admin/modulos", label: "Módulos", icon: Settings },
+  { href: "/admin/plano-acao", label: "Plano de Ação", icon: ClipboardList },
 ];
 
 export function AdminLayout({ children }: AdminLayoutProps) {
