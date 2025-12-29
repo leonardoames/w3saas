@@ -141,6 +141,7 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
                 <NavLink
                   key={item.path}
                   to={item.path}
+                  end={item.path === "/app"}
                   onClick={handleNavClick}
                   className="flex items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
@@ -229,6 +230,7 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
                 <NavLink
                   key={item.path}
                   to={item.path}
+                  end={item.path === "/app"}
                   className="flex items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
                 >
@@ -240,6 +242,7 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
                   <TooltipTrigger asChild>
                     <NavLink
                       to={item.path}
+                      end={item.path === "/app"}
                       className="flex items-center justify-center rounded-lg p-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
                     >

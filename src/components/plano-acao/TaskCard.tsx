@@ -138,7 +138,7 @@ export function TaskCard({
               )}
               
               {isCanceled && (
-                <Badge variant="outline" className="text-muted-foreground">
+                <Badge variant="destructive" className="bg-destructive/20 text-destructive border-destructive/30">
                   Cancelada
                 </Badge>
               )}
