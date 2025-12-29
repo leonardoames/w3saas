@@ -6,69 +6,79 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, CheckCircle, CreditCard, Loader2 } from "lucide-react";
-import { z } from "zod";
+import { ArrowLeft, CheckCircle, CreditCard, Loader2, Star } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const signupSchema = z.object({
-  email: z.string().trim().email({ message: "Email inválido" }).max(255),
-  password: z.string().min(6, { message: "Senha deve ter pelo menos 6 caracteres" }).max(100),
-  fullName: z.string().trim().min(2, { message: "Nome deve ter pelo menos 2 caracteres" }).max(100),
-});
+interface Plan {
+  id: string;
+  name: string;
+  price: string;
+  period: string;
+  priceId: string;
+  popular: boolean;
+  savings?: string;
+}
+
+// Stripe price IDs
+const PLANS: Record<string, Plan> = {
+  monthly: {
+    id: "monthly",
+    name: "Mensal",
+    price: "R$ 97",
+    period: "/mês",
+    priceId: "price_1SjVkh2NvVXBdGxmE088mmWW",
+    popular: false,
+  },
+  quarterly: {
+    id: "quarterly",
+    name: "Trimestral",
+    price: "R$ 247",
+    period: "/3 meses",
+    priceId: "price_1SjVkh2NvVXBdGxmEQizPOjc",
+    popular: true,
+    savings: "Economize 15%",
+  },
+  semiannual: {
+    id: "semiannual",
+    name: "Semestral",
+    price: "R$ 397",
+    period: "/6 meses",
+    priceId: "price_1SjVkh2NvVXBdGxmif7YRcNt",
+    popular: false,
+    savings: "Economize 32%",
+  },
+};
+
+const FEATURES = [
+  "Dashboard de métricas",
+  "Calculadoras e simuladores",
+  "IA W3 para copies",
+  "Calendário comercial",
+  "CRM de influenciadores",
+];
 
 export default function Checkout() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [step, setStep] = useState<'payment' | 'account'>('payment');
+  const [selectedPlan, setSelectedPlan] = useState<keyof typeof PLANS>("quarterly");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    confirmPassword: "",
-    fullName: "",
-  });
 
-  // Simulate payment for now - will be replaced with Stripe
-  const handlePayment = async () => {
-    setLoading(true);
-    
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setPaymentSuccess(true);
-    setStep('account');
-    setLoading(false);
-    
-    toast({
-      title: "Pagamento aprovado!",
-      description: "Agora crie sua conta para acessar a plataforma.",
-    });
-  };
-
-  const handleCreateAccount = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate
-    const validation = signupSchema.safeParse({
-      email: formData.email,
-      password: formData.password,
-      fullName: formData.fullName,
-    });
-
-    if (!validation.success) {
+  const handleCheckout = async () => {
+    if (!email) {
       toast({
-        title: "Erro de validação",
-        description: validation.error.errors[0].message,
+        title: "Email obrigatório",
+        description: "Por favor, insira seu email para continuar.",
         variant: "destructive",
       });
       return;
     }
 
-    if (formData.password !== formData.confirmPassword) {
+    // Basic email validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast({
-        title: "Erro",
-        description: "As senhas não coincidem",
+        title: "Email inválido",
+        description: "Por favor, insira um email válido.",
         variant: "destructive",
       });
       return;
@@ -77,48 +87,29 @@ export default function Checkout() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/app`,
-          data: {
-            full_name: formData.fullName,
-          },
+      const plan = PLANS[selectedPlan];
+      
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: {
+          email,
+          priceId: plan.priceId,
+          planType: plan.id,
         },
       });
 
       if (error) throw error;
 
-      // Update profile with paid plan
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ 
-            plan_type: 'paid',
-            full_name: formData.fullName,
-          })
-          .eq('user_id', data.user.id);
-
-        if (profileError) {
-          console.error('Error updating profile:', profileError);
-        }
+      if (data?.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
+      } else {
+        throw new Error("URL de checkout não retornada");
       }
-
-      toast({
-        title: "Conta criada com sucesso!",
-        description: "Você será redirecionado para a plataforma.",
-      });
-
-      // Small delay to let auth state propagate
-      setTimeout(() => {
-        navigate("/app");
-      }, 1000);
-
     } catch (error: any) {
+      console.error("Checkout error:", error);
       toast({
-        title: "Erro ao criar conta",
-        description: error.message,
+        title: "Erro ao iniciar pagamento",
+        description: error.message || "Tente novamente mais tarde.",
         variant: "destructive",
       });
     } finally {
@@ -127,160 +118,145 @@ export default function Checkout() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-background py-8 px-4">
+      <div className="max-w-4xl mx-auto">
         <Button
           variant="ghost"
-          className="mb-4"
+          className="mb-6"
           onClick={() => navigate("/")}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar
         </Button>
 
-        {step === 'payment' && (
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold mb-2">Assinar SaaS da W3</h1>
+          <p className="text-muted-foreground">
+            Acesso completo a todas as ferramentas para escalar seu e-commerce
+          </p>
+        </div>
+
+        {/* Plan Selection */}
+        <div className="grid md:grid-cols-3 gap-4 mb-8">
+          {Object.values(PLANS).map((plan) => (
+            <Card
+              key={plan.id}
+              className={cn(
+                "cursor-pointer transition-all relative",
+                selectedPlan === plan.id
+                  ? "border-primary ring-2 ring-primary"
+                  : "hover:border-primary/50"
+              )}
+              onClick={() => setSelectedPlan(plan.id as keyof typeof PLANS)}
+            >
+              {plan.popular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="bg-primary text-primary-foreground text-xs px-3 py-1 rounded-full flex items-center gap-1">
+                    <Star className="h-3 w-3" />
+                    Mais Popular
+                  </span>
+                </div>
+              )}
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">{plan.name}</CardTitle>
+                {plan.savings && (
+                  <span className="text-xs text-primary font-medium">
+                    {plan.savings}
+                  </span>
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-bold">{plan.price}</span>
+                  <span className="text-muted-foreground">{plan.period}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Features and Checkout */}
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Features */}
           <Card>
             <CardHeader>
-              <CardTitle>Assinar SaaS da W3</CardTitle>
+              <CardTitle className="text-lg">O que está incluso</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3">
+                {FEATURES.map((feature) => (
+                  <li key={feature} className="flex items-center gap-3">
+                    <CheckCircle className="h-5 w-5 text-primary flex-shrink-0" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+
+          {/* Checkout Form */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Finalizar assinatura</CardTitle>
               <CardDescription>
-                Acesso completo a todas as ferramentas
+                Você será redirecionado para um pagamento seguro
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="rounded-lg border bg-muted/50 p-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Plano Mensal</span>
-                  <span className="text-2xl font-bold">R$ 97/mês</span>
-                </div>
-                <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-primary" />
-                    Dashboard de métricas
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-primary" />
-                    Calculadoras e simuladores
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-primary" />
-                    IA W3 para copies
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-primary" />
-                    Calendário comercial
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-primary" />
-                    CRM de influenciadores
-                  </li>
-                </ul>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Seu email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                />
               </div>
 
-              <Button 
-                className="w-full gap-2" 
+              <div className="rounded-lg border bg-muted/50 p-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Plano {PLANS[selectedPlan].name}</span>
+                  <span className="font-medium">
+                    {PLANS[selectedPlan].price}{PLANS[selectedPlan].period}
+                  </span>
+                </div>
+              </div>
+
+              <Button
+                className="w-full gap-2"
                 size="lg"
-                onClick={handlePayment}
+                onClick={handleCheckout}
                 disabled={loading}
               >
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Processando...
+                    Redirecionando...
                   </>
                 ) : (
                   <>
                     <CreditCard className="h-4 w-4" />
-                    Pagar R$ 97,00
+                    Pagar {PLANS[selectedPlan].price}
                   </>
                 )}
               </Button>
 
               <p className="text-center text-xs text-muted-foreground">
-                Pagamento seguro. Cancele quando quiser.
+                Pagamento seguro via Stripe. Cancele quando quiser.
               </p>
             </CardContent>
           </Card>
-        )}
+        </div>
 
-        {step === 'account' && (
-          <Card>
-            <CardHeader>
-              <div className="mb-2 flex items-center gap-2 text-primary">
-                <CheckCircle className="h-5 w-5" />
-                <span className="text-sm font-medium">Pagamento confirmado</span>
-              </div>
-              <CardTitle>Criar sua conta</CardTitle>
-              <CardDescription>
-                Preencha seus dados para acessar a plataforma
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCreateAccount} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Nome completo</Label>
-                  <Input
-                    id="fullName"
-                    placeholder="Seu nome"
-                    value={formData.fullName}
-                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                    required
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirmar senha</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    placeholder="••••••••"
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    required
-                    disabled={loading}
-                  />
-                </div>
-
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Criando conta...
-                    </>
-                  ) : (
-                    "Criar conta e acessar"
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        )}
+        {/* Login link */}
+        <p className="text-center mt-6 text-sm text-muted-foreground">
+          Já tem uma conta?{" "}
+          <Button variant="link" className="p-0 h-auto" onClick={() => navigate("/auth")}>
+            Fazer login
+          </Button>
+        </p>
       </div>
     </div>
   );
