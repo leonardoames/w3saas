@@ -14,8 +14,10 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -88,6 +90,7 @@ interface SidebarProps {
 export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: SidebarProps) {
   const [isHovering, setIsHovering] = useState(false);
   const isMobile = useIsMobile();
+  const { isAdmin } = useAuth();
 
   const isExpanded = isMobile ? true : (!isCollapsed || isHovering);
 
@@ -146,6 +149,18 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
                   <span className="text-base">{item.title}</span>
                 </NavLink>
               ))}
+              
+              {isAdmin && (
+                <NavLink
+                  to="/admin"
+                  onClick={handleNavClick}
+                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+                >
+                  <Shield className="h-5 w-5 shrink-0" />
+                  <span className="text-base">Admin</span>
+                </NavLink>
+              )}
             </nav>
 
             {/* User info */}
@@ -237,6 +252,34 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
                 </Tooltip>
               )
             ))}
+            
+            {isAdmin && (
+              isExpanded ? (
+                <NavLink
+                  to="/admin"
+                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+                >
+                  <Shield className="h-5 w-5 shrink-0" />
+                  <span className="text-base whitespace-nowrap">Admin</span>
+                </NavLink>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <NavLink
+                      to="/admin"
+                      className="flex items-center justify-center rounded-lg p-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                    >
+                      <Shield className="h-5 w-5 shrink-0" />
+                    </NavLink>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="font-medium">
+                    Admin
+                  </TooltipContent>
+                </Tooltip>
+              )
+            )}
           </nav>
 
           {/* User info */}
