@@ -29,52 +29,52 @@ const menuItems = [
   {
     title: "Dashboard",
     icon: LayoutDashboard,
-    path: "/",
+    path: "/app",
   },
   {
     title: "Aulas da Mentoria",
     icon: GraduationCap,
-    path: "/aulas",
+    path: "/app/aulas",
   },
   {
     title: "Plano de Ação",
     icon: ListChecks,
-    path: "/plano-acao",
+    path: "/app/plano-acao",
   },
   {
     title: "Calculadora",
     icon: Calculator,
-    path: "/calculadora",
+    path: "/app/calculadora",
   },
   {
     title: "Simulação de Cenários",
     icon: GitCompare,
-    path: "/simulacao",
+    path: "/app/simulacao",
   },
   {
     title: "CRM de Influenciadores",
     icon: Users,
-    path: "/crm-influenciadores",
+    path: "/app/crm-influenciadores",
   },
   {
     title: "IA W3",
     icon: Sparkles,
-    path: "/ia-w3",
+    path: "/app/ia-w3",
   },
   {
     title: "Calendário Comercial",
     icon: CalendarDays,
-    path: "/calendario",
+    path: "/app/calendario",
   },
   {
     title: "Catálogo de Marcas",
     icon: Store,
-    path: "/catalogo",
+    path: "/app/catalogo",
   },
   {
     title: "Soluções da W3",
     icon: ShoppingBag,
-    path: "/produtos",
+    path: "/app/produtos",
   },
 ];
 
