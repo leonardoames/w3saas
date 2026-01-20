@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { NavLink } from "@/components/NavLink";
+import { SidebarNavLink } from "./SidebarNavLink";
 import {
   LayoutDashboard,
   GraduationCap,
@@ -137,31 +138,25 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
 
             {/* Menu Navigation */}
             <nav className="flex-1 space-y-1 overflow-y-auto p-4">
-              {menuItems.map((item) => (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  end={item.path === "/app"}
-                  onClick={handleNavClick}
-                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
-                >
-                  <item.icon className="h-5 w-5 shrink-0" />
-                  <span className="text-base">{item.title}</span>
-                </NavLink>
-              ))}
-              
-              {isAdmin && (
-                <NavLink
-                  to="/admin"
-                  onClick={handleNavClick}
-                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
-                >
-                  <Shield className="h-5 w-5 shrink-0" />
-                  <span className="text-base">Admin</span>
-                </NavLink>
-              )}
+            {menuItems.map((item) => (
+              <SidebarNavLink
+                key={item.path}
+                to={item.path}
+                end={item.path === "/app"}
+                onClick={handleNavClick}
+                icon={item.icon}
+                label={item.title}
+              />
+            ))}
+            
+            {isAdmin && (
+              <SidebarNavLink
+                to="/admin"
+                onClick={handleNavClick}
+                icon={Shield}
+                label="Admin"
+              />
+            )}
             </nav>
 
             {/* User info */}
@@ -227,27 +222,23 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
           <nav className="flex-1 space-y-1 overflow-y-auto p-2">
             {menuItems.map((item) => (
               isExpanded ? (
-                <NavLink
+                <SidebarNavLink
                   key={item.path}
                   to={item.path}
                   end={item.path === "/app"}
-                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
-                >
-                  <item.icon className="h-5 w-5 shrink-0" />
-                  <span className="text-base whitespace-nowrap">{item.title}</span>
-                </NavLink>
+                  icon={item.icon}
+                  label={item.title}
+                />
               ) : (
                 <Tooltip key={item.path}>
                   <TooltipTrigger asChild>
-                    <NavLink
+                    <SidebarNavLink
                       to={item.path}
                       end={item.path === "/app"}
-                      className="flex items-center justify-center rounded-lg p-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                    >
-                      <item.icon className="h-5 w-5 shrink-0" />
-                    </NavLink>
+                      icon={item.icon}
+                      label={item.title}
+                      isCollapsed
+                    />
                   </TooltipTrigger>
                   <TooltipContent side="right" className="font-medium">
                     {item.title}
@@ -258,24 +249,20 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
             
             {isAdmin && (
               isExpanded ? (
-                <NavLink
+                <SidebarNavLink
                   to="/admin"
-                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
-                >
-                  <Shield className="h-5 w-5 shrink-0" />
-                  <span className="text-base whitespace-nowrap">Admin</span>
-                </NavLink>
+                  icon={Shield}
+                  label="Admin"
+                />
               ) : (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <NavLink
+                    <SidebarNavLink
                       to="/admin"
-                      className="flex items-center justify-center rounded-lg p-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
-                    >
-                      <Shield className="h-5 w-5 shrink-0" />
-                    </NavLink>
+                      icon={Shield}
+                      label="Admin"
+                      isCollapsed
+                    />
                   </TooltipTrigger>
                   <TooltipContent side="right" className="font-medium">
                     Admin
