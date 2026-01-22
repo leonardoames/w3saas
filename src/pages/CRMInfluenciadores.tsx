@@ -421,21 +421,22 @@ const CRMInfluenciadores = () => {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)]">
+    <div className="flex flex-col h-[calc(100vh-140px)] min-h-[500px]">
       {/* Header */}
-      <div className="flex flex-col gap-4 pb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">CRM de Influenciadores</h1>
-            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+      <div className="flex flex-col gap-4 pb-4 shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground truncate">CRM de Influenciadores</h1>
+            <p className="text-muted-foreground mt-1 text-sm">
               Gerencie suas parcerias com influenciadores
             </p>
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2 w-full sm:w-auto">
+              <Button className="gap-2 shrink-0">
                 <Plus className="h-4 w-4" />
-                Adicionar Influenciador
+                <span className="hidden sm:inline">Adicionar Influenciador</span>
+                <span className="sm:hidden">Adicionar</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-[95vw] sm:max-w-lg">
@@ -497,97 +498,96 @@ const CRMInfluenciadores = () => {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-          <div className="relative flex-1 min-w-0">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar influenciador..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="pl-9 w-full"
             />
           </div>
 
-          <div className="flex gap-2 flex-wrap sm:flex-nowrap">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[160px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os Status</SelectItem>
-              {STATUS_OPTIONS.map(status => (
-                <SelectItem key={status.id} value={status.id}>{status.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="grid grid-cols-2 sm:flex gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[140px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {STATUS_OPTIONS.map(status => (
+                  <SelectItem key={status.id} value={status.id}>{status.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={selectedTagFilter} onValueChange={setSelectedTagFilter}>
-            <SelectTrigger className="w-full sm:w-[160px]">
-              <SelectValue placeholder="Filtrar por tag" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as Tags</SelectItem>
-              {allTags.map(tag => (
-                <SelectItem key={tag} value={tag}>{tag}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={selectedTagFilter} onValueChange={setSelectedTagFilter}>
+              <SelectTrigger className="w-full sm:w-[140px]">
+                <SelectValue placeholder="Tags" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {allTags.map(tag => (
+                  <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          {(searchQuery || selectedTagFilter || statusFilter !== "em_aberto") && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 whitespace-nowrap">
-              <X className="h-4 w-4" />
-              Limpar
-            </Button>
-          )}
+            {(searchQuery || selectedTagFilter || statusFilter !== "em_aberto") && (
+              <Button variant="ghost" size="icon" onClick={clearFilters} className="shrink-0" title="Limpar filtros">
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Kanban Board */}
-      <div className="flex gap-3 md:gap-4 overflow-x-auto flex-1 pb-4 -mx-4 px-4 md:mx-0 md:px-0">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 flex-1 overflow-hidden min-h-0">
         {STAGES.map((stage) => (
           <div
             key={stage.id}
-            className="flex-shrink-0 w-64 sm:w-72 flex flex-col"
+            className="flex flex-col min-h-0 overflow-hidden"
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, stage.id)}
           >
-            <Card className="bg-muted/50 border-border flex flex-col flex-1">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center justify-between">
-                  <span>{stage.label}</span>
-                  <span className="bg-primary/20 text-primary text-xs px-2 py-1 rounded-full">
+            <Card className="bg-muted/50 border-border flex flex-col flex-1 min-h-0 overflow-hidden">
+              <CardHeader className="py-3 px-3 shrink-0">
+                <CardTitle className="text-xs sm:text-sm font-medium flex items-center justify-between gap-1">
+                  <span className="truncate">{stage.label}</span>
+                  <span className="bg-primary/20 text-primary text-xs px-1.5 py-0.5 rounded-full shrink-0">
                     {getCardsByStage(stage.id).length}
                   </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 flex-1 overflow-y-auto">
+              <CardContent className="space-y-2 flex-1 overflow-y-auto px-2 pb-3">
                 {getCardsByStage(stage.id).map((influenciador) => (
                   <div
                     key={influenciador.id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, influenciador.id)}
                     onClick={() => handleCardClick(influenciador)}
-                    className={`bg-card border border-border rounded-lg p-3 cursor-pointer hover:border-primary/50 transition-colors ${
+                    className={`bg-card border border-border rounded-lg p-2 sm:p-3 cursor-pointer hover:border-primary/50 transition-colors ${
                       draggedCard === influenciador.id ? "opacity-50" : ""
                     }`}
                   >
-                    <div className="flex items-start gap-2">
-                      <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                    <div className="flex items-start gap-1.5">
+                      <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0 hidden sm:block" />
                       <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-foreground truncate flex-1">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <p className="font-medium text-foreground text-sm truncate flex-1 min-w-0">
                             {influenciador.nome}
                           </p>
                           <Badge 
                             variant="secondary" 
-                            className={`text-xs ${STATUS_OPTIONS.find(s => s.id === influenciador.status)?.color}`}
+                            className={`text-[10px] sm:text-xs shrink-0 ${STATUS_OPTIONS.find(s => s.id === influenciador.status)?.color}`}
                           >
                             {STATUS_OPTIONS.find(s => s.id === influenciador.status)?.label}
                           </Badge>
                         </div>
                         {influenciador.social_handle && (
-                          <p className="text-sm text-muted-foreground truncate">
+                          <p className="text-xs text-muted-foreground truncate">
                             {influenciador.social_handle}
                           </p>
                         )}
@@ -597,22 +597,23 @@ const CRMInfluenciadores = () => {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="flex items-center gap-1 text-sm text-green-600 hover:text-green-700 hover:underline"
+                            className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
                           >
                             <MessageCircle className="h-3 w-3" />
-                            {formatPhone(influenciador.telefone)}
+                            <span className="hidden sm:inline">{formatPhone(influenciador.telefone)}</span>
+                            <span className="sm:hidden">WhatsApp</span>
                           </a>
                         )}
                         {influenciador.tags && influenciador.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1">
-                            {influenciador.tags.slice(0, 3).map(tag => (
-                              <Badge key={tag} variant="outline" className="text-xs px-1.5 py-0">
+                            {influenciador.tags.slice(0, 2).map(tag => (
+                              <Badge key={tag} variant="outline" className="text-[10px] px-1 py-0">
                                 {tag}
                               </Badge>
                             ))}
-                            {influenciador.tags.length > 3 && (
-                              <Badge variant="outline" className="text-xs px-1.5 py-0">
-                                +{influenciador.tags.length - 3}
+                            {influenciador.tags.length > 2 && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                +{influenciador.tags.length - 2}
                               </Badge>
                             )}
                           </div>
