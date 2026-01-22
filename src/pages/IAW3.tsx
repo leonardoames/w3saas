@@ -162,37 +162,41 @@ export default function IAW3() {
       </div>
 
       {/* Mode Selector */}
-      <div className="space-y-2">
-        <div className="flex flex-wrap gap-2">
+      <div className="space-y-3">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           {MODES.map((mode) => (
             <Button
               key={mode.id}
               variant={selectedMode === mode.id ? "default" : "outline"}
               size="sm"
               onClick={() => setSelectedMode(selectedMode === mode.id ? null : mode.id)}
-              className="gap-2"
+              className="flex-col h-auto py-2 px-2 gap-1"
               title={mode.description}
             >
               {mode.icon}
-              <span className="hidden sm:inline">{mode.label}</span>
+              <span className="text-xs truncate w-full text-center">{mode.label}</span>
             </Button>
           ))}
+        </div>
+        <div className="flex items-center justify-between">
+          {selectedModeData ? (
+            <p className="text-sm text-muted-foreground">
+              <strong>{selectedModeData.label}:</strong> {selectedModeData.description}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">Selecione um modo acima</p>
+          )}
           {chatHistory.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
               onClick={handleClearHistory}
-              className="ml-auto text-muted-foreground"
+              className="text-muted-foreground shrink-0"
             >
               Limpar conversa
             </Button>
           )}
         </div>
-        {selectedModeData && (
-          <p className="text-sm text-muted-foreground">
-            <strong>{selectedModeData.label}:</strong> {selectedModeData.description}
-          </p>
-        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
