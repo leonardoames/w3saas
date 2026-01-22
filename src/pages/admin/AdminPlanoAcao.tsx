@@ -77,27 +77,27 @@ export default function AdminPlanoAcao() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <div>
-          <h2 className="text-2xl font-bold">Gestão de Planos de Ação</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl sm:text-2xl font-bold">Gestão de Planos de Ação</h2>
+          <p className="text-sm text-muted-foreground">
             Selecione um usuário para gerenciar seu plano de ação
           </p>
         </div>
 
         <Card>
-          <CardHeader>
-            <div className="relative">
+          <CardHeader className="p-4 sm:p-6">
+            <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Buscar por email ou nome..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
+                className="pl-10 w-full"
               />
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
             {loadingUsers ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -108,14 +108,14 @@ export default function AdminPlanoAcao() {
                   <Button
                     key={user.user_id}
                     variant="outline"
-                    className="justify-start h-auto py-3"
+                    className="justify-start h-auto py-3 w-full"
                     onClick={() => setSelectedUser(user)}
                   >
-                    <div className="text-left">
-                      <div className="font-medium">
+                    <div className="text-left min-w-0 flex-1">
+                      <div className="font-medium truncate">
                         {user.full_name || 'Sem nome'}
                       </div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-muted-foreground truncate">
                         {user.email}
                       </div>
                     </div>
@@ -206,14 +206,14 @@ function UserPlanView({ user, onBack }: { user: UserProfile; onBack: () => void 
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={onBack}>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-center gap-3 sm:gap-4">
+        <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div>
-          <h2 className="text-2xl font-bold">{user.full_name || user.email}</h2>
-          <p className="text-muted-foreground">{user.email}</p>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg sm:text-2xl font-bold truncate">{user.full_name || user.email}</h2>
+          <p className="text-sm text-muted-foreground truncate">{user.email}</p>
         </div>
       </div>
 
@@ -224,9 +224,9 @@ function UserPlanView({ user, onBack }: { user: UserProfile; onBack: () => void 
       />
 
       <Tabs defaultValue="ames" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="ames">Plano AMES</TabsTrigger>
-          <TabsTrigger value="custom">Personalizado</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 h-auto">
+          <TabsTrigger value="ames" className="text-xs sm:text-sm py-2">Plano AMES</TabsTrigger>
+          <TabsTrigger value="custom" className="text-xs sm:text-sm py-2">Personalizado</TabsTrigger>
         </TabsList>
 
         <TabsContent value="ames" className="mt-6">
