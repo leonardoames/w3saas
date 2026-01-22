@@ -103,19 +103,19 @@ export default function AdminPlanoAcao() {
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <div className="grid gap-2">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredUsers.map((user) => (
                   <Button
                     key={user.user_id}
                     variant="outline"
-                    className="justify-start h-auto py-3 w-full"
+                    className="justify-start h-auto py-3 px-4 w-full overflow-hidden"
                     onClick={() => setSelectedUser(user)}
                   >
-                    <div className="text-left min-w-0 flex-1">
-                      <div className="font-medium truncate">
+                    <div className="text-left min-w-0 w-full overflow-hidden">
+                      <div className="font-medium truncate max-w-full">
                         {user.full_name || 'Sem nome'}
                       </div>
-                      <div className="text-sm text-muted-foreground truncate">
+                      <div className="text-sm text-muted-foreground truncate max-w-full">
                         {user.email}
                       </div>
                     </div>
@@ -123,7 +123,7 @@ export default function AdminPlanoAcao() {
                 ))}
                 
                 {filteredUsers.length === 0 && (
-                  <p className="text-center text-muted-foreground py-4">
+                  <p className="text-center text-muted-foreground py-4 col-span-full">
                     Nenhum usuário encontrado
                   </p>
                 )}
