@@ -126,15 +126,15 @@ export default function AdminModules() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold">Configuração de Módulos</h2>
-            <p className="text-muted-foreground">
+            <h2 className="text-xl sm:text-2xl font-bold">Configuração de Módulos</h2>
+            <p className="text-sm text-muted-foreground">
               Defina quais módulos cada tipo de usuário pode acessar
             </p>
           </div>
-          <Button onClick={saveChanges} disabled={saving}>
+          <Button onClick={saveChanges} disabled={saving} className="w-full sm:w-auto">
             {saving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -149,15 +149,15 @@ export default function AdminModules() {
           </Button>
         </div>
 
-        <div className="grid gap-6">
+        <div className="grid gap-4 sm:gap-6">
           {USER_TYPES.map((userType) => (
             <Card key={userType.type}>
-              <CardHeader>
-                <CardTitle>{userType.label}</CardTitle>
-                <CardDescription>{userType.description}</CardDescription>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">{userType.label}</CardTitle>
+                <CardDescription className="text-sm">{userType.description}</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
                   {MODULES.map((module) => (
                     <div
                       key={`${userType.type}-${module.name}`}
@@ -170,7 +170,7 @@ export default function AdminModules() {
                       />
                       <label
                         htmlFor={`${userType.type}-${module.name}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        className="text-xs sm:text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
                         {module.label}
                       </label>

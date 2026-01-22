@@ -33,23 +33,23 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-card">
+      <header className="sticky top-0 z-50 border-b bg-card shrink-0">
         <div className="flex h-14 items-center justify-between px-4 lg:px-6">
           <div className="flex items-center gap-4">
             <Link to="/app">
               <Button variant="ghost" size="sm" className="gap-2">
                 <ArrowLeft className="h-4 w-4" />
-                Voltar ao App
+                <span className="hidden sm:inline">Voltar ao App</span>
               </Button>
             </Link>
-            <div className="h-6 w-px bg-border" />
+            <div className="h-6 w-px bg-border hidden sm:block" />
             <h1 className="text-lg font-semibold">Admin</h1>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="hidden text-sm text-muted-foreground sm:inline">
+            <span className="hidden text-sm text-muted-foreground md:inline">
               {user?.email}
             </span>
             <ThemeToggle />
@@ -60,16 +60,16 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex gap-1 border-t px-4 py-2 lg:px-6">
+        <nav className="flex gap-1 border-t px-4 py-2 lg:px-6 overflow-x-auto">
           {adminLinks.map((link) => (
             <Link key={link.href} to={link.href}>
               <Button
                 variant={location.pathname === link.href ? "secondary" : "ghost"}
                 size="sm"
-                className="gap-2"
+                className="gap-2 whitespace-nowrap"
               >
                 <link.icon className="h-4 w-4" />
-                {link.label}
+                <span className="hidden xs:inline">{link.label}</span>
               </Button>
             </Link>
           ))}
@@ -77,8 +77,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       </header>
 
       {/* Content */}
-      <main className="p-4 lg:p-6">
-        {children}
+      <main className="flex-1 p-4 lg:p-6 overflow-auto">
+        <div className="max-w-7xl mx-auto w-full">
+          {children}
+        </div>
       </main>
     </div>
   );

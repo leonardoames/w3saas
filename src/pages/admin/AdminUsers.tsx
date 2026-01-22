@@ -295,31 +295,29 @@ export default function AdminUsers() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
-            <h2 className="text-2xl font-bold">Gestão de Usuários</h2>
-            <p className="text-muted-foreground">
+            <h2 className="text-xl sm:text-2xl font-bold">Gestão de Usuários</h2>
+            <p className="text-sm text-muted-foreground">
               {users.length} usuários cadastrados
             </p>
           </div>
         </div>
 
         <Card>
-          <CardHeader>
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por email ou nome..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+          <CardHeader className="p-4 sm:p-6">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por email ou nome..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10 w-full"
+              />
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0 sm:p-6 sm:pt-0">
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -329,12 +327,12 @@ export default function AdminUsers() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Usuário</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Plano</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Criado em</TableHead>
-                      <TableHead>Último login</TableHead>
+                      <TableHead className="min-w-[180px]">Usuário</TableHead>
+                      <TableHead className="min-w-[80px]">Status</TableHead>
+                      <TableHead className="min-w-[70px]">Plano</TableHead>
+                      <TableHead className="min-w-[100px]">Tipo</TableHead>
+                      <TableHead className="min-w-[100px] hidden md:table-cell">Criado em</TableHead>
+                      <TableHead className="min-w-[120px] hidden lg:table-cell">Último login</TableHead>
                       <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -375,10 +373,10 @@ export default function AdminUsers() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           {format(new Date(user.created_at), "dd/MM/yyyy", { locale: ptBR })}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden lg:table-cell">
                           {user.last_login_at 
                             ? format(new Date(user.last_login_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
                             : "-"
