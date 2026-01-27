@@ -515,13 +515,13 @@ export default function AdminUsers() {
               />
             </div>
           </CardHeader>
-          <CardContent className="p-0 sm:p-6 sm:pt-0">
+          <CardContent className="p-0 sm:p-6 sm:pt-0 overflow-visible">
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <div className="overflow-visible">
+              <div className="overflow-x-auto overflow-y-visible">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -573,15 +573,24 @@ export default function AdminUsers() {
                             ? format(new Date(user.last_login_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
                             : "-"}
                         </TableCell>
-                        <TableCell>
-                          <DropdownMenu modal={false}>
+                        <TableCell className="relative">
+                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <MoreHorizontal className="h-4 w-4" />
                                 <span className="sr-only">Abrir menu</span>
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 z-50" sideOffset={5}>
+                            <DropdownMenuContent 
+                              align="end" 
+                              className="w-56 z-[100] bg-popover border shadow-lg"
+                              sideOffset={5}
+                            >
                               <DropdownMenuLabel>Ações</DropdownMenuLabel>
                               <DropdownMenuSeparator />
 
