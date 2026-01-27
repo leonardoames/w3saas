@@ -14,6 +14,92 @@ export type Database = {
   }
   public: {
     Tables: {
+      action_plans: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          plan_type: Database["public"]["Enums"]["plan_type"]
+          target_user_id: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          plan_type: Database["public"]["Enums"]["plan_type"]
+          target_user_id?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          plan_type?: Database["public"]["Enums"]["plan_type"]
+          target_user_id?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      action_tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          plan_id: string
+          priority: string | null
+          status: string | null
+          task_order: number | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          plan_id: string
+          priority?: string | null
+          status?: string | null
+          task_order?: number | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          plan_id?: string
+          priority?: string | null
+          status?: string | null
+          task_order?: number | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_tasks_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "action_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brands: {
         Row: {
           category: string
@@ -454,7 +540,32 @@ export type Database = {
         Args: { new_status: string; target_user_id: string }
         Returns: undefined
       }
+      can_create_plan: {
+        Args: { p_plan_type: string; p_target_user_id?: string }
+        Returns: boolean
+      }
+      can_edit_plan: { Args: { p_plan_id: string }; Returns: boolean }
       can_user_add_brand: { Args: { check_user_id: string }; Returns: boolean }
+      can_view_plan: { Args: { p_plan_id: string }; Returns: boolean }
+      create_action_plan: {
+        Args: {
+          p_description: string
+          p_plan_type: string
+          p_target_user_id?: string
+          p_title: string
+        }
+        Returns: string
+      }
+      create_action_task: {
+        Args: {
+          p_description?: string
+          p_due_date?: string
+          p_plan_id: string
+          p_priority?: string
+          p_title: string
+        }
+        Returns: string
+      }
       create_brand: {
         Args: {
           p_category: string
@@ -468,6 +579,8 @@ export type Database = {
         Returns: string
       }
       deactivate_brand: { Args: { p_brand_id: string }; Returns: undefined }
+      delete_action_plan: { Args: { p_plan_id: string }; Returns: undefined }
+      delete_action_task: { Args: { p_task_id: string }; Returns: undefined }
       get_user_active_brands_count: {
         Args: { check_user_id: string }
         Returns: number
@@ -482,6 +595,21 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_admin_user: { Args: { check_user_id: string }; Returns: boolean }
       is_current_user_admin: { Args: never; Returns: boolean }
+      update_action_plan: {
+        Args: { p_description: string; p_plan_id: string; p_title: string }
+        Returns: undefined
+      }
+      update_action_task: {
+        Args: {
+          p_description?: string
+          p_due_date?: string
+          p_priority?: string
+          p_status?: string
+          p_task_id: string
+          p_title: string
+        }
+        Returns: undefined
+      }
       update_brand: {
         Args: {
           p_brand_id: string
@@ -495,9 +623,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_task_status: {
+        Args: { p_status: string; p_task_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"
+      plan_type: "global" | "individual" | "admin_personalizado"
       task_origin: "sistema" | "admin" | "mentorado"
       task_status: "a_fazer" | "em_andamento" | "concluida" | "cancelada"
     }
@@ -628,6 +761,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      plan_type: ["global", "individual", "admin_personalizado"],
       task_origin: ["sistema", "admin", "mentorado"],
       task_status: ["a_fazer", "em_andamento", "concluida", "cancelada"],
     },
