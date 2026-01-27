@@ -2,10 +2,9 @@ import { Sidebar } from "./Sidebar";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Menu } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
+import { Menu } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { UserMenu } from "@/components/layout/UserMenu";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -17,8 +16,6 @@ export function MainLayout({ children }: MainLayoutProps) {
   const [user, setUser] = useState<any>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const navigate = useNavigate();
-  const { toast } = useToast();
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -37,15 +34,6 @@ export function MainLayout({ children }: MainLayoutProps) {
 
     return () => subscription.unsubscribe();
   }, []);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    toast({
-      title: "Logout realizado",
-      description: "Até logo!",
-    });
-    navigate("/auth");
-  };
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -77,20 +65,10 @@ export function MainLayout({ children }: MainLayoutProps) {
                     <Menu className="h-5 w-5" />
                   </Button>
                 )}
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <User className="h-4 w-4 hidden sm:block" />
-                  <span className="truncate max-w-[150px] sm:max-w-none">{user.email}</span>
-                </div>
               </div>
               <div className="flex items-center gap-2">
                 <ThemeToggle />
-                <Button variant="ghost" size="sm" onClick={handleLogout} className="hidden sm:flex">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sair
-                </Button>
-                <Button variant="ghost" size="icon" onClick={handleLogout} className="sm:hidden h-9 w-9">
-                  <LogOut className="h-4 w-4" />
-                </Button>
+                <UserMenu />
               </div>
             </div>
           </div>
