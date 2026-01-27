@@ -462,27 +462,28 @@ export default function Aulas() {
                               {lesson.completed ? "Desmarcar" : "Concluir"}
                             </Button>
                             {isAdmin && (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <MoreVertical className="h-4 w-4" />
-                                    <span className="sr-only">Ações da aula</span>
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="z-50 bg-popover border shadow-lg">
-                                  <DropdownMenuItem onClick={() => handleEditLesson(lesson)}>
-                                    <Pencil className="mr-2 h-4 w-4" />
-                                    Editar Aula
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleDeleteLesson(lesson)}
-                                    className="text-destructive focus:text-destructive"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Excluir Aula
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleEditLesson(lesson)}
+                                  title="Editar Aula"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                  <span className="sr-only">Editar Aula</span>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => handleDeleteLesson(lesson)}
+                                  title="Excluir Aula"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span className="sr-only">Excluir Aula</span>
+                                </Button>
+                              </>
                             )}
                           </div>
                         </div>
