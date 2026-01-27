@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { AdminLayout } from "./AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -36,7 +36,6 @@ import {
   Shield,
   UserX,
   Users,
-  X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -60,43 +59,79 @@ export default function AdminUsers() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
   const { toast } = useToast();
 
   // Dialog states
-  const [expirationDialog, setExpirationDialog] = useState<{ open: boolean; user: UserProfile | null }>({
+  const [expirationDialog, setExpirationDialog] = useState<{
+    open: boolean;
+    user: UserProfile | null;
+  }>({
     open: false,
     user: null,
   });
   const [expirationDate, setExpirationDate] = useState("");
 
-  // NOVO: Estado para o dialog de plano
-  const [planDialog, setPlanDialog] = useState<{ open: boolean; user: UserProfile | null }>({
+  // Plan dialog state
+  const [planDialog, setPlanDialog] = useState<{
+    open: boolean;
+    user: UserProfile | null;
+  }>({
     open: false,
     user: null,
   });
   const [selectedPlan, setSelectedPlan] = useState<string>("");
 
   useEffect(() => {
+    checkAdminStatus();
     fetchUsers();
   }, []);
 
+  // Verifica se o usuário atual é admin
+  const checkAdminStatus = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      if (error && error.code !== "PGRST116") {
+        console.error("Error checking admin status:", error);
+      }
+
+      setIsCurrentUserAdmin(!!data);
+    } catch (error) {
+      console.error("Error checking admin status:", error);
+    }
+  };
+
   const fetchUsers = async () => {
     try {
-      // Fetch profiles
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.error("Error fetching profiles:", profilesError);
+        throw profilesError;
+      }
 
-      // Fetch admin roles
       const { data: roles, error: rolesError } = await supabase
         .from("user_roles")
         .select("user_id, role")
         .eq("role", "admin");
 
-      if (rolesError) throw rolesError;
+      if (rolesError && rolesError.code !== "PGRST116") {
+        console.error("Error fetching roles:", rolesError);
+      }
 
       const adminUserIds = new Set(roles?.map((r) => r.user_id) || []);
 
@@ -106,11 +141,11 @@ export default function AdminUsers() {
       }));
 
       setUsers(usersWithRoles);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching users:", error);
       toast({
         title: "Erro ao carregar usuários",
-        description: "Não foi possível carregar a lista de usuários.",
+        description: error.message || "Não foi possível carregar a lista de usuários.",
         variant: "destructive",
       });
     } finally {
@@ -122,19 +157,24 @@ export default function AdminUsers() {
     try {
       const { error } = await supabase.from("profiles").update({ access_status: status }).eq("user_id", userId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
 
       setUsers(users.map((u) => (u.user_id === userId ? { ...u, access_status: status } : u)));
 
       toast({
         title: status === "active" ? "Acesso liberado" : "Acesso suspenso",
-        description: `O status do usuário foi atualizado.`,
+        description: `O status do usuário foi atualizado com sucesso.`,
       });
-    } catch (error) {
+
+      await fetchUsers(); // Recarrega para garantir sincronização
+    } catch (error: any) {
       console.error("Error updating user status:", error);
       toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o status.",
+        title: "Erro ao atualizar status",
+        description: error.message || "Verifique se você tem permissão de admin.",
         variant: "destructive",
       });
     }
@@ -147,27 +187,38 @@ export default function AdminUsers() {
         .update({ [field]: value })
         .eq("user_id", userId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
 
       setUsers(users.map((u) => (u.user_id === userId ? { ...u, [field]: value } : u)));
 
       toast({
-        title: "Atualizado",
-        description: `Flag atualizada com sucesso.`,
+        title: "Atualizado com sucesso",
+        description: `A flag foi atualizada.`,
       });
-    } catch (error) {
+
+      await fetchUsers();
+    } catch (error: any) {
       console.error("Error updating user flag:", error);
       toast({
-        title: "Erro",
-        description: "Não foi possível atualizar.",
+        title: "Erro ao atualizar",
+        description: error.message || "Verifique suas permissões.",
         variant: "destructive",
       });
     }
   };
 
-  // NOVO: Função para atualizar o plano
   const updateUserPlan = async () => {
-    if (!planDialog.user || !selectedPlan) return;
+    if (!planDialog.user || !selectedPlan) {
+      toast({
+        title: "Erro",
+        description: "Selecione um plano válido.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -175,22 +226,26 @@ export default function AdminUsers() {
         .update({ plan_type: selectedPlan })
         .eq("user_id", planDialog.user.user_id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
 
       setUsers(users.map((u) => (u.user_id === planDialog.user?.user_id ? { ...u, plan_type: selectedPlan } : u)));
 
       toast({
         title: "Plano atualizado",
-        description: `O plano foi alterado para ${getPlanName(selectedPlan)}.`,
+        description: `O plano foi alterado para ${getPlanName(selectedPlan)} com sucesso.`,
       });
 
       setPlanDialog({ open: false, user: null });
       setSelectedPlan("");
-    } catch (error) {
+      await fetchUsers();
+    } catch (error: any) {
       console.error("Error updating user plan:", error);
       toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o plano.",
+        title: "Erro ao atualizar plano",
+        description: error.message || "Verifique suas permissões de admin.",
         variant: "destructive",
       });
     }
@@ -200,10 +255,18 @@ export default function AdminUsers() {
     try {
       if (makeAdmin) {
         const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: "admin" });
-        if (error) throw error;
+
+        if (error) {
+          console.error("Supabase error:", error);
+          throw error;
+        }
       } else {
         const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "admin");
-        if (error) throw error;
+
+        if (error) {
+          console.error("Supabase error:", error);
+          throw error;
+        }
       }
 
       setUsers(users.map((u) => (u.user_id === userId ? { ...u, isAdmin: makeAdmin } : u)));
@@ -212,11 +275,13 @@ export default function AdminUsers() {
         title: makeAdmin ? "Admin adicionado" : "Admin removido",
         description: `O papel do usuário foi atualizado.`,
       });
-    } catch (error) {
+
+      await fetchUsers();
+    } catch (error: any) {
       console.error("Error updating user role:", error);
       toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o papel.",
+        title: "Erro ao atualizar papel",
+        description: error.message || "Verifique suas permissões.",
         variant: "destructive",
       });
     }
@@ -233,7 +298,10 @@ export default function AdminUsers() {
         })
         .eq("user_id", expirationDialog.user.user_id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
 
       setUsers(
         users.map((u) =>
@@ -250,11 +318,12 @@ export default function AdminUsers() {
 
       setExpirationDialog({ open: false, user: null });
       setExpirationDate("");
-    } catch (error) {
+      await fetchUsers();
+    } catch (error: any) {
       console.error("Error setting expiration:", error);
       toast({
-        title: "Erro",
-        description: "Não foi possível definir a expiração.",
+        title: "Erro ao definir expiração",
+        description: error.message || "Verifique suas permissões.",
         variant: "destructive",
       });
     }
@@ -272,11 +341,11 @@ export default function AdminUsers() {
         title: "Email enviado",
         description: `Um email de redefinição foi enviado para ${email}.`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error resetting password:", error);
       toast({
-        title: "Erro",
-        description: "Não foi possível enviar o email de redefinição.",
+        title: "Erro ao enviar email",
+        description: error.message || "Não foi possível enviar o email de redefinição.",
         variant: "destructive",
       });
     }
@@ -308,7 +377,6 @@ export default function AdminUsers() {
     }
   };
 
-  // NOVO: Helper para nome do plano
   const getPlanName = (plan: string) => {
     switch (plan) {
       case "paid":
@@ -326,7 +394,10 @@ export default function AdminUsers() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold">Gestão de Usuários</h2>
-            <p className="text-sm text-muted-foreground">{users.length} usuários cadastrados</p>
+            <p className="text-sm text-muted-foreground">
+              {users.length} usuários cadastrados
+              {isCurrentUserAdmin && <span className="ml-2 text-primary">• Você é Admin</span>}
+            </p>
           </div>
         </div>
 
@@ -407,8 +478,8 @@ export default function AdminUsers() {
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                            <DropdownMenuContent align="end" className="w-56">
+                              <DropdownMenuLabel>Ações do Usuário</DropdownMenuLabel>
                               <DropdownMenuSeparator />
 
                               {user.access_status === "suspended" ? (
@@ -423,11 +494,16 @@ export default function AdminUsers() {
                                 </DropdownMenuItem>
                               )}
 
-                              <DropdownMenuItem onClick={() => user.email && resetPassword(user.email)}>
+                              <DropdownMenuItem
+                                onClick={() => user.email && resetPassword(user.email)}
+                                disabled={!user.email}
+                              >
                                 Resetar senha
                               </DropdownMenuItem>
 
-                              {/* NOVO: Item para editar plano */}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuLabel>Plano e Acesso</DropdownMenuLabel>
+
                               <DropdownMenuItem
                                 onClick={() => {
                                   setPlanDialog({ open: true, user });
@@ -438,7 +514,18 @@ export default function AdminUsers() {
                                 Alterar plano
                               </DropdownMenuItem>
 
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setExpirationDialog({ open: true, user });
+                                  setExpirationDate(user.access_expires_at?.split("T")[0] || "");
+                                }}
+                              >
+                                <Calendar className="mr-2 h-4 w-4" />
+                                Definir expiração
+                              </DropdownMenuItem>
+
                               <DropdownMenuSeparator />
+                              <DropdownMenuLabel>Permissões</DropdownMenuLabel>
 
                               <DropdownMenuItem onClick={() => updateUserRole(user.user_id, !user.isAdmin)}>
                                 <Shield className="mr-2 h-4 w-4" />
@@ -446,6 +533,7 @@ export default function AdminUsers() {
                               </DropdownMenuItem>
 
                               <DropdownMenuSeparator />
+                              <DropdownMenuLabel>Categorias</DropdownMenuLabel>
 
                               <DropdownMenuItem
                                 onClick={() => updateUserFlag(user.user_id, "is_mentorado", !user.is_mentorado)}
@@ -460,18 +548,6 @@ export default function AdminUsers() {
                                 <Users className="mr-2 h-4 w-4" />
                                 {user.is_w3_client ? "Desmarcar Cliente W3" : "Marcar como Cliente W3"}
                               </DropdownMenuItem>
-
-                              <DropdownMenuSeparator />
-
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setExpirationDialog({ open: true, user });
-                                  setExpirationDate(user.access_expires_at?.split("T")[0] || "");
-                                }}
-                              >
-                                <Calendar className="mr-2 h-4 w-4" />
-                                Definir expiração
-                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -485,72 +561,122 @@ export default function AdminUsers() {
         </Card>
       </div>
 
-      {/* NOVO: Dialog para editar plano */}
+      {/* Dialog para Alterar Plano */}
       <Dialog
         open={planDialog.open}
-        onOpenChange={(open) => setPlanDialog({ open, user: open ? planDialog.user : null })}
+        onOpenChange={(open) => {
+          setPlanDialog({ open, user: open ? planDialog.user : null });
+          if (!open) setSelectedPlan("");
+        }}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Alterar Plano</DialogTitle>
-            <DialogDescription>Selecione o novo plano para {planDialog.user?.email}</DialogDescription>
+            <DialogTitle>Alterar Plano do Usuário</DialogTitle>
+            <DialogDescription>
+              Selecione o novo plano para <strong>{planDialog.user?.email}</strong>
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="plan">Tipo de plano</Label>
+              <Label htmlFor="plan-select">Tipo de plano</Label>
               <Select value={selectedPlan} onValueChange={setSelectedPlan}>
-                <SelectTrigger id="plan">
+                <SelectTrigger id="plan-select">
                   <SelectValue placeholder="Selecione um plano" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="free">Free (Gratuito)</SelectItem>
-                  <SelectItem value="paid">Paid (Pago)</SelectItem>
-                  <SelectItem value="manual">Manual</SelectItem>
+                  <SelectItem value="free">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">Free</Badge>
+                      <span>Plano Gratuito</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="paid">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="default">Pago</Badge>
+                      <span>Plano Pago</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="manual">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">Manual</Badge>
+                      <span>Acesso Manual</span>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-sm text-muted-foreground">Escolha o tipo de plano do usuário</p>
+              <p className="text-sm text-muted-foreground">
+                O plano atual é: <strong>{getPlanName(planDialog.user?.plan_type || "free")}</strong>
+              </p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPlanDialog({ open: false, user: null })}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPlanDialog({ open: false, user: null });
+                setSelectedPlan("");
+              }}
+            >
               Cancelar
             </Button>
-            <Button onClick={updateUserPlan} disabled={!selectedPlan}>
-              Salvar
+            <Button onClick={updateUserPlan} disabled={!selectedPlan || selectedPlan === planDialog.user?.plan_type}>
+              <CreditCard className="mr-2 h-4 w-4" />
+              Salvar Plano
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Expiration Dialog */}
+      {/* Dialog para Definir Expiração */}
       <Dialog
         open={expirationDialog.open}
-        onOpenChange={(open) => setExpirationDialog({ open, user: open ? expirationDialog.user : null })}
+        onOpenChange={(open) => {
+          setExpirationDialog({ open, user: open ? expirationDialog.user : null });
+          if (!open) setExpirationDate("");
+        }}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Definir Expiração</DialogTitle>
+            <DialogTitle>Definir Expiração de Acesso</DialogTitle>
             <DialogDescription>
-              Defina uma data de expiração para o acesso de {expirationDialog.user?.email}
+              Defina uma data de expiração para o acesso de <strong>{expirationDialog.user?.email}</strong>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="expiration">Data de expiração</Label>
+              <Label htmlFor="expiration-date">Data de expiração</Label>
               <Input
-                id="expiration"
+                id="expiration-date"
                 type="date"
                 value={expirationDate}
                 onChange={(e) => setExpirationDate(e.target.value)}
+                min={format(new Date(), "yyyy-MM-dd")}
               />
-              <p className="text-sm text-muted-foreground">Deixe em branco para remover a expiração</p>
+              <p className="text-sm text-muted-foreground">
+                Deixe em branco e clique em Salvar para remover a expiração
+              </p>
+              {expirationDialog.user?.access_expires_at && (
+                <p className="text-sm text-primary">
+                  Expiração atual:{" "}
+                  {format(new Date(expirationDialog.user.access_expires_at), "dd/MM/yyyy", { locale: ptBR })}
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setExpirationDialog({ open: false, user: null })}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setExpirationDialog({ open: false, user: null });
+                setExpirationDate("");
+              }}
+            >
               Cancelar
             </Button>
-            <Button onClick={setExpiration}>Salvar</Button>
+            <Button onClick={setExpiration}>
+              <Calendar className="mr-2 h-4 w-4" />
+              Salvar Expiração
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
