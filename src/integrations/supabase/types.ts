@@ -383,6 +383,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_set_expiration: {
+        Args: { expiration_date: string; target_user_id: string }
+        Returns: undefined
+      }
+      admin_update_role: {
+        Args: { make_admin: boolean; target_user_id: string }
+        Returns: undefined
+      }
+      admin_update_user_flag: {
+        Args: { flag_name: string; flag_value: boolean; target_user_id: string }
+        Returns: undefined
+      }
+      admin_update_user_plan: {
+        Args: { new_plan: string; target_user_id: string }
+        Returns: undefined
+      }
+      admin_update_user_status: {
+        Args: { new_status: string; target_user_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -391,6 +411,8 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_admin_user: { Args: { check_user_id: string }; Returns: boolean }
+      is_current_user_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user"
