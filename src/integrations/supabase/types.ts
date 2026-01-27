@@ -455,6 +455,19 @@ export type Database = {
         Returns: undefined
       }
       can_user_add_brand: { Args: { check_user_id: string }; Returns: boolean }
+      create_brand: {
+        Args: {
+          p_category: string
+          p_facebook_url?: string
+          p_instagram_url?: string
+          p_logo_url: string
+          p_name: string
+          p_short_description: string
+          p_website_url: string
+        }
+        Returns: string
+      }
+      deactivate_brand: { Args: { p_brand_id: string }; Returns: undefined }
       get_user_active_brands_count: {
         Args: { check_user_id: string }
         Returns: number
@@ -469,6 +482,19 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_admin_user: { Args: { check_user_id: string }; Returns: boolean }
       is_current_user_admin: { Args: never; Returns: boolean }
+      update_brand: {
+        Args: {
+          p_brand_id: string
+          p_category: string
+          p_facebook_url?: string
+          p_instagram_url?: string
+          p_logo_url: string
+          p_name: string
+          p_short_description: string
+          p_website_url: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"

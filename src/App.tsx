@@ -31,6 +31,7 @@ import CalendarioComercial from "./pages/CalendarioComercial";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminModules from "./pages/admin/AdminModules";
 import AdminPlanoAcao from "./pages/admin/AdminPlanoAcao";
+import AdminBrands from "./pages/admin/AdminBrands";
 
 import NotFound from "./pages/NotFound";
 
@@ -98,6 +99,14 @@ const App = () => (
                 element={
                   <ProtectedRoute requireAdmin>
                     <AdminPlanoAcao />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/marcas"
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <AdminBrands />
                   </ProtectedRoute>
                 }
               />

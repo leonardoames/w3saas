@@ -68,42 +68,34 @@ export function BrandForm({ open, onOpenChange, onSuccess }: BrandFormProps) {
 
   const onSubmit = async (data: BrandFormData) => {
     try {
-      setLoading(true);
+      setIsSubmitting(true);
 
-      const brandData = {
-        p_name: data.name,
-        p_category: data.category,
-        p_short_description: data.short_description,
-        p_logo_url: logoPreview,
-        p_website_url: data.website_url,
-        p_instagram_url: data.instagram_url || null,
-        p_facebook_url: data.facebook_url || null,
-      };
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error("Usuário não autenticado");
 
-      if (editingBrand) {
-        const { error } = await supabase.rpc("update_brand", {
-          p_brand_id: editingBrand.id,
-          ...brandData,
-        });
+      const { error } = await supabase.from("brands").insert({
+        user_id: userData.user.id,
+        name: data.name,
+        category: data.category,
+        short_description: data.short_description,
+        long_description: data.long_description || null,
+        logo_url: data.logo_url || null,
+        website_url: data.website_url,
+        instagram_url: data.instagram_url || null,
+        facebook_url: data.facebook_url || null,
+        status: "pending",
+        is_active: false,
+      });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        toast({
-          title: "Marca atualizada!",
-          description: "Suas alterações foram salvas com sucesso.",
-        });
-      } else {
-        const { error } = await supabase.rpc("create_brand", brandData);
+      toast({
+        title: "Marca enviada!",
+        description: "Sua marca foi enviada para aprovação. Aguarde a revisão da equipe.",
+      });
 
-        if (error) throw error;
-
-        toast({
-          title: "Marca enviada!",
-          description: "Sua marca foi enviada para aprovação. Aguarde a revisão da equipe.",
-        });
-      }
-
-      handleClose();
+      form.reset();
+      onOpenChange(false);
       onSuccess();
     } catch (error: any) {
       console.error("Error saving brand:", error);
@@ -113,7 +105,7 @@ export function BrandForm({ open, onOpenChange, onSuccess }: BrandFormProps) {
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 

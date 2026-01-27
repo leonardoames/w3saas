@@ -9,6 +9,7 @@ import {
   ClipboardList,
   LogOut, 
   Settings, 
+  Store,
   Users 
 } from "lucide-react";
 
@@ -20,6 +21,7 @@ const adminLinks = [
   { href: "/admin", label: "Usuários", icon: Users },
   { href: "/admin/modulos", label: "Módulos", icon: Settings },
   { href: "/admin/plano-acao", label: "Plano de Ação", icon: ClipboardList },
+  { href: "/admin/marcas", label: "Marcas", icon: Store },
 ];
 
 export function AdminLayout({ children }: AdminLayoutProps) {
