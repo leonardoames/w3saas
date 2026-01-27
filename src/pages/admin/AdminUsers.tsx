@@ -521,7 +521,7 @@ export default function AdminUsers() {
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-visible">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -574,13 +574,14 @@ export default function AdminUsers() {
                             : "-"}
                         </TableCell>
                         <TableCell>
-                          <DropdownMenu>
+                          <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
                                 <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Abrir menu</span>
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuContent align="end" className="w-56 z-50" sideOffset={5}>
                               <DropdownMenuLabel>Ações</DropdownMenuLabel>
                               <DropdownMenuSeparator />
 
