@@ -211,6 +211,7 @@ export default function Aulas() {
 
   const confirmDeleteModule = async () => {
     if (!moduleToDelete) return;
+    const deletingModuleId = moduleToDelete.id;
     setIsDeletingModule(true);
 
     try {
@@ -218,7 +219,7 @@ export default function Aulas() {
       const { error: lessonsError } = await supabase
         .from("lessons")
         .delete()
-        .eq("module_id", moduleToDelete.id);
+        .eq("module_id", deletingModuleId);
 
       if (lessonsError) throw lessonsError;
 
@@ -226,16 +227,17 @@ export default function Aulas() {
       const { error: moduleError } = await supabase
         .from("course_modules")
         .delete()
-        .eq("id", moduleToDelete.id);
+        .eq("id", deletingModuleId);
 
       if (moduleError) throw moduleError;
+
+      // Update state optimistically to remove module from UI immediately
+      setModules((prevModules) => prevModules.filter((m) => m.id !== deletingModuleId));
 
       toast({
         title: "✅ Módulo excluído!",
         description: "O módulo e suas aulas foram removidos com sucesso.",
       });
-
-      fetchModulesAndLessons();
     } catch (error) {
       console.error("Erro ao excluir módulo:", error);
       toast({
@@ -243,6 +245,8 @@ export default function Aulas() {
         description: "Não foi possível excluir o módulo.",
         variant: "destructive",
       });
+      // Refresh to ensure UI is in sync with backend
+      fetchModulesAndLessons();
     } finally {
       setIsDeletingModule(false);
       setIsDeleteModuleDialogOpen(false);
