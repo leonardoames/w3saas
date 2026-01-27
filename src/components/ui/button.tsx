@@ -147,38 +147,17 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           )}
         </AnimatePresence>
 
-        <motion.div
-          className="relative z-10 flex h-5 flex-col items-center justify-start overflow-hidden"
-          animate={isLoading ? { y: "-150%", opacity: 0 } : { y: 0, opacity: 1 }}
+        <motion.span
+          className={cn(
+            "relative z-10 flex items-center justify-center gap-2 whitespace-nowrap",
+            currentStyle.textInitial,
+            isHovered && currentStyle.textHover
+          )}
+          animate={isLoading ? { opacity: 0 } : { opacity: 1 }}
           transition={transition}
         >
-          <span className="invisible whitespace-nowrap opacity-0">{children}</span>
-
-          <motion.div
-            className="absolute left-0 right-0 top-0 flex flex-col text-center"
-            animate={isHovered ? { y: "-50%" } : { y: 0 }}
-            transition={transition}
-          >
-            <span
-              className={cn(
-                "flex h-5 items-center justify-center whitespace-nowrap gap-2",
-                currentStyle.textInitial
-              )}
-            >
-              {children}
-            </span>
-
-            <span
-              className={cn(
-                "flex h-5 items-center justify-center whitespace-nowrap gap-2",
-                currentStyle.textHover
-              )}
-              aria-hidden="true"
-            >
-              {children}
-            </span>
-          </motion.div>
-        </motion.div>
+          {children}
+        </motion.span>
       </motion.button>
     );
   },
