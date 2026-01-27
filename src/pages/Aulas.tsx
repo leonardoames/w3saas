@@ -393,15 +393,8 @@ export default function Aulas() {
                             role="button"
                             tabIndex={0}
                             aria-label="Ações do módulo"
-                            onPointerDown={(e) => e.stopPropagation()}
-                            onClick={(e) => e.stopPropagation()}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                (e.currentTarget as HTMLElement).click();
-                              }
-                            }}
+                            onPointerDownCapture={(e) => e.stopPropagation()}
+                            onClickCapture={(e) => e.stopPropagation()}
                             className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background"
                           >
                             <MoreVertical className="h-4 w-4" />
