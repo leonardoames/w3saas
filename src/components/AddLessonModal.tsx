@@ -23,13 +23,7 @@ interface AddLessonModalProps {
   onSuccess: () => void;
 }
 
-export function AddLessonModal({
-  isOpen,
-  onClose,
-  moduleId,
-  moduleTitle,
-  onSuccess,
-}: AddLessonModalProps) {
+export function AddLessonModal({ isOpen, onClose, moduleId, moduleTitle, onSuccess }: AddLessonModalProps) {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -45,15 +39,15 @@ export function AddLessonModal({
 
     try {
       const { data: lessons } = await supabase
-        .from('lessons')
-        .select('order')
-        .eq('module_id', moduleId)
-        .order('order', { ascending: false })
+        .from("lessons")
+        .select("order")
+        .eq("module_id", moduleId)
+        .order("order", { ascending: false })
         .limit(1);
 
       const nextOrder = lessons && lessons.length > 0 ? lessons[0].order + 1 : 1;
 
-      const { error } = await supabase.from('lessons').insert({
+      const { error } = await supabase.from("lessons").insert({
         module_id: moduleId,
         title: formData.title,
         description: formData.description,
@@ -73,7 +67,7 @@ export function AddLessonModal({
       onSuccess();
       onClose();
     } catch (error) {
-      console.error('Erro ao adicionar aula:', error);
+      console.error("Erro ao adicionar aula:", error);
       toast({
         title: "❌ Erro",
         description: "Não foi possível adicionar a aula.",
@@ -89,10 +83,9 @@ export function AddLessonModal({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Adicionar Nova Aula</DialogTitle>
-          <DialogDescription>
-            Adicionar aula ao {moduleTitle}
-          </DialogDescription>
+          <DialogDescription>Adicionar aula ao {moduleTitle}</DialogDescription>
         </DialogHeader>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="title">Título da Aula *</Label>
@@ -125,9 +118,7 @@ export function AddLessonModal({
               placeholder="Ex: abc123def456"
               required
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              📍 Encontre no painel do Panda Video
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">📍 Encontre no painel do Panda Video</p>
           </div>
 
           <div>
