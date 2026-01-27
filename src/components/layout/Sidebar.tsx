@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { NavLink } from "@/components/NavLink";
 import { SidebarNavLink } from "./SidebarNavLink";
 import {
   LayoutDashboard,
@@ -232,13 +231,15 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
               ) : (
                 <Tooltip key={item.path}>
                   <TooltipTrigger asChild>
-                    <SidebarNavLink
-                      to={item.path}
-                      end={item.path === "/app"}
-                      icon={item.icon}
-                      label={item.title}
-                      isCollapsed
-                    />
+                    <div>
+                      <SidebarNavLink
+                        to={item.path}
+                        end={item.path === "/app"}
+                        icon={item.icon}
+                        label={item.title}
+                        isCollapsed
+                      />
+                    </div>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="font-medium">
                     {item.title}
@@ -257,12 +258,14 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
               ) : (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <SidebarNavLink
-                      to="/admin"
-                      icon={Shield}
-                      label="Admin"
-                      isCollapsed
-                    />
+                    <div>
+                      <SidebarNavLink
+                        to="/admin"
+                        icon={Shield}
+                        label="Admin"
+                        isCollapsed
+                      />
+                    </div>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="font-medium">
                     Admin
