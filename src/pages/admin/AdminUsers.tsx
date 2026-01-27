@@ -59,7 +59,7 @@ export default function AdminUsers() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
 
   // Dialog states
@@ -72,7 +72,6 @@ export default function AdminUsers() {
   });
   const [expirationDate, setExpirationDate] = useState("");
 
-  // Plan dialog state
   const [planDialog, setPlanDialog] = useState<{
     open: boolean;
     user: UserProfile | null;
@@ -83,32 +82,18 @@ export default function AdminUsers() {
   const [selectedPlan, setSelectedPlan] = useState<string>("");
 
   useEffect(() => {
-    checkAdminStatus();
+    checkAdmin();
     fetchUsers();
   }, []);
 
-  // Verifica se o usuário atual é admin
-  const checkAdminStatus = async () => {
+  const checkAdmin = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin")
-        .maybeSingle();
-
-      if (error && error.code !== "PGRST116") {
-        console.error("Error checking admin status:", error);
-      }
-
-      setIsCurrentUserAdmin(!!data);
+      const { data, error } = await supabase.rpc("is_current_user_admin");
+      if (error) throw error;
+      setIsAdmin(data === true);
     } catch (error) {
-      console.error("Error checking admin status:", error);
+      console.error("Error checking admin:", error);
+      setIsAdmin(false);
     }
   };
 
@@ -119,10 +104,7 @@ export default function AdminUsers() {
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (profilesError) {
-        console.error("Error fetching profiles:", profilesError);
-        throw profilesError;
-      }
+      if (profilesError) throw profilesError;
 
       const { data: roles, error: rolesError } = await supabase
         .from("user_roles")
@@ -130,7 +112,7 @@ export default function AdminUsers() {
         .eq("role", "admin");
 
       if (rolesError && rolesError.code !== "PGRST116") {
-        console.error("Error fetching roles:", rolesError);
+        console.warn("Error fetching roles:", rolesError);
       }
 
       const adminUserIds = new Set(roles?.map((r) => r.user_id) || []);
@@ -145,7 +127,7 @@ export default function AdminUsers() {
       console.error("Error fetching users:", error);
       toast({
         title: "Erro ao carregar usuários",
-        description: error.message || "Não foi possível carregar a lista de usuários.",
+        description: error.message || "Não foi possível carregar os usuários.",
         variant: "destructive",
       });
     } finally {
@@ -153,55 +135,51 @@ export default function AdminUsers() {
     }
   };
 
+  // USANDO RPC FUNCTION
   const updateUserStatus = async (userId: string, status: "active" | "suspended") => {
     try {
-      const { error } = await supabase.from("profiles").update({ access_status: status }).eq("user_id", userId);
+      const { error } = await supabase.rpc("admin_update_user_status", {
+        target_user_id: userId,
+        new_status: status,
+      });
 
-      if (error) {
-        console.error("Supabase error:", error);
-        throw error;
-      }
+      if (error) throw error;
 
-      setUsers(users.map((u) => (u.user_id === userId ? { ...u, access_status: status } : u)));
+      await fetchUsers();
 
       toast({
         title: status === "active" ? "Acesso liberado" : "Acesso suspenso",
-        description: `O status do usuário foi atualizado com sucesso.`,
+        description: "Status atualizado com sucesso!",
       });
-
-      await fetchUsers(); // Recarrega para garantir sincronização
     } catch (error: any) {
-      console.error("Error updating user status:", error);
+      console.error("Error:", error);
       toast({
         title: "Erro ao atualizar status",
-        description: error.message || "Verifique se você tem permissão de admin.",
+        description: error.message || "Verifique suas permissões de admin.",
         variant: "destructive",
       });
     }
   };
 
+  // USANDO RPC FUNCTION
   const updateUserFlag = async (userId: string, field: "is_mentorado" | "is_w3_client", value: boolean) => {
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ [field]: value })
-        .eq("user_id", userId);
+      const { error } = await supabase.rpc("admin_update_user_flag", {
+        target_user_id: userId,
+        flag_name: field,
+        flag_value: value,
+      });
 
-      if (error) {
-        console.error("Supabase error:", error);
-        throw error;
-      }
+      if (error) throw error;
 
-      setUsers(users.map((u) => (u.user_id === userId ? { ...u, [field]: value } : u)));
+      await fetchUsers();
 
       toast({
         title: "Atualizado com sucesso",
-        description: `A flag foi atualizada.`,
+        description: "Flag atualizada!",
       });
-
-      await fetchUsers();
     } catch (error: any) {
-      console.error("Error updating user flag:", error);
+      console.error("Error:", error);
       toast({
         title: "Erro ao atualizar",
         description: error.message || "Verifique suas permissões.",
@@ -210,75 +188,55 @@ export default function AdminUsers() {
     }
   };
 
+  // USANDO RPC FUNCTION
   const updateUserPlan = async () => {
-    if (!planDialog.user || !selectedPlan) {
-      toast({
-        title: "Erro",
-        description: "Selecione um plano válido.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!planDialog.user || !selectedPlan) return;
 
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ plan_type: selectedPlan })
-        .eq("user_id", planDialog.user.user_id);
+      const { error } = await supabase.rpc("admin_update_user_plan", {
+        target_user_id: planDialog.user.user_id,
+        new_plan: selectedPlan,
+      });
 
-      if (error) {
-        console.error("Supabase error:", error);
-        throw error;
-      }
+      if (error) throw error;
 
-      setUsers(users.map((u) => (u.user_id === planDialog.user?.user_id ? { ...u, plan_type: selectedPlan } : u)));
+      await fetchUsers();
 
       toast({
         title: "Plano atualizado",
-        description: `O plano foi alterado para ${getPlanName(selectedPlan)} com sucesso.`,
+        description: `Plano alterado para ${getPlanName(selectedPlan)}!`,
       });
 
       setPlanDialog({ open: false, user: null });
       setSelectedPlan("");
-      await fetchUsers();
     } catch (error: any) {
-      console.error("Error updating user plan:", error);
+      console.error("Error:", error);
       toast({
         title: "Erro ao atualizar plano",
-        description: error.message || "Verifique suas permissões de admin.",
+        description: error.message || "Verifique suas permissões.",
         variant: "destructive",
       });
     }
   };
 
+  // USANDO RPC FUNCTION
   const updateUserRole = async (userId: string, makeAdmin: boolean) => {
     try {
-      if (makeAdmin) {
-        const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: "admin" });
+      const { error } = await supabase.rpc("admin_update_role", {
+        target_user_id: userId,
+        make_admin: makeAdmin,
+      });
 
-        if (error) {
-          console.error("Supabase error:", error);
-          throw error;
-        }
-      } else {
-        const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "admin");
+      if (error) throw error;
 
-        if (error) {
-          console.error("Supabase error:", error);
-          throw error;
-        }
-      }
-
-      setUsers(users.map((u) => (u.user_id === userId ? { ...u, isAdmin: makeAdmin } : u)));
+      await fetchUsers();
 
       toast({
         title: makeAdmin ? "Admin adicionado" : "Admin removido",
-        description: `O papel do usuário foi atualizado.`,
+        description: "Papel atualizado com sucesso!",
       });
-
-      await fetchUsers();
     } catch (error: any) {
-      console.error("Error updating user role:", error);
+      console.error("Error:", error);
       toast({
         title: "Erro ao atualizar papel",
         description: error.message || "Verifique suas permissões.",
@@ -287,27 +245,21 @@ export default function AdminUsers() {
     }
   };
 
+  // USANDO RPC FUNCTION
   const setExpiration = async () => {
     if (!expirationDialog.user) return;
 
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          access_expires_at: expirationDate ? new Date(expirationDate).toISOString() : null,
-        })
-        .eq("user_id", expirationDialog.user.user_id);
+      const expDate = expirationDate ? new Date(expirationDate).toISOString() : null;
 
-      if (error) {
-        console.error("Supabase error:", error);
-        throw error;
-      }
+      const { error } = await supabase.rpc("admin_set_expiration", {
+        target_user_id: expirationDialog.user.user_id,
+        expiration_date: expDate,
+      });
 
-      setUsers(
-        users.map((u) =>
-          u.user_id === expirationDialog.user?.user_id ? { ...u, access_expires_at: expirationDate || null } : u,
-        ),
-      );
+      if (error) throw error;
+
+      await fetchUsers();
 
       toast({
         title: "Expiração definida",
@@ -318,9 +270,8 @@ export default function AdminUsers() {
 
       setExpirationDialog({ open: false, user: null });
       setExpirationDate("");
-      await fetchUsers();
     } catch (error: any) {
-      console.error("Error setting expiration:", error);
+      console.error("Error:", error);
       toast({
         title: "Erro ao definir expiração",
         description: error.message || "Verifique suas permissões.",
@@ -339,13 +290,13 @@ export default function AdminUsers() {
 
       toast({
         title: "Email enviado",
-        description: `Um email de redefinição foi enviado para ${email}.`,
+        description: `Email de redefinição enviado para ${email}.`,
       });
     } catch (error: any) {
-      console.error("Error resetting password:", error);
+      console.error("Error:", error);
       toast({
-        title: "Erro ao enviar email",
-        description: error.message || "Não foi possível enviar o email de redefinição.",
+        title: "Erro",
+        description: error.message || "Não foi possível enviar o email.",
         variant: "destructive",
       });
     }
@@ -388,6 +339,20 @@ export default function AdminUsers() {
     }
   };
 
+  if (!isAdmin && !loading) {
+    return (
+      <AdminLayout>
+        <Card className="p-6">
+          <div className="text-center">
+            <Shield className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h2 className="text-2xl font-bold mb-2">Acesso Negado</h2>
+            <p className="text-muted-foreground">Você precisa ser administrador para acessar esta página.</p>
+          </div>
+        </Card>
+      </AdminLayout>
+    );
+  }
+
   return (
     <AdminLayout>
       <div className="space-y-4 sm:space-y-6">
@@ -396,7 +361,7 @@ export default function AdminUsers() {
             <h2 className="text-xl sm:text-2xl font-bold">Gestão de Usuários</h2>
             <p className="text-sm text-muted-foreground">
               {users.length} usuários cadastrados
-              {isCurrentUserAdmin && <span className="ml-2 text-primary">• Você é Admin</span>}
+              {isAdmin && <span className="ml-2 text-primary">• Admin Mode</span>}
             </p>
           </div>
         </div>
@@ -479,7 +444,7 @@ export default function AdminUsers() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56">
-                              <DropdownMenuLabel>Ações do Usuário</DropdownMenuLabel>
+                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
                               <DropdownMenuSeparator />
 
                               {user.access_status === "suspended" ? (
@@ -494,15 +459,11 @@ export default function AdminUsers() {
                                 </DropdownMenuItem>
                               )}
 
-                              <DropdownMenuItem
-                                onClick={() => user.email && resetPassword(user.email)}
-                                disabled={!user.email}
-                              >
+                              <DropdownMenuItem onClick={() => user.email && resetPassword(user.email)}>
                                 Resetar senha
                               </DropdownMenuItem>
 
                               <DropdownMenuSeparator />
-                              <DropdownMenuLabel>Plano e Acesso</DropdownMenuLabel>
 
                               <DropdownMenuItem
                                 onClick={() => {
@@ -525,7 +486,6 @@ export default function AdminUsers() {
                               </DropdownMenuItem>
 
                               <DropdownMenuSeparator />
-                              <DropdownMenuLabel>Permissões</DropdownMenuLabel>
 
                               <DropdownMenuItem onClick={() => updateUserRole(user.user_id, !user.isAdmin)}>
                                 <Shield className="mr-2 h-4 w-4" />
@@ -533,7 +493,6 @@ export default function AdminUsers() {
                               </DropdownMenuItem>
 
                               <DropdownMenuSeparator />
-                              <DropdownMenuLabel>Categorias</DropdownMenuLabel>
 
                               <DropdownMenuItem
                                 onClick={() => updateUserFlag(user.user_id, "is_mentorado", !user.is_mentorado)}
@@ -561,7 +520,7 @@ export default function AdminUsers() {
         </Card>
       </div>
 
-      {/* Dialog para Alterar Plano */}
+      {/* Dialog Plano */}
       <Dialog
         open={planDialog.open}
         onOpenChange={(open) => {
@@ -571,63 +530,34 @@ export default function AdminUsers() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Alterar Plano do Usuário</DialogTitle>
-            <DialogDescription>
-              Selecione o novo plano para <strong>{planDialog.user?.email}</strong>
-            </DialogDescription>
+            <DialogTitle>Alterar Plano</DialogTitle>
+            <DialogDescription>Selecione o novo plano para {planDialog.user?.email}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="plan-select">Tipo de plano</Label>
+              <Label>Tipo de plano</Label>
               <Select value={selectedPlan} onValueChange={setSelectedPlan}>
-                <SelectTrigger id="plan-select">
-                  <SelectValue placeholder="Selecione um plano" />
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="free">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">Free</Badge>
-                      <span>Plano Gratuito</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="paid">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="default">Pago</Badge>
-                      <span>Plano Pago</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="manual">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">Manual</Badge>
-                      <span>Acesso Manual</span>
-                    </div>
-                  </SelectItem>
+                  <SelectItem value="free">Free (Gratuito)</SelectItem>
+                  <SelectItem value="paid">Paid (Pago)</SelectItem>
+                  <SelectItem value="manual">Manual</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-sm text-muted-foreground">
-                O plano atual é: <strong>{getPlanName(planDialog.user?.plan_type || "free")}</strong>
-              </p>
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setPlanDialog({ open: false, user: null });
-                setSelectedPlan("");
-              }}
-            >
+            <Button variant="outline" onClick={() => setPlanDialog({ open: false, user: null })}>
               Cancelar
             </Button>
-            <Button onClick={updateUserPlan} disabled={!selectedPlan || selectedPlan === planDialog.user?.plan_type}>
-              <CreditCard className="mr-2 h-4 w-4" />
-              Salvar Plano
-            </Button>
+            <Button onClick={updateUserPlan}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog para Definir Expiração */}
+      {/* Dialog Expiração */}
       <Dialog
         open={expirationDialog.open}
         onOpenChange={(open) => {
@@ -637,46 +567,26 @@ export default function AdminUsers() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Definir Expiração de Acesso</DialogTitle>
-            <DialogDescription>
-              Defina uma data de expiração para o acesso de <strong>{expirationDialog.user?.email}</strong>
-            </DialogDescription>
+            <DialogTitle>Definir Expiração</DialogTitle>
+            <DialogDescription>Defina a expiração para {expirationDialog.user?.email}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="expiration-date">Data de expiração</Label>
+              <Label htmlFor="expiration">Data de expiração</Label>
               <Input
-                id="expiration-date"
+                id="expiration"
                 type="date"
                 value={expirationDate}
                 onChange={(e) => setExpirationDate(e.target.value)}
-                min={format(new Date(), "yyyy-MM-dd")}
               />
-              <p className="text-sm text-muted-foreground">
-                Deixe em branco e clique em Salvar para remover a expiração
-              </p>
-              {expirationDialog.user?.access_expires_at && (
-                <p className="text-sm text-primary">
-                  Expiração atual:{" "}
-                  {format(new Date(expirationDialog.user.access_expires_at), "dd/MM/yyyy", { locale: ptBR })}
-                </p>
-              )}
+              <p className="text-sm text-muted-foreground">Deixe em branco para remover</p>
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setExpirationDialog({ open: false, user: null });
-                setExpirationDate("");
-              }}
-            >
+            <Button variant="outline" onClick={() => setExpirationDialog({ open: false, user: null })}>
               Cancelar
             </Button>
-            <Button onClick={setExpiration}>
-              <Calendar className="mr-2 h-4 w-4" />
-              Salvar Expiração
-            </Button>
+            <Button onClick={setExpiration}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
