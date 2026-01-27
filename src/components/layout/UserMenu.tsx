@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, LogOut, Settings } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { LogOut, Settings } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,19 +20,27 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 export function UserMenu() {
   const navigate = useNavigate();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, refreshProfile } = useAuth();
   const { toast } = useToast();
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
-  const [fullName, setFullName] = useState(profile?.full_name || "");
+  const [fullName, setFullName] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Sync fullName when profile changes
+  useEffect(() => {
+    if (profile?.full_name) {
+      setFullName(profile.full_name);
+    }
+  }, [profile?.full_name]);
 
   const handleLogout = async () => {
     await signOut();
@@ -45,6 +53,21 @@ export function UserMenu() {
     if (profile?.plan_type === "paid") return "Plano Pago";
     if (profile?.plan_type === "manual") return "Acesso Manual";
     return "Plano Free";
+  };
+
+  const getInitials = () => {
+    if (profile?.full_name) {
+      return profile.full_name
+        .split(" ")
+        .map((n) => n[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase();
+    }
+    if (user?.email) {
+      return user.email.charAt(0).toUpperCase();
+    }
+    return "U";
   };
 
   const handleSaveAccount = async () => {
@@ -93,6 +116,10 @@ export function UserMenu() {
         title: "Sucesso",
         description: "Informações atualizadas com sucesso",
       });
+
+      // Refresh profile to get updated data
+      await refreshProfile();
+
       setAccountDialogOpen(false);
       setNewPassword("");
       setConfirmPassword("");
@@ -111,23 +138,42 @@ export function UserMenu() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="relative">
-            <User className="h-5 w-5" />
-          </Button>
+          <button
+            type="button"
+            className="flex items-center justify-center rounded-full ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <Avatar className="h-9 w-9 cursor-pointer hover:opacity-80 transition-opacity">
+              <AvatarImage src="" alt={profile?.full_name || "Usuário"} />
+              <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
+                {getInitials()}
+              </AvatarFallback>
+            </Avatar>
+          </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuContent align="end" className="w-56 z-50 bg-popover">
           <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">
-                {profile?.full_name || "Usuário"}
-              </p>
-              <p className="text-xs leading-none text-muted-foreground">
-                {user?.email}
-              </p>
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src="" alt={profile?.full_name || "Usuário"} />
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  {getInitials()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">
+                  {profile?.full_name || "Usuário"}
+                </p>
+                <p className="text-xs leading-none text-muted-foreground truncate max-w-[140px]">
+                  {user?.email}
+                </p>
+              </div>
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => setAccountDialogOpen(true)}>
+          <DropdownMenuItem
+            onClick={() => setAccountDialogOpen(true)}
+            className="cursor-pointer"
+          >
             <Settings className="mr-2 h-4 w-4" />
             Conta
           </DropdownMenuItem>
@@ -136,7 +182,10 @@ export function UserMenu() {
             <p className="text-xs text-muted-foreground">{getPlanLabel()}</p>
           </div>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+          <DropdownMenuItem
+            onClick={handleLogout}
+            className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
+          >
             <LogOut className="mr-2 h-4 w-4" />
             Sair
           </DropdownMenuItem>
@@ -152,6 +201,14 @@ export function UserMenu() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            <div className="flex justify-center">
+              <Avatar className="h-20 w-20">
+                <AvatarImage src="" alt={profile?.full_name || "Usuário"} />
+                <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
+                  {getInitials()}
+                </AvatarFallback>
+              </Avatar>
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
