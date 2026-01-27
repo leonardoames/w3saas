@@ -102,6 +102,9 @@ export type Database = {
       }
       brands: {
         Row: {
+          approval_status: string | null
+          approved_at: string | null
+          approved_by: string | null
           category: string
           created_at: string
           facebook_url: string | null
@@ -111,6 +114,7 @@ export type Database = {
           logo_url: string | null
           long_description: string | null
           name: string
+          rejected_reason: string | null
           short_description: string
           status: string
           updated_at: string
@@ -118,6 +122,9 @@ export type Database = {
           website_url: string
         }
         Insert: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           category: string
           created_at?: string
           facebook_url?: string | null
@@ -127,6 +134,7 @@ export type Database = {
           logo_url?: string | null
           long_description?: string | null
           name: string
+          rejected_reason?: string | null
           short_description: string
           status?: string
           updated_at?: string
@@ -134,6 +142,9 @@ export type Database = {
           website_url: string
         }
         Update: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           category?: string
           created_at?: string
           facebook_url?: string | null
@@ -143,6 +154,7 @@ export type Database = {
           logo_url?: string | null
           long_description?: string | null
           name?: string
+          rejected_reason?: string | null
           short_description?: string
           status?: string
           updated_at?: string
@@ -540,6 +552,7 @@ export type Database = {
         Args: { new_status: string; target_user_id: string }
         Returns: undefined
       }
+      approve_brand: { Args: { p_brand_id: string }; Returns: undefined }
       can_create_plan: {
         Args: { p_plan_type: string; p_target_user_id?: string }
         Returns: boolean
@@ -595,6 +608,10 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_admin_user: { Args: { check_user_id: string }; Returns: boolean }
       is_current_user_admin: { Args: never; Returns: boolean }
+      reject_brand: {
+        Args: { p_brand_id: string; p_reason: string }
+        Returns: undefined
+      }
       update_action_plan: {
         Args: { p_description: string; p_plan_id: string; p_title: string }
         Returns: undefined
