@@ -322,7 +322,7 @@ function VideoPlayerModal({ lesson, onClose, onComplete }: VideoPlayerModalProps
 
         <div className="aspect-video bg-black">
           <iframe
-            src={`https://player-vz-########.tv.pandavideo.com.br/embed/?v=${lesson.panda_video_id}`}
+            src={lesson.panda_video_id}
             style={{ border: "none", width: "100%", height: "100%" }}
             allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
             allowFullScreen
