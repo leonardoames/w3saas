@@ -332,17 +332,15 @@ function VideoPlayerModal({ lesson, onClose, onComplete }: VideoPlayerModalProps
   const videoSrc = normalizePandaEmbed(lesson.panda_video_id);
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-      <div className="bg-background rounded-lg w-full max-w-5xl max-h-[90vh] overflow-hidden">
-        <div className="p-4 border-b flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold">{lesson.title}</h2>
-            <p className="text-sm text-muted-foreground">{lesson.description}</p>
-          </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            ✕
-          </Button>
-        </div>
+    <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+      <div className="relative w-full max-w-5xl">
+        <button
+          onClick={onClose}
+          className="absolute -top-12 right-0 z-10 w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:bg-white/90 transition-colors"
+          aria-label="Fechar"
+        >
+          ✕
+        </button>
 
         <div className="aspect-video bg-black">
           {videoSrc ? (
@@ -360,9 +358,8 @@ function VideoPlayerModal({ lesson, onClose, onComplete }: VideoPlayerModalProps
           )}
         </div>
 
-        <div className="p-4 border-t flex justify-between items-center flex-wrap gap-2">
-          <span className="text-sm text-muted-foreground">⏱️ {lesson.duration}</span>
-          <Button onClick={onComplete}>
+        <div className="mt-4 flex justify-center">
+          <Button onClick={onComplete} className="bg-white text-black hover:bg-white/90">
             <CheckCircle2 className="mr-2 h-4 w-4" />
             Marcar como Concluída
           </Button>
