@@ -1,164 +1,236 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { CheckCircle2, Circle, Play, Plus, Lock } from "lucide-react";
-import { useState } from "react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { CheckCircle2, Circle, Play, Plus, Lock, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useAdminStatus } from "@/hooks/useAdminStatus";
+import { AddLessonModal } from "@/components/AddLessonModal";
 
-// Tipo para as aulas
 interface Lesson {
   id: string;
   title: string;
   description: string;
-  pandaVideoId: string; // ID do vídeo no Panda Video
-  duration: string; // Ex: "15:30"
+  panda_video_id: string;
+  duration: string;
   completed: boolean;
+  order: number;
 }
 
-// Tipo para os módulos
 interface Module {
   id: string;
   title: string;
   description: string;
+  order: number;
   lessons: Lesson[];
 }
 
-// Mock data - será substituído por dados reais do banco depois
-const modulesData: Module[] = [
-  {
-    id: "1",
-    title: "Módulo 1",
-    description: "Descrição do módulo de aprendizado",
-    lessons: [
-      {
-        id: "1-1",
-        title: "Aula 1: Introdução",
-        description: "Primeira aula do módulo",
-        pandaVideoId: "seu-video-id-panda",
-        duration: "10:30",
-        completed: false,
-      },
-      {
-        id: "1-2",
-        title: "Aula 2: Fundamentos",
-        description: "Segunda aula do módulo",
-        pandaVideoId: "seu-video-id-panda-2",
-        duration: "15:45",
-        completed: false,
-      },
-    ],
-  },
-  {
-    id: "2",
-    title: "Módulo 2",
-    description: "Descrição do módulo de aprendizado",
-    lessons: [
-      {
-        id: "2-1",
-        title: "Aula 1: Conceitos Avançados",
-        description: "Primeira aula do módulo 2",
-        pandaVideoId: "seu-video-id-panda-3",
-        duration: "20:15",
-        completed: false,
-      },
-    ],
-  },
-];
-
-interface AulasProps {
-  isAdmin?: boolean; // Prop para definir se é administrador
-}
-
-export default function Aulas({ isAdmin = false }: AulasProps) {
-  const [modules, setModules] = useState<Module[]>(modulesData);
+export default function Aulas() {
+  const { isAdmin, loading: adminLoading } = useAdminStatus();
+  const [modules, setModules] = useState<Module[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedModuleId, setSelectedModuleId] = useState("");
+  const [selectedModuleTitle, setSelectedModuleTitle] = useState("");
+  const { toast } = useToast();
 
-  // Calcula o progresso total
-  const totalLessons = modules.reduce((sum, module) => sum + module.lessons.length, 0);
-  const completedLessons = modules.reduce((sum, module) => sum + module.lessons.filter((l) => l.completed).length, 0);
-  const progressPercentage = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
+  useEffect(() => {
+    fetchModulesAndLessons();
+  }, []);
 
-  // Função para marcar aula como concluída
-  const toggleLessonComplete = (moduleId: string, lessonId: string) => {
-    setModules((prevModules) =>
-      prevModules.map((module) =>
-        module.id === moduleId
-          ? {
-              ...module,
-              lessons: module.lessons.map((lesson) =>
-                lesson.id === lessonId ? { ...lesson, completed: !lesson.completed } : lesson,
-              ),
-            }
-          : module,
-      ),
-    );
+  const fetchModulesAndLessons = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const { data: modulesData, error: modulesError } = await supabase
+        .from('course_modules')
+        .select('*')
+        .order('order');
+
+      if (modulesError) throw modulesError;
+
+      const { data: lessonsData, error: lessonsError } = await supabase
+        .from('lessons')
+        .select('*')
+        .order('order');
+
+      if (lessonsError) throw lessonsError;
+
+      const { data: progressData, error: progressError } = await supabase
+        .from('lesson_progress')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (progressError) throw progressError;
+
+      const modulesWithLessons: Module[] = (modulesData || []).map(module => ({
+        ...module,
+        lessons: (lessonsData || [])
+          .filter(lesson => lesson.module_id === module.id)
+          .map(lesson => ({
+            ...lesson,
+            completed: progressData?.some(
+              p => p.lesson_id === lesson.id && p.completed
+            ) || false,
+          })),
+      }));
+
+      setModules(modulesWithLessons);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar as aulas.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Função para adicionar nova aula (apenas admin)
-  const handleAddLesson = (moduleId: string) => {
-    if (!isAdmin) return;
+  const toggleLessonComplete = async (moduleId: string, lessonId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
 
-    // Aqui você abriria um modal ou formulário para adicionar a aula
-    console.log("Adicionar aula ao módulo:", moduleId);
-    // Implementar modal com formulário para adicionar:
-    // - Título da aula
-    // - Descrição
-    // - ID do vídeo do Panda Video
-    // - Duração
+      const lesson = modules
+        .find(m => m.id === moduleId)
+        ?.lessons.find(l => l.id === lessonId);
+
+      if (!lesson) return;
+
+      if (lesson.completed) {
+        await supabase
+          .from('lesson_progress')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('lesson_id', lessonId);
+      } else {
+        await supabase
+          .from('lesson_progress')
+          .insert({
+            user_id: user.id,
+            lesson_id: lessonId,
+            completed: true,
+          });
+      }
+
+      setModules(prevModules =>
+        prevModules.map(module =>
+          module.id === moduleId
+            ? {
+                ...module,
+                lessons: module.lessons.map(l =>
+                  l.id === lessonId ? { ...l, completed: !l.completed } : l
+                ),
+              }
+            : module
+        )
+      );
+
+      toast({
+        title: lesson.completed ? "Aula desmarcada" : "🎉 Aula concluída!",
+        description: lesson.completed
+          ? "Aula desmarcada como concluída"
+          : "Parabéns! Continue assim.",
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o progresso.",
+        variant: "destructive",
+      });
+    }
   };
 
-  // Função para assistir aula
+  const handleAddLesson = (moduleId: string, moduleTitle: string) => {
+    setSelectedModuleId(moduleId);
+    setSelectedModuleTitle(moduleTitle);
+    setIsAddModalOpen(true);
+  };
+
   const watchLesson = (lesson: Lesson) => {
     setSelectedLesson(lesson);
-    // Aqui você pode abrir um modal com o player do Panda Video
-    // ou redirecionar para uma página de player
   };
+
+  const totalLessons = modules.reduce((sum, module) => sum + module.lessons.length, 0);
+  const completedLessons = modules.reduce(
+    (sum, module) => sum + module.lessons.filter(l => l.completed).length,
+    0
+  );
+  const progressPercentage = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
+
+  if (loading || adminLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Aulas da Mentoria</h1>
-        <p className="mt-2 text-muted-foreground">Acesse todo o conteúdo da mentoria e acompanhe seu progresso</p>
+      <div className="flex flex-col gap-2">
+        <h1 className="text-2xl font-bold">Aulas da Mentoria</h1>
+        <p className="text-muted-foreground">
+          Acesse todo o conteúdo da mentoria e acompanhe seu progresso
+        </p>
       </div>
 
-      {/* Progress Card */}
       <Card>
         <CardHeader>
           <CardTitle>Progresso Total</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
+        <CardContent>
+          <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-muted-foreground">
               {completedLessons} de {totalLessons} aulas concluídas
             </span>
-            <span className="text-sm font-semibold text-primary">{progressPercentage.toFixed(0)}%</span>
+            <span className="text-sm font-medium">
+              {progressPercentage.toFixed(0)}%
+            </span>
           </div>
-          <Progress value={progressPercentage} className="h-2" />
+          <Progress value={progressPercentage} className="h-3" />
         </CardContent>
       </Card>
 
-      {/* Modules Accordion */}
-      <Accordion type="single" collapsible className="space-y-4">
+      <Accordion type="multiple" className="space-y-4">
         {modules.map((module) => {
-          const moduleCompletedCount = module.lessons.filter((l) => l.completed).length;
-          const moduleProgress = module.lessons.length > 0 ? (moduleCompletedCount / module.lessons.length) * 100 : 0;
+          const moduleCompletedCount = module.lessons.filter(l => l.completed).length;
+          const moduleProgress =
+            module.lessons.length > 0
+              ? (moduleCompletedCount / module.lessons.length) * 100
+              : 0;
 
           return (
             <AccordionItem key={module.id} value={module.id} className="border rounded-lg px-4">
-              <AccordionTrigger className="hover:no-underline">
-                <div className="flex items-center justify-between w-full pr-4">
-                  <div className="flex items-center gap-3 text-left">
-                    {moduleCompletedCount === module.lessons.length && module.lessons.length > 0 ? (
-                      <CheckCircle2 className="h-6 w-6 text-green-500 flex-shrink-0" />
+              <AccordionTrigger className="hover:no-underline py-4">
+                <div className="flex items-center gap-4 flex-1">
+                  <div className="flex items-center gap-3">
+                    {moduleCompletedCount === module.lessons.length &&
+                    module.lessons.length > 0 ? (
+                      <CheckCircle2 className="h-6 w-6 text-green-500" />
                     ) : (
-                      <Circle className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                      <Circle className="h-6 w-6 text-muted-foreground" />
                     )}
-                    <div>
-                      <h3 className="text-xl font-semibold">{module.title}</h3>
-                      <p className="text-sm text-muted-foreground">{module.description}</p>
+                    <div className="text-left">
+                      <h3 className="font-semibold">{module.title}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {module.description}
+                      </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="ml-auto flex items-center gap-3 mr-4">
                     <span className="text-sm text-muted-foreground">
                       {moduleCompletedCount}/{module.lessons.length}
                     </span>
@@ -167,63 +239,71 @@ export default function Aulas({ isAdmin = false }: AulasProps) {
                 </div>
               </AccordionTrigger>
 
-              <AccordionContent className="pt-4">
-                <div className="space-y-3">
-                  {/* Lista de Aulas */}
+              <AccordionContent>
+                <div className="space-y-3 pb-4">
                   {module.lessons.map((lesson) => (
-                    <Card
+                    <div
                       key={lesson.id}
-                      className={`${lesson.completed ? "border-green-500/50 bg-green-50/50 dark:bg-green-950/20" : ""}`}
+                      className={`flex items-center justify-between p-4 rounded-lg border ${
+                        lesson.completed ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' : 'bg-card'
+                      }`}
                     >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex items-start gap-3 flex-1">
-                            {lesson.completed ? (
-                              <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                            ) : (
-                              <Circle className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                            )}
-                            <div className="flex-1">
-                              <h4 className="font-semibold">{lesson.title}</h4>
-                              <p className="text-sm text-muted-foreground mt-1">{lesson.description}</p>
-                              <span className="text-xs text-muted-foreground mt-2 inline-block">
-                                Duração: {lesson.duration}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex gap-2 flex-shrink-0">
-                            <Button size="sm" onClick={() => watchLesson(lesson)} className="whitespace-nowrap">
-                              <Play className="mr-2 h-4 w-4" />
-                              Assistir
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => toggleLessonComplete(module.id, lesson.id)}
-                              className="whitespace-nowrap"
-                            >
-                              {lesson.completed ? "Desmarcar" : "Concluir"}
-                            </Button>
-                          </div>
+                      <div className="flex items-center gap-3">
+                        {lesson.completed ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        ) : (
+                          <Circle className="h-5 w-5 text-muted-foreground" />
+                        )}
+                        <div>
+                          <h4 className="font-medium">{lesson.title}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {lesson.description}
+                          </p>
+                          <span className="text-xs text-muted-foreground">
+                            ⏱️ {lesson.duration}
+                          </span>
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => watchLesson(lesson)}
+                        >
+                          <Play className="mr-2 h-4 w-4" />
+                          Assistir
+                        </Button>
+                        <Button
+                          variant={lesson.completed ? "secondary" : "default"}
+                          size="sm"
+                          onClick={() => toggleLessonComplete(module.id, lesson.id)}
+                        >
+                          {lesson.completed ? "Desmarcar" : "Concluir"}
+                        </Button>
+                      </div>
+                    </div>
                   ))}
 
-                  {/* Botão Adicionar Aula (apenas admin) */}
                   {isAdmin && (
-                    <Button variant="outline" className="w-full mt-2" onClick={() => handleAddLesson(module.id)}>
+                    <Button
+                      variant="outline"
+                      className="w-full border-dashed"
+                      onClick={() => handleAddLesson(module.id, module.title)}
+                    >
                       <Plus className="mr-2 h-4 w-4" />
-                      Adicionar Nova Aula
+                      ➕ Adicionar Nova Aula
                     </Button>
                   )}
 
-                  {/* Mensagem quando não há aulas */}
                   {module.lessons.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
-                      <Lock className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p>Nenhuma aula disponível neste módulo ainda</p>
-                      {isAdmin && <p className="text-sm mt-1">Clique em "Adicionar Nova Aula" para começar</p>}
+                      <Lock className="h-8 w-8 mx-auto mb-2" />
+                      <p>Nenhuma aula disponível ainda</p>
+                      {isAdmin && (
+                        <p className="text-sm mt-1">
+                          Clique em "Adicionar Nova Aula" para começar
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -233,24 +313,34 @@ export default function Aulas({ isAdmin = false }: AulasProps) {
         })}
       </Accordion>
 
-      {/* Modal/Player do Panda Video (renderiza quando uma aula é selecionada) */}
+      {isAdmin && (
+        <AddLessonModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          moduleId={selectedModuleId}
+          moduleTitle={selectedModuleTitle}
+          onSuccess={fetchModulesAndLessons}
+        />
+      )}
+
       {selectedLesson && (
         <VideoPlayerModal
           lesson={selectedLesson}
           onClose={() => setSelectedLesson(null)}
-          onComplete={() =>
-            toggleLessonComplete(
-              modules.find((m) => m.lessons.some((l) => l.id === selectedLesson.id))?.id || "",
-              selectedLesson.id,
-            )
-          }
+          onComplete={() => {
+            const module = modules.find(m => 
+              m.lessons.some(l => l.id === selectedLesson.id)
+            );
+            if (module) {
+              toggleLessonComplete(module.id, selectedLesson.id);
+            }
+          }}
         />
       )}
     </div>
   );
 }
 
-// Componente Modal para o Player do Panda Video
 interface VideoPlayerModalProps {
   lesson: Lesson;
   onClose: () => void;
@@ -259,30 +349,31 @@ interface VideoPlayerModalProps {
 
 function VideoPlayerModal({ lesson, onClose, onComplete }: VideoPlayerModalProps) {
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-      <div className="bg-background rounded-lg w-full max-w-5xl max-h-[90vh] overflow-hidden">
-        <div className="p-4 border-b flex items-center justify-between">
+    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+      <div className="bg-background rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b">
           <div>
             <h2 className="text-xl font-semibold">{lesson.title}</h2>
             <p className="text-sm text-muted-foreground">{lesson.description}</p>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
+          <Button variant="ghost" size="icon" onClick={onClose}>
             ✕
           </Button>
         </div>
 
         <div className="aspect-video bg-black">
-          {/* Embed do Panda Video */}
           <iframe
-            src={`https://player-vz-########.tv.pandavideo.com.br/embed/?v=${lesson.pandaVideoId}`}
-            style={{ border: "none", width: "100%", height: "100%" }}
-            allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+            src={`https://player-vz-7b6cf909-4a4.tv.pandavideo.com.br/embed/?v=${lesson.panda_video_id}`}
+            className="w-full h-full"
             allowFullScreen
+            allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
           />
         </div>
 
         <div className="p-4 border-t flex justify-between items-center">
-          <span className="text-sm text-muted-foreground">Duração: {lesson.duration}</span>
+          <span className="text-sm text-muted-foreground">
+            ⏱️ {lesson.duration}
+          </span>
           <Button onClick={onComplete}>
             <CheckCircle2 className="mr-2 h-4 w-4" />
             Marcar como Concluída
