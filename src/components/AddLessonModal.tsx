@@ -27,7 +27,7 @@ export function AddLessonModal({ isOpen, onClose, moduleId, moduleTitle, onSucce
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    panda_video_id: "",
+    panda_video_url: "",
     duration: "",
   });
   const [saving, setSaving] = useState(false);
@@ -51,7 +51,7 @@ export function AddLessonModal({ isOpen, onClose, moduleId, moduleTitle, onSucce
         module_id: moduleId,
         title: formData.title,
         description: formData.description,
-        panda_video_id: formData.panda_video_id,
+        panda_video_id: formData.panda_video_url,
         duration: formData.duration,
         order: nextOrder,
       });
@@ -63,7 +63,7 @@ export function AddLessonModal({ isOpen, onClose, moduleId, moduleTitle, onSucce
         description: "A nova aula foi criada com sucesso.",
       });
 
-      setFormData({ title: "", description: "", panda_video_id: "", duration: "" });
+      setFormData({ title: "", description: "", panda_video_url: "", duration: "" });
       onSuccess();
       onClose();
     } catch (error) {
@@ -110,15 +110,15 @@ export function AddLessonModal({ isOpen, onClose, moduleId, moduleTitle, onSucce
           </div>
 
           <div>
-            <Label htmlFor="panda_video_id">ID do Vídeo (Panda Video) *</Label>
+            <Label htmlFor="panda_video_url">URL do Vídeo (Panda Video) *</Label>
             <Input
-              id="panda_video_id"
-              value={formData.panda_video_id}
-              onChange={(e) => setFormData({ ...formData, panda_video_id: e.target.value })}
-              placeholder="Ex: abc123def456"
+              id="panda_video_url"
+              value={formData.panda_video_url}
+              onChange={(e) => setFormData({ ...formData, panda_video_url: e.target.value })}
+              placeholder="https://player-vz-XXXXX.tv.pandavideo.com.br/embed/?v=..."
               required
             />
-            <p className="text-xs text-muted-foreground mt-1">📍 Encontre no painel do Panda Video</p>
+            <p className="text-xs text-muted-foreground mt-1">📍 Cole a URL completa de incorporação do Panda Video</p>
           </div>
 
           <div>
