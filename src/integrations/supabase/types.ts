@@ -532,6 +532,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_user: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
       admin_set_expiration: {
         Args: { expiration_date: string; target_user_id: string }
         Returns: undefined
@@ -542,6 +546,10 @@ export type Database = {
       }
       admin_update_user_flag: {
         Args: { flag_name: string; flag_value: boolean; target_user_id: string }
+        Returns: undefined
+      }
+      admin_update_user_name: {
+        Args: { new_name: string; target_user_id: string }
         Returns: undefined
       }
       admin_update_user_plan: {

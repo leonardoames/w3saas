@@ -23,6 +23,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import {
@@ -32,8 +42,11 @@ import {
   Crown,
   Loader2,
   MoreHorizontal,
+  Pencil,
   Search,
   Shield,
+  Trash2,
+  UserPlus,
   UserX,
   Users,
 } from "lucide-react";
@@ -80,6 +93,32 @@ export default function AdminUsers() {
     user: null,
   });
   const [selectedPlan, setSelectedPlan] = useState<string>("");
+
+  // Edit name dialog
+  const [editNameDialog, setEditNameDialog] = useState<{
+    open: boolean;
+    user: UserProfile | null;
+  }>({
+    open: false,
+    user: null,
+  });
+  const [editedName, setEditedName] = useState("");
+
+  // Delete confirmation dialog
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    user: UserProfile | null;
+  }>({
+    open: false,
+    user: null,
+  });
+
+  // Add user dialog
+  const [addUserDialog, setAddUserDialog] = useState(false);
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserPlan, setNewUserPlan] = useState("free");
+  const [addingUser, setAddingUser] = useState(false);
 
   useEffect(() => {
     checkAdmin();
@@ -135,7 +174,6 @@ export default function AdminUsers() {
     }
   };
 
-  // USANDO RPC FUNCTION
   const updateUserStatus = async (userId: string, status: "active" | "suspended") => {
     try {
       const { error } = await supabase.rpc("admin_update_user_status", {
@@ -161,7 +199,6 @@ export default function AdminUsers() {
     }
   };
 
-  // USANDO RPC FUNCTION
   const updateUserFlag = async (userId: string, field: "is_mentorado" | "is_w3_client", value: boolean) => {
     try {
       const { error } = await supabase.rpc("admin_update_user_flag", {
@@ -188,7 +225,6 @@ export default function AdminUsers() {
     }
   };
 
-  // USANDO RPC FUNCTION
   const updateUserPlan = async () => {
     if (!planDialog.user || !selectedPlan) return;
 
@@ -219,7 +255,6 @@ export default function AdminUsers() {
     }
   };
 
-  // USANDO RPC FUNCTION
   const updateUserRole = async (userId: string, makeAdmin: boolean) => {
     try {
       const { error } = await supabase.rpc("admin_update_role", {
@@ -245,7 +280,6 @@ export default function AdminUsers() {
     }
   };
 
-  // USANDO RPC FUNCTION
   const setExpiration = async () => {
     if (!expirationDialog.user) return;
 
@@ -280,6 +314,64 @@ export default function AdminUsers() {
     }
   };
 
+  const updateUserName = async () => {
+    if (!editNameDialog.user || !editedName.trim()) return;
+
+    try {
+      const { error } = await supabase.rpc("admin_update_user_name", {
+        target_user_id: editNameDialog.user.user_id,
+        new_name: editedName.trim(),
+      });
+
+      if (error) throw error;
+
+      await fetchUsers();
+
+      toast({
+        title: "Nome atualizado",
+        description: "Nome do usuário alterado com sucesso!",
+      });
+
+      setEditNameDialog({ open: false, user: null });
+      setEditedName("");
+    } catch (error: any) {
+      console.error("Error:", error);
+      toast({
+        title: "Erro ao atualizar nome",
+        description: error.message || "Verifique suas permissões.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteUser = async () => {
+    if (!deleteDialog.user) return;
+
+    try {
+      const { error } = await supabase.rpc("admin_delete_user", {
+        target_user_id: deleteDialog.user.user_id,
+      });
+
+      if (error) throw error;
+
+      await fetchUsers();
+
+      toast({
+        title: "Usuário removido",
+        description: "O usuário foi removido do sistema.",
+      });
+
+      setDeleteDialog({ open: false, user: null });
+    } catch (error: any) {
+      console.error("Error:", error);
+      toast({
+        title: "Erro ao remover usuário",
+        description: error.message || "Verifique suas permissões.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const resetPassword = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -299,6 +391,47 @@ export default function AdminUsers() {
         description: error.message || "Não foi possível enviar o email.",
         variant: "destructive",
       });
+    }
+  };
+
+  const sendInvite = async () => {
+    if (!newUserEmail.trim()) {
+      toast({
+        title: "Email obrigatório",
+        description: "Informe o email do novo usuário.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAddingUser(true);
+
+    try {
+      // Enviar convite de recuperação de senha (funciona como convite)
+      const { error } = await supabase.auth.resetPasswordForEmail(newUserEmail.trim(), {
+        redirectTo: `${window.location.origin}/auth`,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Convite enviado",
+        description: `Um email foi enviado para ${newUserEmail} com instruções para criar a senha.`,
+      });
+
+      setAddUserDialog(false);
+      setNewUserEmail("");
+      setNewUserName("");
+      setNewUserPlan("free");
+    } catch (error: any) {
+      console.error("Error:", error);
+      toast({
+        title: "Erro ao enviar convite",
+        description: error.message || "Não foi possível enviar o convite.",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingUser(false);
     }
   };
 
@@ -364,6 +497,10 @@ export default function AdminUsers() {
               {isAdmin && <span className="ml-2 text-primary">• Admin Mode</span>}
             </p>
           </div>
+          <Button onClick={() => setAddUserDialog(true)} className="gap-2">
+            <UserPlus className="h-4 w-4" />
+            Adicionar Usuário
+          </Button>
         </div>
 
         <Card>
@@ -447,6 +584,16 @@ export default function AdminUsers() {
                               <DropdownMenuLabel>Ações</DropdownMenuLabel>
                               <DropdownMenuSeparator />
 
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEditNameDialog({ open: true, user });
+                                  setEditedName(user.full_name || "");
+                                }}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Editar nome
+                              </DropdownMenuItem>
+
                               {user.access_status === "suspended" ? (
                                 <DropdownMenuItem onClick={() => updateUserStatus(user.user_id, "active")}>
                                   <Check className="mr-2 h-4 w-4" />
@@ -506,6 +653,16 @@ export default function AdminUsers() {
                               >
                                 <Users className="mr-2 h-4 w-4" />
                                 {user.is_w3_client ? "Desmarcar Cliente W3" : "Marcar como Cliente W3"}
+                              </DropdownMenuItem>
+
+                              <DropdownMenuSeparator />
+
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => setDeleteDialog({ open: true, user })}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Remover usuário
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -590,6 +747,126 @@ export default function AdminUsers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog Editar Nome */}
+      <Dialog
+        open={editNameDialog.open}
+        onOpenChange={(open) => {
+          setEditNameDialog({ open, user: open ? editNameDialog.user : null });
+          if (!open) setEditedName("");
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Nome</DialogTitle>
+            <DialogDescription>Altere o nome do usuário {editNameDialog.user?.email}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="userName">Nome completo</Label>
+              <Input
+                id="userName"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                placeholder="Digite o nome do usuário"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditNameDialog({ open: false, user: null })}>
+              Cancelar
+            </Button>
+            <Button onClick={updateUserName} disabled={!editedName.trim()}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Adicionar Usuário */}
+      <Dialog open={addUserDialog} onOpenChange={setAddUserDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adicionar Novo Usuário</DialogTitle>
+            <DialogDescription>
+              Um email será enviado para o usuário com instruções para criar a senha.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="newEmail">Email</Label>
+              <Input
+                id="newEmail"
+                type="email"
+                value={newUserEmail}
+                onChange={(e) => setNewUserEmail(e.target.value)}
+                placeholder="usuario@email.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newName">Nome (opcional)</Label>
+              <Input
+                id="newName"
+                value={newUserName}
+                onChange={(e) => setNewUserName(e.target.value)}
+                placeholder="Nome do usuário"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Plano inicial</Label>
+              <Select value={newUserPlan} onValueChange={setNewUserPlan}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">Free (Gratuito)</SelectItem>
+                  <SelectItem value="paid">Paid (Pago)</SelectItem>
+                  <SelectItem value="manual">Manual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddUserDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={sendInvite} disabled={addingUser || !newUserEmail.trim()}>
+              {addingUser ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                "Enviar Convite"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AlertDialog Confirmação de Exclusão */}
+      <AlertDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ open, user: open ? deleteDialog.user : null })}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover Usuário</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover o usuário <strong>{deleteDialog.user?.email}</strong>?
+              <br />
+              <br />
+              Esta ação irá remover o perfil e dados associados. O usuário não poderá mais acessar o sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteUser} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }
