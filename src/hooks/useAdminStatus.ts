@@ -21,7 +21,7 @@ export function useAdminStatus() {
         return;
       }
 
-      const { data, error } = await supabase.from("profiles").select("is_admin").eq("id", user.id).single();
+      const { data, error } = await supabase.from("profiles").select("is_admin").eq("user_id", user.id).maybeSingle();
 
       if (error) throw error;
 
