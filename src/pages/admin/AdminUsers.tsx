@@ -6,14 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,18 +23,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { 
+import {
   Calendar,
   Check,
+  CreditCard,
   Crown,
   Loader2,
-  MoreHorizontal, 
-  Search, 
-  Shield, 
+  MoreHorizontal,
+  Search,
+  Shield,
   UserX,
   Users,
-  X
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -74,6 +69,13 @@ export default function AdminUsers() {
   });
   const [expirationDate, setExpirationDate] = useState("");
 
+  // NOVO: Estado para o dialog de plano
+  const [planDialog, setPlanDialog] = useState<{ open: boolean; user: UserProfile | null }>({
+    open: false,
+    user: null,
+  });
+  const [selectedPlan, setSelectedPlan] = useState<string>("");
+
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -82,30 +84,30 @@ export default function AdminUsers() {
     try {
       // Fetch profiles
       const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
 
       if (profilesError) throw profilesError;
 
       // Fetch admin roles
       const { data: roles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .eq('role', 'admin');
+        .from("user_roles")
+        .select("user_id, role")
+        .eq("role", "admin");
 
       if (rolesError) throw rolesError;
 
-      const adminUserIds = new Set(roles?.map(r => r.user_id) || []);
+      const adminUserIds = new Set(roles?.map((r) => r.user_id) || []);
 
-      const usersWithRoles = (profiles || []).map(profile => ({
+      const usersWithRoles = (profiles || []).map((profile) => ({
         ...profile,
         isAdmin: adminUserIds.has(profile.user_id),
       }));
 
       setUsers(usersWithRoles);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error("Error fetching users:", error);
       toast({
         title: "Erro ao carregar usuários",
         description: "Não foi possível carregar a lista de usuários.",
@@ -116,25 +118,20 @@ export default function AdminUsers() {
     }
   };
 
-  const updateUserStatus = async (userId: string, status: 'active' | 'suspended') => {
+  const updateUserStatus = async (userId: string, status: "active" | "suspended") => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ access_status: status })
-        .eq('user_id', userId);
+      const { error } = await supabase.from("profiles").update({ access_status: status }).eq("user_id", userId);
 
       if (error) throw error;
 
-      setUsers(users.map(u => 
-        u.user_id === userId ? { ...u, access_status: status } : u
-      ));
+      setUsers(users.map((u) => (u.user_id === userId ? { ...u, access_status: status } : u)));
 
       toast({
-        title: status === 'active' ? "Acesso liberado" : "Acesso suspenso",
+        title: status === "active" ? "Acesso liberado" : "Acesso suspenso",
         description: `O status do usuário foi atualizado.`,
       });
     } catch (error) {
-      console.error('Error updating user status:', error);
+      console.error("Error updating user status:", error);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o status.",
@@ -143,25 +140,23 @@ export default function AdminUsers() {
     }
   };
 
-  const updateUserFlag = async (userId: string, field: 'is_mentorado' | 'is_w3_client', value: boolean) => {
+  const updateUserFlag = async (userId: string, field: "is_mentorado" | "is_w3_client", value: boolean) => {
     try {
       const { error } = await supabase
-        .from('profiles')
+        .from("profiles")
         .update({ [field]: value })
-        .eq('user_id', userId);
+        .eq("user_id", userId);
 
       if (error) throw error;
 
-      setUsers(users.map(u => 
-        u.user_id === userId ? { ...u, [field]: value } : u
-      ));
+      setUsers(users.map((u) => (u.user_id === userId ? { ...u, [field]: value } : u)));
 
       toast({
         title: "Atualizado",
         description: `Flag atualizada com sucesso.`,
       });
     } catch (error) {
-      console.error('Error updating user flag:', error);
+      console.error("Error updating user flag:", error);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar.",
@@ -170,32 +165,55 @@ export default function AdminUsers() {
     }
   };
 
+  // NOVO: Função para atualizar o plano
+  const updateUserPlan = async () => {
+    if (!planDialog.user || !selectedPlan) return;
+
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ plan_type: selectedPlan })
+        .eq("user_id", planDialog.user.user_id);
+
+      if (error) throw error;
+
+      setUsers(users.map((u) => (u.user_id === planDialog.user?.user_id ? { ...u, plan_type: selectedPlan } : u)));
+
+      toast({
+        title: "Plano atualizado",
+        description: `O plano foi alterado para ${getPlanName(selectedPlan)}.`,
+      });
+
+      setPlanDialog({ open: false, user: null });
+      setSelectedPlan("");
+    } catch (error) {
+      console.error("Error updating user plan:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o plano.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const updateUserRole = async (userId: string, makeAdmin: boolean) => {
     try {
       if (makeAdmin) {
-        const { error } = await supabase
-          .from('user_roles')
-          .insert({ user_id: userId, role: 'admin' });
+        const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: "admin" });
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('user_roles')
-          .delete()
-          .eq('user_id', userId)
-          .eq('role', 'admin');
+        const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "admin");
         if (error) throw error;
       }
 
-      setUsers(users.map(u => 
-        u.user_id === userId ? { ...u, isAdmin: makeAdmin } : u
-      ));
+      setUsers(users.map((u) => (u.user_id === userId ? { ...u, isAdmin: makeAdmin } : u)));
 
       toast({
         title: makeAdmin ? "Admin adicionado" : "Admin removido",
         description: `O papel do usuário foi atualizado.`,
       });
     } catch (error) {
-      console.error('Error updating user role:', error);
+      console.error("Error updating user role:", error);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o papel.",
@@ -209,23 +227,23 @@ export default function AdminUsers() {
 
     try {
       const { error } = await supabase
-        .from('profiles')
-        .update({ 
-          access_expires_at: expirationDate ? new Date(expirationDate).toISOString() : null 
+        .from("profiles")
+        .update({
+          access_expires_at: expirationDate ? new Date(expirationDate).toISOString() : null,
         })
-        .eq('user_id', expirationDialog.user.user_id);
+        .eq("user_id", expirationDialog.user.user_id);
 
       if (error) throw error;
 
-      setUsers(users.map(u => 
-        u.user_id === expirationDialog.user?.user_id 
-          ? { ...u, access_expires_at: expirationDate || null } 
-          : u
-      ));
+      setUsers(
+        users.map((u) =>
+          u.user_id === expirationDialog.user?.user_id ? { ...u, access_expires_at: expirationDate || null } : u,
+        ),
+      );
 
       toast({
         title: "Expiração definida",
-        description: expirationDate 
+        description: expirationDate
           ? `Acesso expira em ${format(new Date(expirationDate), "dd/MM/yyyy", { locale: ptBR })}`
           : "Expiração removida",
       });
@@ -233,7 +251,7 @@ export default function AdminUsers() {
       setExpirationDialog({ open: false, user: null });
       setExpirationDate("");
     } catch (error) {
-      console.error('Error setting expiration:', error);
+      console.error("Error setting expiration:", error);
       toast({
         title: "Erro",
         description: "Não foi possível definir a expiração.",
@@ -255,7 +273,7 @@ export default function AdminUsers() {
         description: `Um email de redefinição foi enviado para ${email}.`,
       });
     } catch (error) {
-      console.error('Error resetting password:', error);
+      console.error("Error resetting password:", error);
       toast({
         title: "Erro",
         description: "Não foi possível enviar o email de redefinição.",
@@ -264,16 +282,13 @@ export default function AdminUsers() {
     }
   };
 
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = users.filter((user) => {
     const searchLower = search.toLowerCase();
-    return (
-      user.email?.toLowerCase().includes(searchLower) ||
-      user.full_name?.toLowerCase().includes(searchLower)
-    );
+    return user.email?.toLowerCase().includes(searchLower) || user.full_name?.toLowerCase().includes(searchLower);
   });
 
   const getStatusBadge = (user: UserProfile) => {
-    if (user.access_status === 'suspended') {
+    if (user.access_status === "suspended") {
       return <Badge variant="destructive">Suspenso</Badge>;
     }
     if (user.access_expires_at && new Date(user.access_expires_at) < new Date()) {
@@ -284,12 +299,24 @@ export default function AdminUsers() {
 
   const getPlanBadge = (plan: string) => {
     switch (plan) {
-      case 'paid':
+      case "paid":
         return <Badge variant="default">Pago</Badge>;
-      case 'manual':
+      case "manual":
         return <Badge variant="outline">Manual</Badge>;
       default:
         return <Badge variant="secondary">Free</Badge>;
+    }
+  };
+
+  // NOVO: Helper para nome do plano
+  const getPlanName = (plan: string) => {
+    switch (plan) {
+      case "paid":
+        return "Pago";
+      case "manual":
+        return "Manual";
+      default:
+        return "Free";
     }
   };
 
@@ -299,9 +326,7 @@ export default function AdminUsers() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold">Gestão de Usuários</h2>
-            <p className="text-sm text-muted-foreground">
-              {users.length} usuários cadastrados
-            </p>
+            <p className="text-sm text-muted-foreground">{users.length} usuários cadastrados</p>
           </div>
         </div>
 
@@ -341,16 +366,10 @@ export default function AdminUsers() {
                       <TableRow key={user.id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {user.isAdmin && (
-                              <Shield className="h-4 w-4 text-primary" />
-                            )}
+                            {user.isAdmin && <Shield className="h-4 w-4 text-primary" />}
                             <div>
-                              <div className="font-medium">
-                                {user.full_name || 'Sem nome'}
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                {user.email}
-                              </div>
+                              <div className="font-medium">{user.full_name || "Sem nome"}</div>
+                              <div className="text-sm text-muted-foreground">{user.email}</div>
                             </div>
                           </div>
                         </TableCell>
@@ -377,10 +396,9 @@ export default function AdminUsers() {
                           {format(new Date(user.created_at), "dd/MM/yyyy", { locale: ptBR })}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
-                          {user.last_login_at 
+                          {user.last_login_at
                             ? format(new Date(user.last_login_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
-                            : "-"
-                          }
+                            : "-"}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
@@ -392,14 +410,14 @@ export default function AdminUsers() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Ações</DropdownMenuLabel>
                               <DropdownMenuSeparator />
-                              
-                              {user.access_status === 'suspended' ? (
-                                <DropdownMenuItem onClick={() => updateUserStatus(user.user_id, 'active')}>
+
+                              {user.access_status === "suspended" ? (
+                                <DropdownMenuItem onClick={() => updateUserStatus(user.user_id, "active")}>
                                   <Check className="mr-2 h-4 w-4" />
                                   Liberar acesso
                                 </DropdownMenuItem>
                               ) : (
-                                <DropdownMenuItem onClick={() => updateUserStatus(user.user_id, 'suspended')}>
+                                <DropdownMenuItem onClick={() => updateUserStatus(user.user_id, "suspended")}>
                                   <UserX className="mr-2 h-4 w-4" />
                                   Suspender acesso
                                 </DropdownMenuItem>
@@ -407,6 +425,17 @@ export default function AdminUsers() {
 
                               <DropdownMenuItem onClick={() => user.email && resetPassword(user.email)}>
                                 Resetar senha
+                              </DropdownMenuItem>
+
+                              {/* NOVO: Item para editar plano */}
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setPlanDialog({ open: true, user });
+                                  setSelectedPlan(user.plan_type);
+                                }}
+                              >
+                                <CreditCard className="mr-2 h-4 w-4" />
+                                Alterar plano
                               </DropdownMenuItem>
 
                               <DropdownMenuSeparator />
@@ -418,22 +447,28 @@ export default function AdminUsers() {
 
                               <DropdownMenuSeparator />
 
-                              <DropdownMenuItem onClick={() => updateUserFlag(user.user_id, 'is_mentorado', !user.is_mentorado)}>
+                              <DropdownMenuItem
+                                onClick={() => updateUserFlag(user.user_id, "is_mentorado", !user.is_mentorado)}
+                              >
                                 <Crown className="mr-2 h-4 w-4" />
                                 {user.is_mentorado ? "Desmarcar Mentorado" : "Marcar como Mentorado"}
                               </DropdownMenuItem>
 
-                              <DropdownMenuItem onClick={() => updateUserFlag(user.user_id, 'is_w3_client', !user.is_w3_client)}>
+                              <DropdownMenuItem
+                                onClick={() => updateUserFlag(user.user_id, "is_w3_client", !user.is_w3_client)}
+                              >
                                 <Users className="mr-2 h-4 w-4" />
                                 {user.is_w3_client ? "Desmarcar Cliente W3" : "Marcar como Cliente W3"}
                               </DropdownMenuItem>
 
                               <DropdownMenuSeparator />
 
-                              <DropdownMenuItem onClick={() => {
-                                setExpirationDialog({ open: true, user });
-                                setExpirationDate(user.access_expires_at?.split('T')[0] || '');
-                              }}>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setExpirationDialog({ open: true, user });
+                                  setExpirationDate(user.access_expires_at?.split("T")[0] || "");
+                                }}
+                              >
                                 <Calendar className="mr-2 h-4 w-4" />
                                 Definir expiração
                               </DropdownMenuItem>
@@ -450,8 +485,48 @@ export default function AdminUsers() {
         </Card>
       </div>
 
+      {/* NOVO: Dialog para editar plano */}
+      <Dialog
+        open={planDialog.open}
+        onOpenChange={(open) => setPlanDialog({ open, user: open ? planDialog.user : null })}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alterar Plano</DialogTitle>
+            <DialogDescription>Selecione o novo plano para {planDialog.user?.email}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="plan">Tipo de plano</Label>
+              <Select value={selectedPlan} onValueChange={setSelectedPlan}>
+                <SelectTrigger id="plan">
+                  <SelectValue placeholder="Selecione um plano" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">Free (Gratuito)</SelectItem>
+                  <SelectItem value="paid">Paid (Pago)</SelectItem>
+                  <SelectItem value="manual">Manual</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">Escolha o tipo de plano do usuário</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPlanDialog({ open: false, user: null })}>
+              Cancelar
+            </Button>
+            <Button onClick={updateUserPlan} disabled={!selectedPlan}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Expiration Dialog */}
-      <Dialog open={expirationDialog.open} onOpenChange={(open) => setExpirationDialog({ open, user: open ? expirationDialog.user : null })}>
+      <Dialog
+        open={expirationDialog.open}
+        onOpenChange={(open) => setExpirationDialog({ open, user: open ? expirationDialog.user : null })}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Definir Expiração</DialogTitle>
@@ -468,18 +543,14 @@ export default function AdminUsers() {
                 value={expirationDate}
                 onChange={(e) => setExpirationDate(e.target.value)}
               />
-              <p className="text-sm text-muted-foreground">
-                Deixe em branco para remover a expiração
-              </p>
+              <p className="text-sm text-muted-foreground">Deixe em branco para remover a expiração</p>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setExpirationDialog({ open: false, user: null })}>
               Cancelar
             </Button>
-            <Button onClick={setExpiration}>
-              Salvar
-            </Button>
+            <Button onClick={setExpiration}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
