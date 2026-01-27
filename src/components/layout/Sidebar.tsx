@@ -88,7 +88,7 @@ interface SidebarProps {
 
 export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: SidebarProps) {
   const isMobile = useIsMobile();
-  const { isAdmin } = useAuth();
+  const { isAdmin, profile } = useAuth();
 
   const isExpanded = isMobile ? true : !isCollapsed;
 
@@ -97,6 +97,30 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
     if (isMobile) {
       onMobileClose();
     }
+  };
+
+  const getUserName = () => {
+    return profile?.full_name || "Usuário";
+  };
+
+  const getUserInitials = () => {
+    if (profile?.full_name) {
+      return profile.full_name
+        .split(" ")
+        .map((n) => n[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase();
+    }
+    return "U";
+  };
+
+  const getPlanLabel = () => {
+    if (profile?.is_mentorado) return "Mentorado";
+    if (profile?.is_w3_client) return "Cliente W3";
+    if (profile?.plan_type === "paid") return "Plano Pago";
+    if (profile?.plan_type === "manual") return "Acesso Manual";
+    return "Plano Free";
   };
 
   // Mobile drawer
@@ -160,11 +184,11 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
             <div className="border-t border-sidebar-border p-4">
               <div className="flex items-center gap-3 rounded-lg bg-sidebar-accent px-4 py-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <span className="text-sm font-semibold">U</span>
+                  <span className="text-sm font-semibold">{getUserInitials()}</span>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-sidebar-foreground">Usuário</p>
-                  <p className="text-xs text-muted-foreground">Mentorado</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-sidebar-foreground truncate">{getUserName()}</p>
+                  <p className="text-xs text-muted-foreground">{getPlanLabel()}</p>
                 </div>
               </div>
             </div>
@@ -279,11 +303,11 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
             {isExpanded ? (
               <div className="flex items-center gap-3 rounded-lg bg-sidebar-accent px-4 py-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <span className="text-sm font-semibold">U</span>
+                  <span className="text-sm font-semibold">{getUserInitials()}</span>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-sidebar-foreground">Usuário</p>
-                  <p className="text-xs text-muted-foreground">Mentorado</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-sidebar-foreground truncate">{getUserName()}</p>
+                  <p className="text-xs text-muted-foreground">{getPlanLabel()}</p>
                 </div>
               </div>
             ) : (
@@ -291,13 +315,13 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
                 <TooltipTrigger asChild>
                   <div className="flex items-center justify-center rounded-lg bg-sidebar-accent p-2">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <span className="text-xs font-semibold">U</span>
+                      <span className="text-xs font-semibold">{getUserInitials()}</span>
                     </div>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  <p className="font-medium">Usuário</p>
-                  <p className="text-xs text-muted-foreground">Mentorado</p>
+                  <p className="font-medium">{getUserName()}</p>
+                  <p className="text-xs text-muted-foreground">{getPlanLabel()}</p>
                 </TooltipContent>
               </Tooltip>
             )}
