@@ -27,6 +27,28 @@ interface Module {
   lessons: Lesson[];
 }
 
+const PANDA_EMBED_BASE = "https://player-vz-75e71015-90c.tv.pandavideo.com.br/embed/?v=";
+
+function normalizePandaEmbed(input: string): string {
+  const raw = (input ?? "").trim();
+  if (!raw) return "";
+
+  // If the admin pasted the full <iframe ...> snippet, extract the src.
+  if (raw.startsWith("<")) {
+    const match = raw.match(/\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>]+))/i);
+    const extracted = (match?.[1] ?? match?.[2] ?? match?.[3] ?? "").trim();
+    if (extracted) return extracted;
+  }
+
+  // If already a URL, use as-is.
+  if (/^https?:\/\//i.test(raw)) return raw;
+
+  // Otherwise assume it's the Panda Video "v" id (UUID).
+  const uuidMatch = raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+  const videoId = (uuidMatch?.[0] ?? raw).trim();
+  return `${PANDA_EMBED_BASE}${encodeURIComponent(videoId)}`;
+}
+
 export default function Aulas() {
   const { isAdmin, loading: adminLoading } = useAdminStatus();
   const [modules, setModules] = useState<Module[]>([]);
@@ -307,6 +329,8 @@ interface VideoPlayerModalProps {
 }
 
 function VideoPlayerModal({ lesson, onClose, onComplete }: VideoPlayerModalProps) {
+  const videoSrc = normalizePandaEmbed(lesson.panda_video_id);
+
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
       <div className="bg-background rounded-lg w-full max-w-5xl max-h-[90vh] overflow-hidden">
@@ -321,12 +345,19 @@ function VideoPlayerModal({ lesson, onClose, onComplete }: VideoPlayerModalProps
         </div>
 
         <div className="aspect-video bg-black">
-          <iframe
-            src={lesson.panda_video_id}
-            style={{ border: "none", width: "100%", height: "100%" }}
-            allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
-            allowFullScreen
-          />
+          {videoSrc ? (
+            <iframe
+              title={lesson.title}
+              src={videoSrc}
+              style={{ border: "none", width: "100%", height: "100%" }}
+              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+              allowFullScreen
+            />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center text-sm text-muted-foreground">
+              Vídeo indisponível: URL/ID do Panda Video vazio.
+            </div>
+          )}
         </div>
 
         <div className="p-4 border-t flex justify-between items-center flex-wrap gap-2">
