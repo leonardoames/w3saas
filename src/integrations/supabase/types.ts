@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      brands: {
+        Row: {
+          category: string
+          created_at: string
+          facebook_url: string | null
+          id: string
+          instagram_url: string | null
+          is_active: boolean
+          logo_url: string | null
+          long_description: string | null
+          name: string
+          short_description: string
+          status: string
+          updated_at: string
+          user_id: string
+          website_url: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          facebook_url?: string | null
+          id?: string
+          instagram_url?: string | null
+          is_active?: boolean
+          logo_url?: string | null
+          long_description?: string | null
+          name: string
+          short_description: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          website_url: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          facebook_url?: string | null
+          id?: string
+          instagram_url?: string | null
+          is_active?: boolean
+          logo_url?: string | null
+          long_description?: string | null
+          name?: string
+          short_description?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          website_url?: string
+        }
+        Relationships: []
+      }
       course_modules: {
         Row: {
           created_at: string | null
@@ -402,6 +453,11 @@ export type Database = {
       admin_update_user_status: {
         Args: { new_status: string; target_user_id: string }
         Returns: undefined
+      }
+      can_user_add_brand: { Args: { check_user_id: string }; Returns: boolean }
+      get_user_active_brands_count: {
+        Args: { check_user_id: string }
+        Returns: number
       }
       has_role: {
         Args: {
