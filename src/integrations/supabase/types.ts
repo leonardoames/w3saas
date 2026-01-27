@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      course_modules: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          order: number
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          order: number
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          order?: number
+          title?: string
+        }
+        Relationships: []
+      }
       influenciadores: {
         Row: {
           created_at: string
@@ -58,6 +82,79 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      lesson_progress: {
+        Row: {
+          completed: boolean | null
+          completed_at: string | null
+          id: string
+          lesson_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          completed?: boolean | null
+          completed_at?: string | null
+          id?: string
+          lesson_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          completed?: boolean | null
+          completed_at?: string | null
+          id?: string
+          lesson_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_progress_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lessons: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          duration: string | null
+          id: string
+          module_id: string | null
+          order: number
+          panda_video_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          duration?: string | null
+          id?: string
+          module_id?: string | null
+          order: number
+          panda_video_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          duration?: string | null
+          id?: string
+          module_id?: string | null
+          order?: number
+          panda_video_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lessons_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       metrics_diarias: {
         Row: {
@@ -133,6 +230,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          is_admin: boolean | null
           is_mentorado: boolean
           is_w3_client: boolean
           last_login_at: string | null
@@ -149,6 +247,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          is_admin?: boolean | null
           is_mentorado?: boolean
           is_w3_client?: boolean
           last_login_at?: string | null
@@ -165,6 +264,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          is_admin?: boolean | null
           is_mentorado?: boolean
           is_w3_client?: boolean
           last_login_at?: string | null
