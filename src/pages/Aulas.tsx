@@ -336,7 +336,7 @@ function VideoPlayerModal({ lesson, onClose, onComplete }: VideoPlayerModalProps
       <div className="relative w-full max-w-5xl">
         <button
           onClick={onClose}
-          className="absolute -top-12 right-0 z-10 w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:bg-white/90 transition-colors"
+          className="absolute top-2 right-2 z-10 w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:bg-white/90 transition-colors"
           aria-label="Fechar"
         >
           ✕
@@ -359,7 +359,7 @@ function VideoPlayerModal({ lesson, onClose, onComplete }: VideoPlayerModalProps
         </div>
 
         <div className="mt-4 flex justify-center">
-          <Button onClick={onComplete} className="bg-white text-black hover:bg-white/90">
+          <Button onClick={onComplete} className="bg-orange-600 hover:bg-orange-700 text-white">
             <CheckCircle2 className="mr-2 h-4 w-4" />
             Marcar como Concluída
           </Button>
