@@ -389,17 +389,16 @@ export default function Aulas() {
                           (ex: <Button/>) dentro dele, senão o click do dropdown falha.
                         */}
                         <DropdownMenuTrigger asChild>
-                          <span
+                          <div
                             role="button"
                             tabIndex={0}
                             aria-label="Ações do módulo"
-                            onPointerDownCapture={(e) => e.stopPropagation()}
-                            onClickCapture={(e) => e.stopPropagation()}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background"
                           >
                             <MoreVertical className="h-4 w-4" />
                             <span className="sr-only">Ações do módulo</span>
-                          </span>
+                          </div>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="z-50 bg-popover border shadow-lg">
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditModule(module); }}>
