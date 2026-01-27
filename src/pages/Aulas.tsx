@@ -2,12 +2,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { CheckCircle2, Circle, Play, Plus, Lock, Loader2 } from "lucide-react";
+import { CheckCircle2, Circle, Play, Plus, Lock, Loader2, Pencil, Trash2, MoreVertical } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminStatus } from "@/hooks/useAdminStatus";
 import { AddLessonModal } from "@/components/AddLessonModal";
+import { AddModuleModal } from "@/components/aulas/AddModuleModal";
+import { EditModuleModal } from "@/components/aulas/EditModuleModal";
+import { EditLessonModal } from "@/components/aulas/EditLessonModal";
+import { ConfirmDeleteDialog } from "@/components/aulas/ConfirmDeleteDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Lesson {
   id: string;
@@ -54,10 +64,33 @@ export default function Aulas() {
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const { toast } = useToast();
+
+  // Add Lesson Modal
+  const [isAddLessonModalOpen, setIsAddLessonModalOpen] = useState(false);
   const [selectedModuleId, setSelectedModuleId] = useState<string>("");
   const [selectedModuleTitle, setSelectedModuleTitle] = useState<string>("");
-  const { toast } = useToast();
+
+  // Add Module Modal
+  const [isAddModuleModalOpen, setIsAddModuleModalOpen] = useState(false);
+
+  // Edit Module Modal
+  const [isEditModuleModalOpen, setIsEditModuleModalOpen] = useState(false);
+  const [moduleToEdit, setModuleToEdit] = useState<Module | null>(null);
+
+  // Edit Lesson Modal
+  const [isEditLessonModalOpen, setIsEditLessonModalOpen] = useState(false);
+  const [lessonToEdit, setLessonToEdit] = useState<Lesson | null>(null);
+
+  // Delete Module Dialog
+  const [isDeleteModuleDialogOpen, setIsDeleteModuleDialogOpen] = useState(false);
+  const [moduleToDelete, setModuleToDelete] = useState<Module | null>(null);
+  const [isDeletingModule, setIsDeletingModule] = useState(false);
+
+  // Delete Lesson Dialog
+  const [isDeleteLessonDialogOpen, setIsDeleteLessonDialogOpen] = useState(false);
+  const [lessonToDelete, setLessonToDelete] = useState<Lesson | null>(null);
+  const [isDeletingLesson, setIsDeletingLesson] = useState(false);
 
   useEffect(() => {
     fetchModulesAndLessons();
@@ -157,10 +190,117 @@ export default function Aulas() {
     }
   };
 
+  // Add Lesson handlers
   const handleAddLesson = (moduleId: string, moduleTitle: string) => {
     setSelectedModuleId(moduleId);
     setSelectedModuleTitle(moduleTitle);
-    setIsAddModalOpen(true);
+    setIsAddLessonModalOpen(true);
+  };
+
+  // Edit Module handlers
+  const handleEditModule = (module: Module) => {
+    setModuleToEdit(module);
+    setIsEditModuleModalOpen(true);
+  };
+
+  // Delete Module handlers
+  const handleDeleteModule = (module: Module) => {
+    setModuleToDelete(module);
+    setIsDeleteModuleDialogOpen(true);
+  };
+
+  const confirmDeleteModule = async () => {
+    if (!moduleToDelete) return;
+    setIsDeletingModule(true);
+
+    try {
+      // First delete all lessons in the module
+      const { error: lessonsError } = await supabase
+        .from("lessons")
+        .delete()
+        .eq("module_id", moduleToDelete.id);
+
+      if (lessonsError) throw lessonsError;
+
+      // Then delete the module
+      const { error: moduleError } = await supabase
+        .from("course_modules")
+        .delete()
+        .eq("id", moduleToDelete.id);
+
+      if (moduleError) throw moduleError;
+
+      toast({
+        title: "✅ Módulo excluído!",
+        description: "O módulo e suas aulas foram removidos com sucesso.",
+      });
+
+      fetchModulesAndLessons();
+    } catch (error) {
+      console.error("Erro ao excluir módulo:", error);
+      toast({
+        title: "❌ Erro",
+        description: "Não foi possível excluir o módulo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingModule(false);
+      setIsDeleteModuleDialogOpen(false);
+      setModuleToDelete(null);
+    }
+  };
+
+  // Edit Lesson handlers
+  const handleEditLesson = (lesson: Lesson) => {
+    setLessonToEdit(lesson);
+    setIsEditLessonModalOpen(true);
+  };
+
+  // Delete Lesson handlers
+  const handleDeleteLesson = (lesson: Lesson) => {
+    setLessonToDelete(lesson);
+    setIsDeleteLessonDialogOpen(true);
+  };
+
+  const confirmDeleteLesson = async () => {
+    if (!lessonToDelete) return;
+    setIsDeletingLesson(true);
+
+    try {
+      // First delete progress records for this lesson
+      const { error: progressError } = await supabase
+        .from("lesson_progress")
+        .delete()
+        .eq("lesson_id", lessonToDelete.id);
+
+      if (progressError) throw progressError;
+
+      // Then delete the lesson
+      const { error: lessonError } = await supabase
+        .from("lessons")
+        .delete()
+        .eq("id", lessonToDelete.id);
+
+      if (lessonError) throw lessonError;
+
+      toast({
+        title: "✅ Aula excluída!",
+        description: "A aula foi removida com sucesso.",
+      });
+
+      fetchModulesAndLessons();
+    } catch (error) {
+      console.error("Erro ao excluir aula:", error);
+      toast({
+        title: "❌ Erro",
+        description: "Não foi possível excluir a aula.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingLesson(false);
+      setIsDeleteLessonDialogOpen(false);
+      setLessonToDelete(null);
+    }
   };
 
   const watchLesson = (lesson: Lesson) => {
@@ -181,9 +321,17 @@ export default function Aulas() {
 
   return (
     <div className="container mx-auto p-4 space-y-6 max-w-6xl">
-      <div>
-        <h1 className="text-3xl font-bold">Aulas da Mentoria</h1>
-        <p className="mt-2 text-muted-foreground">Acesse todo o conteúdo da mentoria e acompanhe seu progresso</p>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Aulas da Mentoria</h1>
+          <p className="mt-2 text-muted-foreground">Acesse todo o conteúdo da mentoria e acompanhe seu progresso</p>
+        </div>
+        {isAdmin && (
+          <Button onClick={() => setIsAddModuleModalOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Módulo
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -200,6 +348,18 @@ export default function Aulas() {
           <Progress value={progressPercentage} className="h-2" />
         </CardContent>
       </Card>
+
+      {modules.length === 0 && (
+        <Card className="py-12">
+          <CardContent className="text-center text-muted-foreground">
+            <Lock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p className="text-lg font-medium">Nenhum módulo disponível</p>
+            {isAdmin && (
+              <p className="text-sm mt-2">Clique em "Novo Módulo" para começar a criar o curso.</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Accordion type="single" collapsible className="space-y-4">
         {modules.map((module) => {
@@ -221,11 +381,36 @@ export default function Aulas() {
                       <p className="text-sm text-muted-foreground">{module.description}</p>
                     </div>
                   </div>
-                  <div className="hidden sm:flex items-center gap-4">
-                    <span className="text-sm text-muted-foreground">
-                      {moduleCompletedCount}/{module.lessons.length}
-                    </span>
-                    <Progress value={moduleProgress} className="w-20 h-2" />
+                  <div className="flex items-center gap-4">
+                    {isAdmin && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">Ações do módulo</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="z-50 bg-popover border shadow-lg">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditModule(module); }}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Editar Módulo
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => { e.stopPropagation(); handleDeleteModule(module); }}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Excluir Módulo
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                    <div className="hidden sm:flex items-center gap-4">
+                      <span className="text-sm text-muted-foreground">
+                        {moduleCompletedCount}/{module.lessons.length}
+                      </span>
+                      <Progress value={moduleProgress} className="w-20 h-2" />
+                    </div>
                   </div>
                 </div>
               </AccordionTrigger>
@@ -253,7 +438,7 @@ export default function Aulas() {
                               </span>
                             </div>
                           </div>
-                          <div className="flex gap-2 w-full sm:w-auto">
+                          <div className="flex gap-2 w-full sm:w-auto items-center">
                             <Button size="sm" onClick={() => watchLesson(lesson)} className="flex-1 sm:flex-none">
                               <Play className="mr-2 h-4 w-4" />
                               Assistir
@@ -266,6 +451,29 @@ export default function Aulas() {
                             >
                               {lesson.completed ? "Desmarcar" : "Concluir"}
                             </Button>
+                            {isAdmin && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreVertical className="h-4 w-4" />
+                                    <span className="sr-only">Ações da aula</span>
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="z-50 bg-popover border shadow-lg">
+                                  <DropdownMenuItem onClick={() => handleEditLesson(lesson)}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Editar Aula
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteLesson(lesson)}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Excluir Aula
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
                           </div>
                         </div>
                       </CardContent>
@@ -278,7 +486,8 @@ export default function Aulas() {
                       className="w-full mt-2"
                       onClick={() => handleAddLesson(module.id, module.title)}
                     >
-                      <Plus className="mr-2 h-4 w-4" />➕ Adicionar Nova Aula (Admin)
+                      <Plus className="mr-2 h-4 w-4" />
+                      Adicionar Nova Aula
                     </Button>
                   )}
 
@@ -296,14 +505,55 @@ export default function Aulas() {
         })}
       </Accordion>
 
+      {/* Modals */}
       {isAdmin && (
-        <AddLessonModal
-          isOpen={isAddModalOpen}
-          onClose={() => setIsAddModalOpen(false)}
-          moduleId={selectedModuleId}
-          moduleTitle={selectedModuleTitle}
-          onSuccess={fetchModulesAndLessons}
-        />
+        <>
+          <AddLessonModal
+            isOpen={isAddLessonModalOpen}
+            onClose={() => setIsAddLessonModalOpen(false)}
+            moduleId={selectedModuleId}
+            moduleTitle={selectedModuleTitle}
+            onSuccess={fetchModulesAndLessons}
+          />
+
+          <AddModuleModal
+            isOpen={isAddModuleModalOpen}
+            onClose={() => setIsAddModuleModalOpen(false)}
+            onSuccess={fetchModulesAndLessons}
+          />
+
+          <EditModuleModal
+            isOpen={isEditModuleModalOpen}
+            onClose={() => setIsEditModuleModalOpen(false)}
+            module={moduleToEdit}
+            onSuccess={fetchModulesAndLessons}
+          />
+
+          <EditLessonModal
+            isOpen={isEditLessonModalOpen}
+            onClose={() => setIsEditLessonModalOpen(false)}
+            lesson={lessonToEdit}
+            onSuccess={fetchModulesAndLessons}
+          />
+
+          <ConfirmDeleteDialog
+            isOpen={isDeleteModuleDialogOpen}
+            onClose={() => setIsDeleteModuleDialogOpen(false)}
+            onConfirm={confirmDeleteModule}
+            title="Excluir Módulo"
+            description={`Tem certeza que deseja excluir o módulo "${moduleToDelete?.title}"? Todas as aulas dentro dele também serão excluídas. Esta ação não pode ser desfeita.`}
+            isDeleting={isDeletingModule}
+          />
+
+          <ConfirmDeleteDialog
+            isOpen={isDeleteLessonDialogOpen}
+            onClose={() => setIsDeleteLessonDialogOpen(false)}
+            onConfirm={confirmDeleteLesson}
+            title="Excluir Aula"
+            description={`Tem certeza que deseja excluir a aula "${lessonToDelete?.title}"? O progresso dos alunos nesta aula também será removido. Esta ação não pode ser desfeita.`}
+            isDeleting={isDeletingLesson}
+          />
+        </>
       )}
 
       {selectedLesson && (
