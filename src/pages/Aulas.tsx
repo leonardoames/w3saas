@@ -384,11 +384,29 @@ export default function Aulas() {
                   <div className="flex items-center gap-4">
                     {isAdmin && (
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                        {/*
+                          Importante: AccordionTrigger é um <button>. Não podemos renderizar outro <button>
+                          (ex: <Button/>) dentro dele, senão o click do dropdown falha.
+                        */}
+                        <DropdownMenuTrigger asChild>
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            aria-label="Ações do módulo"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                (e.currentTarget as HTMLElement).click();
+                              }
+                            }}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background"
+                          >
                             <MoreVertical className="h-4 w-4" />
                             <span className="sr-only">Ações do módulo</span>
-                          </Button>
+                          </span>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="z-50 bg-popover border shadow-lg">
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditModule(module); }}>
