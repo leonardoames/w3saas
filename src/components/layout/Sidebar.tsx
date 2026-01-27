@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { SidebarNavLink } from "./SidebarNavLink";
 import {
   LayoutDashboard,
@@ -88,11 +87,10 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: SidebarProps) {
-  const [isHovering, setIsHovering] = useState(false);
   const isMobile = useIsMobile();
   const { isAdmin } = useAuth();
 
-  const isExpanded = isMobile ? true : (!isCollapsed || isHovering);
+  const isExpanded = isMobile ? true : !isCollapsed;
 
   // Close mobile menu on navigation
   const handleNavClick = () => {
@@ -184,8 +182,6 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
           "fixed left-0 top-0 z-40 h-screen border-r border-sidebar-border bg-sidebar-background transition-all duration-300",
           isExpanded ? "w-64" : "w-16"
         )}
-        onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
       >
         <div className="flex h-full flex-col">
           {/* Logo */}
