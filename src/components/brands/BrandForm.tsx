@@ -2,30 +2,12 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
@@ -86,55 +68,52 @@ export function BrandForm({ open, onOpenChange, onSuccess }: BrandFormProps) {
 
   const onSubmit = async (data: BrandFormData) => {
     try {
-      setIsSubmitting(true);
+      setLoading(true);
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const brandData = {
+        p_name: data.name,
+        p_category: data.category,
+        p_short_description: data.short_description,
+        p_logo_url: logoPreview,
+        p_website_url: data.website_url,
+        p_instagram_url: data.instagram_url || null,
+        p_facebook_url: data.facebook_url || null,
+      };
 
-      if (!user) {
-        toast({
-          title: "Erro",
-          description: "Você precisa estar logado para adicionar uma marca.",
-          variant: "destructive",
+      if (editingBrand) {
+        const { error } = await supabase.rpc("update_brand", {
+          p_brand_id: editingBrand.id,
+          ...brandData,
         });
-        return;
+
+        if (error) throw error;
+
+        toast({
+          title: "Marca atualizada!",
+          description: "Suas alterações foram salvas com sucesso.",
+        });
+      } else {
+        const { error } = await supabase.rpc("create_brand", brandData);
+
+        if (error) throw error;
+
+        toast({
+          title: "Marca enviada!",
+          description: "Sua marca foi enviada para aprovação. Aguarde a revisão da equipe.",
+        });
       }
 
-      // Cast to any to avoid type errors until table is created
-      const { error } = await (supabase as any).from("brands").insert({
-        user_id: user.id,
-        name: data.name,
-        short_description: data.short_description,
-        long_description: data.long_description || null,
-        category: data.category,
-        website_url: data.website_url,
-        instagram_url: data.instagram_url || null,
-        facebook_url: data.facebook_url || null,
-        logo_url: data.logo_url || null,
-        status: "pending",
-        is_active: false,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Marca enviada!",
-        description: "Sua marca foi enviada para aprovação.",
-      });
-
-      form.reset();
-      onOpenChange(false);
+      handleClose();
       onSuccess();
     } catch (error: any) {
-      console.error("Error submitting brand:", error);
+      console.error("Error saving brand:", error);
       toast({
-        title: "Erro ao enviar marca",
-        description: error.message || "Tente novamente mais tarde.",
+        title: "Erro ao salvar marca",
+        description: error.message || "Ocorreu um erro. Tente novamente.",
         variant: "destructive",
       });
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
@@ -279,12 +258,7 @@ export function BrandForm({ open, onOpenChange, onSuccess }: BrandFormProps) {
             />
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-              >
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={isSubmitting}>
