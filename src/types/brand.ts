@@ -2,15 +2,28 @@ export interface Brand {
   id: string;
   user_id: string;
   name: string;
-  logo_url?: string | null;
+  category: string;
   short_description: string;
   long_description?: string | null;
-  category: string;
+  logo_url: string | null;
   website_url: string;
-  instagram_url?: string | null;
-  facebook_url?: string | null;
+  instagram_url: string | null;
+  facebook_url: string | null;
   is_active: boolean;
   status: "pending" | "approved" | "rejected";
   created_at: string;
   updated_at: string;
 }
+
+export interface CreateBrandData {
+  name: string;
+  category: string;
+  short_description: string;
+  long_description?: string;
+  logo_url?: string;
+  website_url: string;
+  instagram_url?: string;
+  facebook_url?: string;
+}
+
+export interface BrandFormData extends CreateBrandData {}

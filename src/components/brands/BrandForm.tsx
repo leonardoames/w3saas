@@ -101,7 +101,8 @@ export function BrandForm({ open, onOpenChange, onSuccess }: BrandFormProps) {
         return;
       }
 
-      const { error } = await supabase.from("brands").insert({
+      // Cast to any to avoid type errors until table is created
+      const { error } = await (supabase as any).from("brands").insert({
         user_id: user.id,
         name: data.name,
         short_description: data.short_description,
