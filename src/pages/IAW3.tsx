@@ -2,9 +2,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Copy, Loader2, FileText, ShoppingBag, Search, BarChart3, Megaphone, Video } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import DOMPurify from "dompurify";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -36,6 +37,21 @@ export default function IAW3() {
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
   const outputRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Sanitize HTML output for XSS protection
+  const sanitizedOutput = useMemo(() => {
+    if (!output) return '';
+    return DOMPurify.sanitize(output, {
+      ALLOWED_TAGS: [
+        'p', 'br', 'strong', 'em', 'ul', 'ol', 'li',
+        'h2', 'h3', 'h4', 'h5', 'h6',
+        'div', 'span', 'table', 'tr', 'td', 'th', 'tbody', 'thead'
+      ],
+      ALLOWED_ATTR: ['class'],
+      KEEP_CONTENT: true,
+      ALLOW_DATA_ATTR: false,
+    });
+  }, [output]);
 
   useEffect(() => {
     if (outputRef.current && output) {
@@ -303,7 +319,7 @@ export default function IAW3() {
                 >
                   <div 
                     className="prose prose-sm max-w-none dark:prose-invert prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2 prose-ul:my-2 prose-li:my-0"
-                    dangerouslySetInnerHTML={{ __html: output }}
+                    dangerouslySetInnerHTML={{ __html: sanitizedOutput }}
                   />
                 </div>
                 
