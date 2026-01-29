@@ -309,11 +309,11 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) {
+      console.error("OPENAI_API_KEY not configured");
       return new Response(
-        JSON.stringify({ error: "API key não configurada" }),
+        JSON.stringify({ error: "API key da OpenAI não configurada" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -338,25 +338,26 @@ serve(async (req) => {
     // Add current user message
     messages.push({ role: "user", content: userMessage });
 
-    console.log("Calling Lovable AI with mode:", mode || "default");
+    console.log("Calling OpenAI with mode:", mode || "default");
     console.log("Messages count:", messages.length);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o",
         messages,
-        stream: false,
+        max_tokens: 4096,
+        temperature: 0.7,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Lovable AI error:", response.status, errorText);
+      console.error("OpenAI API error:", response.status, errorText);
       
       if (response.status === 429) {
         return new Response(
@@ -364,10 +365,10 @@ serve(async (req) => {
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
+      if (response.status === 401) {
         return new Response(
-          JSON.stringify({ error: "Créditos insuficientes. Entre em contato com o suporte." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Chave da API OpenAI inválida ou expirada." }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       
@@ -380,7 +381,7 @@ serve(async (req) => {
     const data = await response.json();
     const answerContent = data.choices?.[0]?.message?.content || "";
 
-    console.log("AI response received, length:", answerContent.length);
+    console.log("OpenAI response received, length:", answerContent.length);
 
     // Generate follow-up questions based on context
     const followUpQuestions = generateFollowUpQuestions(mode, answerContent);
