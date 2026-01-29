@@ -100,6 +100,36 @@ export type Database = {
           },
         ]
       }
+      api_rate_limits: {
+        Row: {
+          created_at: string
+          endpoint: string
+          id: string
+          request_count: number
+          updated_at: string
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          endpoint: string
+          id?: string
+          request_count?: number
+          updated_at?: string
+          user_id: string
+          window_start: string
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          id?: string
+          request_count?: number
+          updated_at?: string
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       brands: {
         Row: {
           approval_status: string | null
@@ -186,6 +216,44 @@ export type Database = {
           title?: string
         }
         Relationships: []
+      }
+      influenciador_contacts: {
+        Row: {
+          created_at: string
+          id: string
+          influenciador_id: string
+          telefone_encrypted: string
+          telefone_masked: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          influenciador_id: string
+          telefone_encrypted: string
+          telefone_masked: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          influenciador_id?: string
+          telefone_encrypted?: string
+          telefone_masked?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "influenciador_contacts_influenciador_id_fkey"
+            columns: ["influenciador_id"]
+            isOneToOne: true
+            referencedRelation: "influenciadores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       influenciadores: {
         Row: {
