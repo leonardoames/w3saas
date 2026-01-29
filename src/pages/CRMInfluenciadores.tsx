@@ -148,19 +148,14 @@ const CRMInfluenciadores = () => {
 
   const fetchInfluenciadores = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from("influenciadores")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("stage_order", { ascending: true });
+      const { data: response, error } = await supabase.functions.invoke('influenciadores-api', {
+        method: 'GET'
+      });
 
       if (error) throw error;
       
       // Map data to include tags and status with defaults
-      const mappedData = (data || []).map(item => ({
+      const mappedData = (response || []).map((item: Influenciador) => ({
         ...item,
         tags: item.tags || [],
         status: item.status || 'em_aberto'
@@ -197,19 +192,15 @@ const CRMInfluenciadores = () => {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const maxOrder = influenciadores
         .filter(i => i.stage === "em_qualificacao")
         .reduce((max, i) => Math.max(max, i.stage_order), -1);
 
       const tags = parseTags(formTags);
 
-      const { data, error } = await supabase
-        .from("influenciadores")
-        .insert({
-          user_id: user.id,
+      const { data, error } = await supabase.functions.invoke('influenciadores-api', {
+        method: 'POST',
+        body: {
           nome: formNome.trim(),
           social_handle: formSocialHandle.trim() || null,
           telefone: unformatPhone(formTelefone) || null,
@@ -218,9 +209,8 @@ const CRMInfluenciadores = () => {
           stage_order: maxOrder + 1,
           tags: tags,
           status: "em_aberto",
-        })
-        .select()
-        .single();
+        }
+      });
 
       if (error) throw error;
 
@@ -270,10 +260,14 @@ const CRMInfluenciadores = () => {
       const cardsInTargetStage = influenciadores.filter(i => i.stage === targetStage);
       const maxOrder = cardsInTargetStage.reduce((max, i) => Math.max(max, i.stage_order), -1);
 
-      const { error } = await supabase
-        .from("influenciadores")
-        .update({ stage: targetStage, stage_order: maxOrder + 1 })
-        .eq("id", draggedCard);
+      const { error } = await supabase.functions.invoke('influenciadores-api', {
+        method: 'PATCH',
+        body: {
+          id: draggedCard,
+          stage: targetStage,
+          stage_order: maxOrder + 1
+        }
+      });
 
       if (error) throw error;
 
@@ -327,17 +321,18 @@ const CRMInfluenciadores = () => {
     try {
       const tags = parseTags(editTags);
 
-      const { error } = await supabase
-        .from("influenciadores")
-        .update({
+      const { error } = await supabase.functions.invoke('influenciadores-api', {
+        method: 'PUT',
+        body: {
+          id: selectedInfluenciador.id,
           nome: editNome.trim(),
           social_handle: editSocialHandle.trim() || null,
           telefone: unformatPhone(editTelefone) || null,
           observacoes: editObservacoes.trim() || null,
           tags: tags,
           status: editStatus,
-        })
-        .eq("id", selectedInfluenciador.id);
+        }
+      });
 
       if (error) throw error;
 
@@ -375,10 +370,10 @@ const CRMInfluenciadores = () => {
     if (!selectedInfluenciador) return;
 
     try {
-      const { error } = await supabase
-        .from("influenciadores")
-        .delete()
-        .eq("id", selectedInfluenciador.id);
+      const { error } = await supabase.functions.invoke('influenciadores-api', {
+        method: 'DELETE',
+        body: { id: selectedInfluenciador.id }
+      });
 
       if (error) throw error;
 
