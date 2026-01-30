@@ -39,7 +39,7 @@ export function BulkEntryCard({ rows, onRowsChange, onSave, saving }: BulkEntryC
     onRowsChange(newRows);
   };
 
-  const hasValidData = rows.some(row => row.data);
+  const hasValidData = rows.some((row) => String(row.data || "").trim().length > 0);
 
   return (
     <div className="bg-card border border-border rounded-lg p-5 md:p-6 shadow-sm space-y-4">
@@ -66,7 +66,9 @@ export function BulkEntryCard({ rows, onRowsChange, onSave, saving }: BulkEntryC
               <div className="space-y-1.5">
                 <Label className="text-xs">Data *</Label>
                 <Input
-                  type="date"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="dd/mm/aaaa"
                   value={row.data}
                   onChange={(e) => updateRow(i, "data", e.target.value)}
                   className="h-9 text-sm"

@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format, subDays, parseISO, isWithinInterval, startOfMonth } from "date-fns";
 import { DateRange } from "react-day-picker";
-import * as XLSX from "xlsx";
+import { normalizeDateToISO, parseCsvMetricsFile, parseExcelMetricsFile, parseLooseInt, parseLooseNumber } from "@/lib/metricsImport";
 
 import { KPICard } from "@/components/dashboard/KPICard";
 import { MetricCard } from "@/components/dashboard/MetricCard";
@@ -172,97 +172,91 @@ export default function Dashboard() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
-    
-    if (isExcel) {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        try {
-          const data = new Uint8Array(event.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
-          
-          let updated = 0;
-          for (let i = 1; i < jsonData.length; i++) {
-            const row = jsonData[i];
-            if (!row || row.length < 6) continue;
-            
-            // Handle Excel date format (serial number) or string date
-            let dateValue = row[0];
-            if (typeof dateValue === 'number') {
-              const excelDate = XLSX.SSF.parse_date_code(dateValue);
-              dateValue = `${excelDate.y}-${String(excelDate.m).padStart(2, '0')}-${String(excelDate.d).padStart(2, '0')}`;
-            }
-            
-            await supabase.from("metrics_diarias").upsert({
-              user_id: user.id,
-              data: String(dateValue).trim(),
-              faturamento: parseFloat(row[1]) || 0,
-              sessoes: parseInt(row[2]) || 0,
-              investimento_trafego: parseFloat(row[3]) || 0,
-              vendas_quantidade: parseInt(row[4]) || 0,
-              vendas_valor: parseFloat(row[5]) || 0,
-            }, { onConflict: "user_id,data" });
-            updated++;
-          }
-          toast({ title: "Importação concluída", description: `${updated} dias atualizados do Excel.` });
-          loadMetrics();
-        } catch (error) {
-          toast({ title: "Erro na importação", description: "Formato de arquivo inválido.", variant: "destructive" });
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
-      // CSV handling
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const text = event.target?.result as string;
-        const lines = text.split('\n').filter(line => line.trim());
-        let updated = 0;
-        
-        for (let i = 1; i < lines.length; i++) {
-          const values = lines[i].split(',');
-          if (values.length < 6) continue;
-          await supabase.from("metrics_diarias").upsert({
-            user_id: user.id,
-            data: values[0].trim(),
-            faturamento: parseFloat(values[1]) || 0,
-            sessoes: parseInt(values[2]) || 0,
-            investimento_trafego: parseFloat(values[3]) || 0,
-            vendas_quantidade: parseInt(values[4]) || 0,
-            vendas_valor: parseFloat(values[5]) || 0,
-          }, { onConflict: "user_id,data" });
-          updated++;
-        }
-        toast({ title: "Importação concluída", description: `${updated} dias atualizados.` });
-        loadMetrics();
-      };
-      reader.readAsText(file);
+    const isExcel = file.name.toLowerCase().endsWith(".xlsx") || file.name.toLowerCase().endsWith(".xls");
+    const isCsv = file.name.toLowerCase().endsWith(".csv");
+
+    if (!isExcel && !isCsv) {
+      toast({ title: "Arquivo inválido", description: "Envie um CSV ou XLSX.", variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      let rows: any[] = [];
+
+      if (isExcel) {
+        const arrayBuffer = await file.arrayBuffer();
+        rows = parseExcelMetricsFile(arrayBuffer);
+      } else {
+        const text = await file.text();
+        rows = parseCsvMetricsFile(text);
+      }
+
+      if (!rows.length) {
+        toast({ title: "Nada para importar", description: "Não encontrei linhas válidas no arquivo.", variant: "destructive" });
+        e.target.value = "";
+        return;
+      }
+
+      await supabase
+        .from("metrics_diarias")
+        .upsert(
+          rows.map((r) => ({ ...r, user_id: user.id })),
+          { onConflict: "user_id,data" }
+        );
+
+      toast({
+        title: "Importação concluída",
+        description: `${rows.length} dias importados/atualizados.`,
+      });
+
+      loadMetrics();
+    } catch (error: any) {
+      toast({
+        title: "Erro na importação",
+        description: error?.message || "Não foi possível ler/importar o arquivo.",
+        variant: "destructive",
+      });
+    } finally {
+      // permite reimportar o mesmo arquivo
+      e.target.value = "";
     }
   };
 
   const handleBulkSave = async () => {
     if (!user) return;
     setSaving(true);
-    let saved = 0;
-    for (const row of bulkRows) {
-      if (!row.data) continue;
-      await supabase.from("metrics_diarias").upsert({
-        user_id: user.id, data: row.data,
-        faturamento: parseFloat(row.faturamento) || 0,
-        sessoes: parseInt(row.sessoes) || 0,
-        investimento_trafego: parseFloat(row.investimento_trafego) || 0,
-        vendas_quantidade: parseInt(row.vendas_quantidade) || 0,
-        vendas_valor: parseFloat(row.vendas_valor) || 0,
-      }, { onConflict: "user_id,data" });
-      saved++;
+    try {
+      const payload = bulkRows
+        .map((row) => {
+          const iso = normalizeDateToISO(row.data);
+          if (!iso) return null;
+          return {
+            user_id: user.id,
+            data: iso,
+            faturamento: parseLooseNumber(row.faturamento),
+            sessoes: parseLooseInt(row.sessoes),
+            investimento_trafego: parseLooseNumber(row.investimento_trafego),
+            vendas_quantidade: parseLooseInt(row.vendas_quantidade),
+            vendas_valor: parseLooseNumber(row.vendas_valor),
+          };
+        })
+        .filter(Boolean) as any[];
+
+      if (!payload.length) {
+        toast({ title: "Nada para salvar", description: "Preencha uma data válida (ex: 30/01/2026).", variant: "destructive" });
+        return;
+      }
+
+      await supabase.from("metrics_diarias").upsert(payload, { onConflict: "user_id,data" });
+      toast({ title: "Lote salvo", description: `${payload.length} dias salvos.` });
+      setBulkRows([{ data: "", faturamento: "", sessoes: "", investimento_trafego: "", vendas_quantidade: "", vendas_valor: "" }]);
+      loadMetrics();
+    } catch (error: any) {
+      toast({ title: "Erro", description: error?.message || "Não foi possível salvar o lote.", variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
-    toast({ title: "Lote salvo", description: `${saved} dias salvos.` });
-    setBulkRows([{ data: "", faturamento: "", sessoes: "", investimento_trafego: "", vendas_quantidade: "", vendas_valor: "" }]);
-    loadMetrics();
-    setSaving(false);
   };
 
   if (loading) {
