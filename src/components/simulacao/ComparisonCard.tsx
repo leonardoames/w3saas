@@ -1,5 +1,4 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency, formatPercent } from "./ScenarioCard";
 
 interface ComparisonData {
   monthlyDiff: number;
@@ -12,7 +11,29 @@ interface ComparisonCardProps {
   comparison: ComparisonData;
 }
 
+function formatDiffCurrency(value: number): string {
+  const absValue = Math.abs(value);
+  const formatted = absValue.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+  });
+  return value >= 0 ? `+${formatted}` : `-${formatted}`;
+}
+
+function formatDiffPercent(value: number): string {
+  const absValue = Math.abs(value);
+  const formatted = absValue.toLocaleString("pt-BR", {
+    style: "percent",
+    minimumFractionDigits: 2,
+  });
+  return value >= 0 ? `+${formatted}` : `-${formatted}`;
+}
+
 export function ComparisonCard({ comparison }: ComparisonCardProps) {
+  const isMonthlyPositive = comparison.monthlyDiff >= 0;
+  const isYearlyPositive = comparison.yearlyDiff >= 0;
+
   return (
     <Card>
       <CardHeader>
@@ -24,7 +45,7 @@ export function ComparisonCard({ comparison }: ComparisonCardProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div
             className={`rounded-lg p-4 ${
-              comparison.monthlyDiff >= 0
+              isMonthlyPositive
                 ? "bg-success/10 border border-success/30"
                 : "bg-destructive/10 border border-destructive/30"
             }`}
@@ -34,29 +55,23 @@ export function ComparisonCard({ comparison }: ComparisonCardProps) {
             </p>
             <p
               className={`text-2xl font-bold ${
-                comparison.monthlyDiff >= 0
-                  ? "text-success"
-                  : "text-destructive"
+                isMonthlyPositive ? "text-success" : "text-destructive"
               }`}
             >
-              {comparison.monthlyDiff >= 0 ? "+" : ""}
-              {formatCurrency(comparison.monthlyDiff)}
+              {formatDiffCurrency(comparison.monthlyDiff)}
             </p>
             <p
               className={`text-sm font-medium ${
-                comparison.monthlyDiff >= 0
-                  ? "text-success"
-                  : "text-destructive"
+                isMonthlyPositive ? "text-success" : "text-destructive"
               }`}
             >
-              {comparison.monthlyDiff >= 0 ? "+" : ""}
-              {formatPercent(comparison.monthlyDiffPercent)}
+              {formatDiffPercent(comparison.monthlyDiffPercent)}
             </p>
           </div>
 
           <div
             className={`rounded-lg p-4 ${
-              comparison.yearlyDiff >= 0
+              isYearlyPositive
                 ? "bg-success/10 border border-success/30"
                 : "bg-destructive/10 border border-destructive/30"
             }`}
@@ -66,23 +81,17 @@ export function ComparisonCard({ comparison }: ComparisonCardProps) {
             </p>
             <p
               className={`text-2xl font-bold ${
-                comparison.yearlyDiff >= 0
-                  ? "text-success"
-                  : "text-destructive"
+                isYearlyPositive ? "text-success" : "text-destructive"
               }`}
             >
-              {comparison.yearlyDiff >= 0 ? "+" : ""}
-              {formatCurrency(comparison.yearlyDiff)}
+              {formatDiffCurrency(comparison.yearlyDiff)}
             </p>
             <p
               className={`text-sm font-medium ${
-                comparison.yearlyDiff >= 0
-                  ? "text-success"
-                  : "text-destructive"
+                isYearlyPositive ? "text-success" : "text-destructive"
               }`}
             >
-              {comparison.yearlyDiff >= 0 ? "+" : ""}
-              {formatPercent(comparison.yearlyDiffPercent)}
+              {formatDiffPercent(comparison.yearlyDiffPercent)}
             </p>
           </div>
         </div>
