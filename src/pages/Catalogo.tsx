@@ -26,12 +26,10 @@ export default function Catalogo() {
     try {
       setLoading(true);
 
-      // Cast to any to avoid type errors until table is created
+      // Use the public view that excludes sensitive user_id
       const { data, error } = await (supabase as any)
-        .from("brands")
+        .from("brands_public")
         .select("*")
-        .eq("is_active", true)
-        .eq("status", "approved")
         .order("created_at", { ascending: false });
 
       if (error) {
