@@ -1,10 +1,7 @@
-import { TrendingUp, DollarSign, ShoppingCart, MousePointerClick, AlertCircle, CheckCircle2, Plus, FileUp } from "lucide-react";
+import { TrendingUp, DollarSign, ShoppingCart, MousePointerClick, AlertCircle, CheckCircle2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +14,8 @@ import { PeriodFilter } from "@/components/dashboard/PeriodFilter";
 import { MetricsTable } from "@/components/dashboard/MetricsTable";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { MetricModal } from "@/components/dashboard/MetricModal";
+import { ImportCSVCard } from "@/components/dashboard/ImportCSVCard";
+import { BulkEntryCard } from "@/components/dashboard/BulkEntryCard";
 
 interface MetricData {
   data: string;
@@ -337,144 +336,13 @@ export default function Dashboard() {
           </TabsContent>
           
           <TabsContent value="importacao" className="space-y-6">
-            {/* CSV Upload */}
-            <div className="bg-card border border-border rounded-lg p-5 md:p-6 shadow-sm">
-              <h3 className="text-sm font-medium text-foreground mb-4">Importar CSV de Métricas</h3>
-              <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
-                <FileUp className="mx-auto h-10 w-10 text-muted-foreground mb-4" />
-                <Label htmlFor="csv-upload" className="cursor-pointer">
-                  <p className="text-sm font-medium text-foreground mb-2">Clique para selecionar arquivo CSV</p>
-                  <code className="text-xs bg-muted text-muted-foreground px-3 py-1.5 rounded block mt-2">
-                    data,faturamento,sessoes,investimento,vendas_quantidade,vendas_valor
-                  </code>
-                </Label>
-                <Input 
-                  id="csv-upload" 
-                  type="file" 
-                  accept=".csv" 
-                  onChange={handleCSVUpload} 
-                  className="hidden" 
-                />
-              </div>
-            </div>
-
-            {/* Bulk Entry */}
-            <div className="bg-card border border-border rounded-lg p-5 md:p-6 shadow-sm space-y-4">
-              <h3 className="text-sm font-medium text-foreground">Adicionar múltiplos dias manualmente</h3>
-              <div className="border border-border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="text-xs font-medium">Data</TableHead>
-                      <TableHead className="text-xs font-medium">Faturamento</TableHead>
-                      <TableHead className="text-xs font-medium">Sessões</TableHead>
-                      <TableHead className="text-xs font-medium">Investimento</TableHead>
-                      <TableHead className="text-xs font-medium">Vendas</TableHead>
-                      <TableHead className="text-xs font-medium">Valor</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {bulkRows.map((row, i) => (
-                      <TableRow key={i}>
-                        <TableCell>
-                          <Input 
-                            type="date" 
-                            value={row.data} 
-                            onChange={(e) => { 
-                              const n = [...bulkRows]; 
-                              n[i].data = e.target.value; 
-                              setBulkRows(n); 
-                            }} 
-                            className="h-9 text-sm"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            placeholder="0,00"
-                            value={row.faturamento} 
-                            onChange={(e) => { 
-                              const n = [...bulkRows]; 
-                              n[i].faturamento = e.target.value; 
-                              setBulkRows(n); 
-                            }} 
-                            className="h-9 text-sm"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input 
-                            type="number" 
-                            placeholder="0"
-                            value={row.sessoes} 
-                            onChange={(e) => { 
-                              const n = [...bulkRows]; 
-                              n[i].sessoes = e.target.value; 
-                              setBulkRows(n); 
-                            }} 
-                            className="h-9 text-sm"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            placeholder="0,00"
-                            value={row.investimento_trafego} 
-                            onChange={(e) => { 
-                              const n = [...bulkRows]; 
-                              n[i].investimento_trafego = e.target.value; 
-                              setBulkRows(n); 
-                            }} 
-                            className="h-9 text-sm"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input 
-                            type="number" 
-                            placeholder="0"
-                            value={row.vendas_quantidade} 
-                            onChange={(e) => { 
-                              const n = [...bulkRows]; 
-                              n[i].vendas_quantidade = e.target.value; 
-                              setBulkRows(n); 
-                            }} 
-                            className="h-9 text-sm"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            placeholder="0,00"
-                            value={row.vendas_valor} 
-                            onChange={(e) => { 
-                              const n = [...bulkRows]; 
-                              n[i].vendas_valor = e.target.value; 
-                              setBulkRows(n); 
-                            }} 
-                            className="h-9 text-sm"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="flex gap-3">
-                <Button 
-                  onClick={() => setBulkRows([...bulkRows, { data: "", faturamento: "", sessoes: "", investimento_trafego: "", vendas_quantidade: "", vendas_valor: "" }])} 
-                  variant="outline"
-                  size="sm"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Adicionar linha
-                </Button>
-                <Button onClick={handleBulkSave} disabled={saving} size="sm">
-                  {saving ? "Salvando..." : "Salvar Lote"}
-                </Button>
-              </div>
-            </div>
+            <ImportCSVCard onUpload={handleCSVUpload} />
+            <BulkEntryCard
+              rows={bulkRows}
+              onRowsChange={setBulkRows}
+              onSave={handleBulkSave}
+              saving={saving}
+            />
           </TabsContent>
         </Tabs>
 
