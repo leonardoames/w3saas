@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format, subDays, parseISO, isWithinInterval, startOfMonth } from "date-fns";
 import { DateRange } from "react-day-picker";
+import * as XLSX from "xlsx";
 
 import { KPICard } from "@/components/dashboard/KPICard";
 import { MetricCard } from "@/components/dashboard/MetricCard";
@@ -167,34 +168,79 @@ export default function Dashboard() {
     setModalOpen(true);
   };
 
-  const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const text = event.target?.result as string;
-      const lines = text.split('\n').filter(line => line.trim());
-      let updated = 0;
-      
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',');
-        if (values.length < 6) continue;
-        await supabase.from("metrics_diarias").upsert({
-          user_id: user.id,
-          data: values[0].trim(),
-          faturamento: parseFloat(values[1]) || 0,
-          sessoes: parseInt(values[2]) || 0,
-          investimento_trafego: parseFloat(values[3]) || 0,
-          vendas_quantidade: parseInt(values[4]) || 0,
-          vendas_valor: parseFloat(values[5]) || 0,
-        }, { onConflict: "user_id,data" });
-        updated++;
-      }
-      toast({ title: "Importação concluída", description: `${updated} dias atualizados.` });
-      loadMetrics();
-    };
-    reader.readAsText(file);
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+    
+    if (isExcel) {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const data = new Uint8Array(event.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+          
+          let updated = 0;
+          for (let i = 1; i < jsonData.length; i++) {
+            const row = jsonData[i];
+            if (!row || row.length < 6) continue;
+            
+            // Handle Excel date format (serial number) or string date
+            let dateValue = row[0];
+            if (typeof dateValue === 'number') {
+              const excelDate = XLSX.SSF.parse_date_code(dateValue);
+              dateValue = `${excelDate.y}-${String(excelDate.m).padStart(2, '0')}-${String(excelDate.d).padStart(2, '0')}`;
+            }
+            
+            await supabase.from("metrics_diarias").upsert({
+              user_id: user.id,
+              data: String(dateValue).trim(),
+              faturamento: parseFloat(row[1]) || 0,
+              sessoes: parseInt(row[2]) || 0,
+              investimento_trafego: parseFloat(row[3]) || 0,
+              vendas_quantidade: parseInt(row[4]) || 0,
+              vendas_valor: parseFloat(row[5]) || 0,
+            }, { onConflict: "user_id,data" });
+            updated++;
+          }
+          toast({ title: "Importação concluída", description: `${updated} dias atualizados do Excel.` });
+          loadMetrics();
+        } catch (error) {
+          toast({ title: "Erro na importação", description: "Formato de arquivo inválido.", variant: "destructive" });
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      // CSV handling
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const text = event.target?.result as string;
+        const lines = text.split('\n').filter(line => line.trim());
+        let updated = 0;
+        
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',');
+          if (values.length < 6) continue;
+          await supabase.from("metrics_diarias").upsert({
+            user_id: user.id,
+            data: values[0].trim(),
+            faturamento: parseFloat(values[1]) || 0,
+            sessoes: parseInt(values[2]) || 0,
+            investimento_trafego: parseFloat(values[3]) || 0,
+            vendas_quantidade: parseInt(values[4]) || 0,
+            vendas_valor: parseFloat(values[5]) || 0,
+          }, { onConflict: "user_id,data" });
+          updated++;
+        }
+        toast({ title: "Importação concluída", description: `${updated} dias atualizados.` });
+        loadMetrics();
+      };
+      reader.readAsText(file);
+    }
   };
 
   const handleBulkSave = async () => {
@@ -336,7 +382,7 @@ export default function Dashboard() {
           </TabsContent>
           
           <TabsContent value="importacao" className="space-y-6">
-            <ImportCSVCard onUpload={handleCSVUpload} />
+            <ImportCSVCard onUpload={handleFileUpload} />
             <BulkEntryCard
               rows={bulkRows}
               onRowsChange={setBulkRows}
