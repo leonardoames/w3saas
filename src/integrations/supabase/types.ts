@@ -597,7 +597,57 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      brands_public: {
+        Row: {
+          approval_status: string | null
+          category: string | null
+          created_at: string | null
+          facebook_url: string | null
+          id: string | null
+          instagram_url: string | null
+          is_active: boolean | null
+          logo_url: string | null
+          long_description: string | null
+          name: string | null
+          short_description: string | null
+          status: string | null
+          updated_at: string | null
+          website_url: string | null
+        }
+        Insert: {
+          approval_status?: string | null
+          category?: string | null
+          created_at?: string | null
+          facebook_url?: string | null
+          id?: string | null
+          instagram_url?: string | null
+          is_active?: boolean | null
+          logo_url?: string | null
+          long_description?: string | null
+          name?: string | null
+          short_description?: string | null
+          status?: string | null
+          updated_at?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          approval_status?: string | null
+          category?: string | null
+          created_at?: string | null
+          facebook_url?: string | null
+          id?: string | null
+          instagram_url?: string | null
+          is_active?: boolean | null
+          logo_url?: string | null
+          long_description?: string | null
+          name?: string | null
+          short_description?: string | null
+          status?: string | null
+          updated_at?: string | null
+          website_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_delete_user: {
