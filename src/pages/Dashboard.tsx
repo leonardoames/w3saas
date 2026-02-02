@@ -5,9 +5,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { format, subDays, parseISO, isWithinInterval, startOfMonth } from "date-fns";
+import { format, subDays, parseISO, isWithinInterval } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { normalizeDateToISO, parseCsvMetricsFile, parseExcelMetricsFile, parseLooseInt, parseLooseNumber } from "@/lib/metricsImport";
+import { PlatformType } from "@/lib/platformConfig";
 
 import { KPICard } from "@/components/dashboard/KPICard";
 import { MetricCard } from "@/components/dashboard/MetricCard";
@@ -17,9 +18,12 @@ import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { MetricModal } from "@/components/dashboard/MetricModal";
 import { ImportCSVCard } from "@/components/dashboard/ImportCSVCard";
 import { BulkEntryCard } from "@/components/dashboard/BulkEntryCard";
+import { AIImportCard } from "@/components/dashboard/AIImportCard";
+import { PlatformBreakdownModal } from "@/components/dashboard/PlatformBreakdownModal";
 
 interface MetricData {
   data: string;
+  platform: string;
   faturamento: number;
   sessoes: number;
   investimento_trafego: number;
@@ -29,6 +33,7 @@ interface MetricData {
 
 interface FormData {
   data: string;
+  platform: string;
   faturamento: string;
   sessoes: string;
   investimento_trafego: string;
@@ -36,13 +41,20 @@ interface FormData {
   vendas_valor: string;
 }
 
+type MetricType = 'faturamento' | 'roas' | 'vendas' | 'sessoes';
+
 export default function Dashboard() {
   const { toast } = useToast();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [processingAI, setProcessingAI] = useState(false);
   const [allMetrics, setAllMetrics] = useState<MetricData[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+  
+  // Modal de breakdown por plataforma
+  const [breakdownModalOpen, setBreakdownModalOpen] = useState(false);
+  const [selectedMetricType, setSelectedMetricType] = useState<MetricType | null>(null);
   
   const [selectedPeriod, setSelectedPeriod] = useState("7d");
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
@@ -51,12 +63,13 @@ export default function Dashboard() {
   });
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
   
-  const [bulkRows, setBulkRows] = useState<FormData[]>([
+  const [bulkRows, setBulkRows] = useState<Omit<FormData, 'platform'>[]>([
     { data: "", faturamento: "", sessoes: "", investimento_trafego: "", vendas_quantidade: "", vendas_valor: "" }
   ]);
   
   const [formData, setFormData] = useState<FormData>({
     data: format(new Date(), "yyyy-MM-dd"),
+    platform: "outros",
     faturamento: "",
     sessoes: "",
     investimento_trafego: "",
@@ -87,7 +100,14 @@ export default function Dashboard() {
       .eq("user_id", user.id)
       .gte("data", format(last60DaysDate, "yyyy-MM-dd"))
       .order("data", { ascending: true });
-    setAllMetrics(data || []);
+    
+    // Normalizar dados para incluir platform
+    const normalizedData = (data || []).map(d => ({
+      ...d,
+      platform: d.platform || 'outros'
+    }));
+    
+    setAllMetrics(normalizedData);
   };
 
   const handlePeriodChange = (period: string, startDate: Date, endDate: Date) => {
@@ -129,24 +149,42 @@ export default function Dashboard() {
   const faturamentoPrevious = previousPeriodMetrics.reduce((sum, m) => sum + Number(m.faturamento), 0);
   const ticketMedioPrevious = vendasPrevious > 0 ? faturamentoPrevious / vendasPrevious : 0;
 
+  // Handler para clique nos KPIs
+  const handleKPIClick = (metricType: MetricType) => {
+    setSelectedMetricType(metricType);
+    setBreakdownModalOpen(true);
+  };
+
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!user) return;
 
     setSaving(true);
     try {
-      await supabase.from("metrics_diarias").upsert({
+      // Tenta upsert - se falhar por constraint, faz insert normal
+      const { error } = await supabase.from("metrics_diarias").upsert({
         user_id: user.id,
         data: formData.data,
+        platform: formData.platform || 'outros',
         faturamento: parseFloat(formData.faturamento) || 0,
         sessoes: parseInt(formData.sessoes) || 0,
         investimento_trafego: parseFloat(formData.investimento_trafego) || 0,
         vendas_quantidade: parseInt(formData.vendas_quantidade) || 0,
         vendas_valor: parseFloat(formData.vendas_valor) || 0,
-      }, { onConflict: "user_id,data" });
+      });
+
+      if (error) throw error;
 
       toast({ title: "Sucesso!", description: "Métricas salvas." });
-      setFormData({ data: format(new Date(), "yyyy-MM-dd"), faturamento: "", sessoes: "", investimento_trafego: "", vendas_quantidade: "", vendas_valor: "" });
+      setFormData({ 
+        data: format(new Date(), "yyyy-MM-dd"), 
+        platform: "outros",
+        faturamento: "", 
+        sessoes: "", 
+        investimento_trafego: "", 
+        vendas_quantidade: "", 
+        vendas_valor: "" 
+      });
       setModalOpen(false);
       loadMetrics();
     } catch (error: any) {
@@ -159,6 +197,7 @@ export default function Dashboard() {
   const handleEdit = (metric: MetricData) => {
     setFormData({
       data: metric.data,
+      platform: metric.platform || 'outros',
       faturamento: metric.faturamento.toString(),
       sessoes: metric.sessoes.toString(),
       investimento_trafego: metric.investimento_trafego.toString(),
@@ -168,6 +207,7 @@ export default function Dashboard() {
     setModalOpen(true);
   };
 
+  // Importação manual CSV/XLSX (mantida como fallback)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
@@ -201,8 +241,7 @@ export default function Dashboard() {
       await supabase
         .from("metrics_diarias")
         .upsert(
-          rows.map((r) => ({ ...r, user_id: user.id })),
-          { onConflict: "user_id,data" }
+          rows.map((r) => ({ ...r, user_id: user.id, platform: 'outros' })),
         );
 
       toast({
@@ -218,7 +257,73 @@ export default function Dashboard() {
         variant: "destructive",
       });
     } finally {
-      // permite reimportar o mesmo arquivo
+      e.target.value = "";
+    }
+  };
+
+  // Importação com IA
+  const handleAIUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setProcessingAI(true);
+    toast({ title: "Analisando arquivo...", description: "A IA está identificando a plataforma e extraindo dados." });
+
+    try {
+      // Ler arquivo como texto
+      let fileContent = "";
+      
+      if (file.name.toLowerCase().endsWith(".csv")) {
+        fileContent = await file.text();
+      } else {
+        // Para Excel, converter para CSV-like text
+        const arrayBuffer = await file.arrayBuffer();
+        const XLSX = await import('xlsx');
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        fileContent = XLSX.utils.sheet_to_csv(firstSheet);
+      }
+
+      // Chamar edge function
+      const { data, error } = await supabase.functions.invoke('parse-metrics-ai', {
+        body: { fileContent, userId: user.id }
+      });
+
+      if (error) throw error;
+
+      if (!data?.metrics || data.metrics.length === 0) {
+        throw new Error('A IA não conseguiu extrair métricas do arquivo.');
+      }
+
+      // Salvar métricas
+      const metricsToSave = data.metrics.map((m: any) => ({
+        user_id: user.id,
+        data: m.data,
+        platform: m.platform || data.detectedPlatform || 'outros',
+        faturamento: m.faturamento || 0,
+        sessoes: m.sessoes || 0,
+        investimento_trafego: m.investimento_trafego || 0,
+        vendas_quantidade: m.vendas_quantidade || 0,
+        vendas_valor: m.vendas_valor || 0,
+      }));
+
+      await supabase.from("metrics_diarias").upsert(metricsToSave);
+
+      toast({ 
+        title: "Importação IA concluída!", 
+        description: `${data.metrics.length} registros da plataforma "${data.detectedPlatform}" importados.` 
+      });
+      
+      loadMetrics();
+    } catch (error: any) {
+      console.error('AI Import error:', error);
+      toast({ 
+        title: "Erro na IA", 
+        description: error.message || "Falha ao processar arquivo.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setProcessingAI(false);
       e.target.value = "";
     }
   };
@@ -234,6 +339,7 @@ export default function Dashboard() {
           return {
             user_id: user.id,
             data: iso,
+            platform: 'outros',
             faturamento: parseLooseNumber(row.faturamento),
             sessoes: parseLooseInt(row.sessoes),
             investimento_trafego: parseLooseNumber(row.investimento_trafego),
@@ -248,7 +354,7 @@ export default function Dashboard() {
         return;
       }
 
-      await supabase.from("metrics_diarias").upsert(payload, { onConflict: "user_id,data" });
+      await supabase.from("metrics_diarias").upsert(payload);
       toast({ title: "Lote salvo", description: `${payload.length} dias salvos.` });
       setBulkRows([{ data: "", faturamento: "", sessoes: "", investimento_trafego: "", vendas_quantidade: "", vendas_valor: "" }]);
       loadMetrics();
@@ -282,31 +388,35 @@ export default function Dashboard() {
         {/* Header */}
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">Acompanhe seus resultados</p>
+          <p className="text-sm text-muted-foreground mt-1">Visão unificada de todas as plataformas</p>
         </div>
         
-        {/* KPIs - Notion style */}
+        {/* KPIs - Clicáveis para drill-down */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard
             title="Faturamento"
             value={faturamentoTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
             subtitle={`Últimos ${selectedPeriod === "7d" ? "7 dias" : selectedPeriod === "14d" ? "14 dias" : selectedPeriod === "30d" ? "30 dias" : selectedPeriod === "month" ? "mês" : "período"}`}
             icon={DollarSign}
+            onClick={() => handleKPIClick('faturamento')}
           />
           <KPICard
             title="ROAS"
             value={roas.toFixed(2)}
             icon={TrendingUp}
+            onClick={() => handleKPIClick('roas')}
           />
           <KPICard
             title="Vendas"
             value={vendasTotal.toLocaleString("pt-BR")}
             icon={ShoppingCart}
+            onClick={() => handleKPIClick('vendas')}
           />
           <KPICard
             title="Sessões"
             value={sessoesTotal.toLocaleString("pt-BR")}
             icon={MousePointerClick}
+            onClick={() => handleKPIClick('sessoes')}
           />
         </div>
 
@@ -362,7 +472,15 @@ export default function Dashboard() {
                 <h3 className="text-sm font-medium text-foreground">Últimos 60 dias</h3>
                 <Button 
                   onClick={() => { 
-                    setFormData({ data: format(new Date(), "yyyy-MM-dd"), faturamento: "", sessoes: "", investimento_trafego: "", vendas_quantidade: "", vendas_valor: "" }); 
+                    setFormData({ 
+                      data: format(new Date(), "yyyy-MM-dd"), 
+                      platform: "outros",
+                      faturamento: "", 
+                      sessoes: "", 
+                      investimento_trafego: "", 
+                      vendas_quantidade: "", 
+                      vendas_valor: "" 
+                    }); 
                     setModalOpen(true); 
                   }}
                   size="sm"
@@ -376,7 +494,13 @@ export default function Dashboard() {
           </TabsContent>
           
           <TabsContent value="importacao" className="space-y-6">
+            {/* AI Import - Principal */}
+            <AIImportCard onUpload={handleAIUpload} processing={processingAI} />
+            
+            {/* Fallback: CSV/XLSX manual */}
             <ImportCSVCard onUpload={handleFileUpload} />
+            
+            {/* Manual bulk entry */}
             <BulkEntryCard
               rows={bulkRows}
               onRowsChange={setBulkRows}
@@ -386,7 +510,7 @@ export default function Dashboard() {
           </TabsContent>
         </Tabs>
 
-        {/* Modal */}
+        {/* Modal de entrada manual */}
         <MetricModal
           open={modalOpen}
           onOpenChange={setModalOpen}
@@ -394,6 +518,14 @@ export default function Dashboard() {
           onFormChange={setFormData}
           onSubmit={handleSubmit}
           saving={saving}
+        />
+
+        {/* Modal de breakdown por plataforma */}
+        <PlatformBreakdownModal
+          open={breakdownModalOpen}
+          onOpenChange={setBreakdownModalOpen}
+          metricType={selectedMetricType}
+          metrics={filteredMetrics}
         />
       </div>
     </div>

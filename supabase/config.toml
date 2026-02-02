@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.influenciadores-api]
 verify_jwt = false
+
+[functions.parse-metrics-ai]
+verify_jwt = false
