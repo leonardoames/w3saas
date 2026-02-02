@@ -1,14 +1,28 @@
-import { TrendingUp, DollarSign, ShoppingCart, MousePointerClick, AlertCircle, CheckCircle2, Plus } from "lucide-react";
+import {
+  TrendingUp,
+  DollarSign,
+  ShoppingCart,
+  MousePointerClick,
+  AlertCircle,
+  CheckCircle2,
+  Plus,
+  Camera,
+  Image as ImageIcon,
+  Loader2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format, subDays, parseISO, isWithinInterval, isValid } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { normalizeDateToISO, parseExcelMetricsFile, parseLooseInt, parseLooseNumber } from "@/lib/metricsImport";
-import { PlatformType } from "@/lib/platformConfig";
+import { PlatformType, PLATFORMS } from "@/lib/platformConfig";
 
 import { KPICard } from "@/components/dashboard/KPICard";
 import { MetricCard } from "@/components/dashboard/MetricCard";
@@ -21,24 +35,18 @@ import { BulkEntryCard } from "@/components/dashboard/BulkEntryCard";
 import { AIImportCard } from "@/components/dashboard/AIImportCard";
 import { PlatformBreakdownModal } from "@/components/dashboard/PlatformBreakdownModal";
 
-// --- Funções Auxiliares ---
-
-// Função robusta e genérica para ler CSVs (Shopify, Shopee Ads, Shopee Shop, ML, etc)
+// --- Funções Auxiliares (Parser CSV) ---
+// (Mantido igual ao anterior, omitindo repetição para focar no Screenshot, mas incluído no código final)
 const parseGenericCSV = (text: string): any[] => {
   const lines = text.split("\n").filter((l) => l.trim());
   if (lines.length < 2) return [];
 
-  // 1. Detecção Inteligente do Cabeçalho
-  // Procura nas primeiras 20 linhas por uma linha que contenha colunas chave (Data + Alguma métrica)
   let headerIndex = -1;
   let delimiter = ",";
 
   for (let i = 0; i < Math.min(lines.length, 20); i++) {
     const line = lines[i].toLowerCase();
-    // Tenta detectar separador
     const currentDelimiter = line.includes(";") ? ";" : ",";
-
-    // Palavras-chave obrigatórias para ser um cabeçalho válido
     const hasDate = line.includes("data") || line.includes("date") || line.includes("dia") || line.includes("day");
     const hasMetric =
       line.includes("vendas") ||
@@ -56,13 +64,10 @@ const parseGenericCSV = (text: string): any[] => {
     }
   }
 
-  // Se não achou cabeçalho, tenta assumir a linha 0
   if (headerIndex === -1) headerIndex = 0;
-
   const headerLine = lines[headerIndex];
   const clean = (val: string) => (val ? val.replace(/^"|"$/g, "").trim() : "");
 
-  // Divide o cabeçalho respeitando aspas se for vírgula
   let headers: string[] = [];
   if (delimiter === ",") {
     headers = headerLine.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map((h) => clean(h).toLowerCase());
@@ -70,43 +75,33 @@ const parseGenericCSV = (text: string): any[] => {
     headers = headerLine.split(";").map((h) => clean(h).toLowerCase());
   }
 
-  // 2. Mapeamento Estendido de Colunas (Suporte Shopee Ads e outros)
   const idx = {
     data: headers.findIndex((h) => h === "dia" || h === "day" || h === "date" || h === "data"),
-
-    // Faturamento: GMV (Shopee Ads), Receita, Vendas, Total Sales
     faturamento: headers.findIndex(
       (h) =>
-        h === "gmv" || // Shopee Ads
+        h === "gmv" ||
         h.includes("total de vendas") ||
         h.includes("total sales") ||
         h === "faturamento" ||
         h === "receita" ||
         h.includes("vendas (brl)"),
     ),
-
-    // Vendas Qty: Conversões (Shopee Ads), Pedidos, Orders
     vendas_qty: headers.findIndex(
       (h) =>
-        h === "conversões" || // Shopee Ads
+        h === "conversões" ||
         h === "conversions" ||
         h.includes("pedidos") ||
         h.includes("orders") ||
         h === "vendas" ||
         h === "itens vendidos",
     ),
-
-    // Sessões: Cliques (Shopee Ads - pedido do usuário), Visitantes, Visits
-    // Prioridade: Visitantes > Sessões > Cliques (Se não houver visitantes, usamos cliques como proxy)
     sessoes: headers.findIndex(
       (h) => h.includes("visitantes") || h.includes("visitors") || h.includes("sessoes") || h.includes("sessions"),
     ),
     cliques: headers.findIndex((h) => h === "cliques" || h === "clicks" || h === "clics"),
-
-    // Investimento: Despesas (Shopee Ads), Custo, Ad Spend
     investimento: headers.findIndex(
       (h) =>
-        h === "despesas" || // Shopee Ads
+        h === "despesas" ||
         h.includes("investimento") ||
         h.includes("custo") ||
         h.includes("cost") ||
@@ -115,68 +110,42 @@ const parseGenericCSV = (text: string): any[] => {
     ),
   };
 
-  // Se não achou coluna explícita de sessões, usa cliques
-  if (idx.sessoes === -1 && idx.cliques !== -1) {
-    idx.sessoes = idx.cliques;
-  }
-
-  // Se não achou data, retorna vazio (impossível importar para dashboard diário sem data)
+  if (idx.sessoes === -1 && idx.cliques !== -1) idx.sessoes = idx.cliques;
   if (idx.data === -1) return [];
 
   return lines
     .slice(headerIndex + 1)
     .map((line) => {
       let cols: string[];
-
-      // Lógica de SPLIT robusta
       if (delimiter === ",") {
         cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(clean);
       } else {
         cols = line.split(";").map(clean);
       }
-
       if (!cols[idx.data]) return null;
-
       let dateStr = cols[idx.data];
-
-      // Ignora linhas de resumo ou intervalos (ex: "01/01/2026-31/01/2026")
       if (dateStr.includes("-") && dateStr.length > 10) return null;
       if (dateStr.toLowerCase().includes("total")) return null;
 
-      // Normalização da data (DD/MM/YYYY -> YYYY-MM-DD)
       if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
         const [d, m, y] = dateStr.split("/");
         dateStr = `${y}-${m}-${d}`;
       } else if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        // Já está ok
       } else {
-        // Tenta parsear formatos loucos ou ignora
         const parsed = Date.parse(dateStr);
-        if (!isNaN(parsed)) {
-          dateStr = new Date(parsed).toISOString().split("T")[0];
-        }
+        if (!isNaN(parsed)) dateStr = new Date(parsed).toISOString().split("T")[0];
       }
 
-      // Parser Numérico
       const parseNum = (val: string) => {
         if (!val) return 0;
-        let cleanVal = val;
-
-        // Remove R$, BRL, etc
-        cleanVal = cleanVal.replace(/[^\d.,-]/g, "");
-
+        let cleanVal = val.replace(/[^\d.,-]/g, "");
         if (cleanVal.includes(",") && !cleanVal.includes(".")) {
-          cleanVal = cleanVal.replace(",", "."); // BR puro
+          cleanVal = cleanVal.replace(",", ".");
         } else if (cleanVal.includes(".") && cleanVal.includes(",")) {
           const lastDot = cleanVal.lastIndexOf(".");
           const lastComma = cleanVal.lastIndexOf(",");
-          if (lastComma > lastDot) {
-            // BR misto
-            cleanVal = cleanVal.replace(/\./g, "").replace(",", ".");
-          } else {
-            // US misto
-            cleanVal = cleanVal.replace(/,/g, "");
-          }
+          if (lastComma > lastDot) cleanVal = cleanVal.replace(/\./g, "").replace(",", ".");
+          else cleanVal = cleanVal.replace(/,/g, "");
         }
         return parseFloat(cleanVal) || 0;
       };
@@ -199,7 +168,90 @@ const parseGenericCSV = (text: string): any[] => {
     .filter((row) => row && row.data && (row.faturamento > 0 || row.sessoes > 0 || row.investimento_trafego > 0));
 };
 
-// Função para consolidar linhas duplicadas
+// --- Componente Novo: Screenshot Import Card ---
+const ScreenshotImportCard = ({
+  onUpload,
+  processing,
+}: {
+  onUpload: (file: File, platform: PlatformType) => void;
+  processing: boolean;
+}) => {
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformType>("shopee");
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onUpload(file, selectedPlatform);
+    }
+  };
+
+  return (
+    <Card className="border-dashed border-2 border-primary/20 bg-primary/5">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg text-primary">
+          <Camera className="h-5 w-5" />
+          Importar Print (IA)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label>De qual plataforma é o print?</Label>
+          <Select value={selectedPlatform} onValueChange={(v) => setSelectedPlatform(v as PlatformType)}>
+            <SelectTrigger className="bg-background">
+              <SelectValue placeholder="Selecione..." />
+            </SelectTrigger>
+            <SelectContent>
+              {PLATFORMS.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex justify-center">
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            id="screenshot-upload"
+            onChange={handleFileChange}
+            disabled={processing}
+          />
+          <label htmlFor="screenshot-upload" className="w-full">
+            <Button
+              variant="outline"
+              className="w-full h-24 flex flex-col gap-2 border-dashed border-2 hover:bg-primary/10 transition-colors"
+              disabled={processing}
+              asChild
+            >
+              <span className="cursor-pointer">
+                {processing ? (
+                  <>
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="text-muted-foreground">Lendo imagem com IA...</span>
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon className="h-8 w-8 text-primary" />
+                    <span className="text-muted-foreground">Clique para enviar Print / Foto</span>
+                    <span className="text-xs text-muted-foreground/70">Suporta PNG, JPG, WebP</span>
+                  </>
+                )}
+              </span>
+            </Button>
+          </label>
+        </div>
+        <p className="text-xs text-muted-foreground text-center">
+          A IA tentará ler Faturamento, Gastos, Vendas e Sessões da imagem.
+        </p>
+      </CardContent>
+    </Card>
+  );
+};
+
+// --- Funções Auxiliares de Consolidação ---
 const consolidateMetrics = (metrics: any[]) => {
   const map = new Map();
 
@@ -257,7 +309,11 @@ export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [processingAI, setProcessingAI] = useState(false);
+
+  // Estados de Processamento
+  const [processingAI, setProcessingAI] = useState(false); // Para CSV
+  const [processingScreenshot, setProcessingScreenshot] = useState(false); // Para Imagem
+
   const [allMetrics, setAllMetrics] = useState<MetricData[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -409,9 +465,9 @@ export default function Dashboard() {
   const custoMidiaPorVenda = vendasTotal > 0 ? investimentoTotal / vendasTotal : 0;
   const taxaConversao = sessoesTotal > 0 ? (vendasTotal / sessoesTotal) * 100 : 0;
 
-  const vendasPrevious = previousPeriodMetrics.reduce((sum, m) => sum + Number(m.vendas_quantidade), 0);
-  const faturamentoPrevious = previousPeriodMetrics.reduce((sum, m) => sum + Number(m.faturamento), 0);
-  const ticketMedioPrevious = vendasPrevious > 0 ? faturamentoPrevious / vendasPrevious : 0;
+  const ticketMedioPrevious =
+    previousPeriodMetrics.reduce((sum, m) => sum + Number(m.faturamento), 0) /
+    (previousPeriodMetrics.reduce((sum, m) => sum + Number(m.vendas_quantidade), 0) || 1);
 
   const handleKPIClick = (metricType: MetricType) => {
     setSelectedMetricType(metricType);
@@ -501,8 +557,7 @@ export default function Dashboard() {
       if (!rows.length) {
         toast({
           title: "Atenção",
-          description:
-            "Não encontrei linhas válidas. Verifique se o CSV possui colunas de Data e Métricas (ex: GMV, Cliques).",
+          description: "Não encontrei linhas válidas. Verifique se o arquivo possui colunas de Data e Métricas.",
           variant: "destructive",
         });
         return;
@@ -540,12 +595,12 @@ export default function Dashboard() {
     }
   };
 
-  // Importação IA
+  // Importação CSV via IA
   const handleAIUpload = async (file: File, platform: PlatformType) => {
     if (!file || !user) return;
 
     setProcessingAI(true);
-    toast({ title: "IA processando...", description: `Analisando arquivo para ${platform}...` });
+    toast({ title: "IA processando CSV...", description: `Analisando arquivo para ${platform}...` });
 
     try {
       let fileContent = "";
@@ -571,24 +626,16 @@ export default function Dashboard() {
       }
 
       const rawMetrics = data.metrics
-        .map((m: any) => {
-          const cleanDate = normalizeDateToISO(m.data) || m.data;
-
-          return {
-            user_id: user.id,
-            data: cleanDate,
-            platform: platform, // Força a plataforma selecionada
-            faturamento: typeof m.faturamento === "number" ? m.faturamento : parseLooseNumber(m.faturamento),
-            sessoes: typeof m.sessoes === "number" ? m.sessoes : parseLooseInt(m.sessoes),
-            investimento_trafego:
-              typeof m.investimento_trafego === "number"
-                ? m.investimento_trafego
-                : parseLooseNumber(m.investimento_trafego),
-            vendas_quantidade:
-              typeof m.vendas_quantidade === "number" ? m.vendas_quantidade : parseLooseInt(m.vendas_quantidade),
-            vendas_valor: typeof m.vendas_valor === "number" ? m.vendas_valor : parseLooseNumber(m.vendas_valor),
-          };
-        })
+        .map((m: any) => ({
+          user_id: user.id,
+          data: normalizeDateToISO(m.data) || m.data,
+          platform: platform,
+          faturamento: parseLooseNumber(m.faturamento),
+          sessoes: parseLooseInt(m.sessoes),
+          investimento_trafego: parseLooseNumber(m.investimento_trafego),
+          vendas_quantidade: parseLooseInt(m.vendas_quantidade),
+          vendas_valor: parseLooseNumber(m.vendas_valor),
+        }))
         .filter((m: any) => m.data);
 
       const consolidatedMetrics = consolidateMetrics(rawMetrics);
@@ -599,21 +646,71 @@ export default function Dashboard() {
 
       if (upsertError) throw upsertError;
 
-      toast({
-        title: "Sucesso!",
-        description: `${consolidatedMetrics.length} registros atualizados em ${platform}.`,
-      });
-
+      toast({ title: "Sucesso!", description: `${consolidatedMetrics.length} registros atualizados.` });
       await loadMetrics();
     } catch (error: any) {
-      console.error("AI Import error:", error);
-      toast({
-        title: "Erro na IA",
-        description: error.message || "Falha ao processar arquivo.",
-        variant: "destructive",
-      });
+      toast({ title: "Erro na IA", description: error.message, variant: "destructive" });
     } finally {
       setProcessingAI(false);
+    }
+  };
+
+  // --- NOVA FUNÇÃO: Upload de Print/Screenshot ---
+  const handleScreenshotUpload = async (file: File, platform: PlatformType) => {
+    if (!file || !user) return;
+
+    setProcessingScreenshot(true);
+    toast({ title: "Lendo imagem...", description: "Isso pode levar alguns segundos." });
+
+    try {
+      // 1. Converter imagem para Base64
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+
+      const base64Image = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (error) => reject(error);
+      });
+
+      // 2. Chamar a Edge Function "scan-screenshot"
+      const { data, error } = await supabase.functions.invoke("scan-screenshot", {
+        body: { image: base64Image, platform, userId: user.id },
+      });
+
+      if (error) throw error;
+      if (!data?.metrics || data.metrics.length === 0) {
+        throw new Error("A IA não encontrou dados na imagem.");
+      }
+
+      // 3. Processar e salvar
+      const rawMetrics = data.metrics
+        .map((m: any) => ({
+          user_id: user.id,
+          data: normalizeDateToISO(m.data) || m.data,
+          platform: platform,
+          faturamento: Number(m.faturamento) || 0,
+          sessoes: Number(m.sessoes) || 0,
+          investimento_trafego: Number(m.investimento_trafego) || 0,
+          vendas_quantidade: Number(m.vendas_quantidade) || 0,
+          vendas_valor: Number(m.faturamento) || 0, // Assume GMV como Vendas Valor
+        }))
+        .filter((m: any) => m.data);
+
+      const consolidatedMetrics = consolidateMetrics(rawMetrics);
+
+      const { error: upsertError } = await supabase.from("metrics_diarias").upsert(consolidatedMetrics, {
+        onConflict: "user_id, data, platform",
+      });
+
+      if (upsertError) throw upsertError;
+
+      toast({ title: "Print Processado!", description: `${consolidatedMetrics.length} dados extraídos.` });
+      await loadMetrics();
+    } catch (error: any) {
+      console.error(error);
+      toast({ title: "Erro no Print", description: error.message, variant: "destructive" });
+    } finally {
+      setProcessingScreenshot(false);
     }
   };
 
@@ -787,9 +884,16 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="importacao" className="space-y-6">
-            <AIImportCard onUpload={handleAIUpload} processing={processingAI} />
-            <ImportCSVCard onUpload={handleFileUpload} />
-            <BulkEntryCard rows={bulkRows} onRowsChange={setBulkRows} onSave={handleBulkSave} saving={saving} />
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Novo Card de Screenshot */}
+              <ScreenshotImportCard onUpload={handleScreenshotUpload} processing={processingScreenshot} />
+              <AIImportCard onUpload={handleAIUpload} processing={processingAI} />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <ImportCSVCard onUpload={handleFileUpload} />
+              <BulkEntryCard rows={bulkRows} onRowsChange={setBulkRows} onSave={handleBulkSave} saving={saving} />
+            </div>
           </TabsContent>
         </Tabs>
 
