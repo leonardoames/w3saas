@@ -32,23 +32,29 @@ const parseShopifyCSV = (text: string): any[] => {
   const delimiter = firstLine.includes(";") ? ";" : ",";
 
   const clean = (val: string) => (val ? val.replace(/^"|"$/g, "").trim() : "");
+  // Remove aspas extras e converte para minúsculo para facilitar a busca
   const headers = firstLine.split(delimiter).map((h) => clean(h).toLowerCase());
 
   // Mapeamento expandido para encontrar as colunas corretas
   const idx = {
     data: headers.findIndex((h) => h === "dia" || h === "day" || h === "date" || h === "data"),
     faturamento: headers.findIndex(
-      (h) => h.includes("total de vendas") || h.includes("total sales") || h === "faturamento" || h.includes("gmv"),
+      (h) =>
+        h.includes("total de vendas") ||
+        h.includes("total sales") ||
+        h === "faturamento" ||
+        h.includes("gmv") ||
+        h.includes("vendas (brl)"),
     ),
     vendas_qty: headers.findIndex(
       (h) => h.includes("pedidos") || h.includes("orders") || h === "vendas" || h.includes("orders placed"),
     ),
-    // Adicionado 'visitantes', 'visits', 'visitors' para capturar sessões corretamente
+    // Mapeamento específico para Shopee (Visitantes) e Shopify (Sessões)
     sessoes: headers.findIndex(
       (h) =>
         h.includes("sessoes") ||
         h.includes("sessions") ||
-        h.includes("visitantes") ||
+        h.includes("visitantes") || // Shopee usa "Visitantes"
         h.includes("visits") ||
         h.includes("visitors") ||
         h.includes("page views"),
@@ -63,18 +69,26 @@ const parseShopifyCSV = (text: string): any[] => {
     .map((line) => {
       let cols: string[];
 
-      // Lógica para separar colunas respeitando aspas
+      // Lógica de SPLIT mais robusta para CSVs com aspas (ex: "1.234,56")
       if (delimiter === ",") {
-        const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-        cols = matches ? matches.map(clean) : [];
+        // Divide por vírgula APENAS se não estiver dentro de aspas
+        // Isso impede que "186,65" seja quebrado em duas colunas
+        cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(clean);
       } else {
         cols = line.split(";").map(clean);
       }
 
+      // Validação: Se não achou a coluna de data, pula a linha
       if (!cols[idx.data]) return null;
 
-      // Normalização da data (DD/MM/YYYY -> YYYY-MM-DD)
       let dateStr = cols[idx.data];
+
+      // FILTRO SHOPEE: Ignorar linhas de resumo ou cabeçalhos repetidos
+      // A Shopee coloca uma linha com intervalo "03/01/2026-01/02/2026" logo no início, ou repete "Data"
+      if (dateStr.includes("-") && dateStr.length > 10) return null; // Intervalo de datas
+      if (dateStr.toLowerCase().includes("data")) return null; // Cabeçalho repetido
+
+      // Normalização da data (DD/MM/YYYY -> YYYY-MM-DD)
       if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
         const [d, m, y] = dateStr.split("/");
         dateStr = `${y}-${m}-${d}`;
@@ -106,11 +120,10 @@ const parseShopifyCSV = (text: string): any[] => {
         return parseFloat(cleanVal) || 0;
       };
 
-      // Parser específico para inteiros (Sessões/Pedidos) - Remove pontuação de milhar
+      // Parser específico para inteiros (Sessões/Pedidos/Visitantes)
       const parseIntSafe = (val: string) => {
         if (!val) return 0;
         // Remove tudo que não for número (ex: "1.234" vira "1234")
-        // Cuidado: isso assume que sessões são números inteiros (sem decimais)
         const clean = val.replace(/\D/g, "");
         return parseInt(clean) || 0;
       };
@@ -120,7 +133,7 @@ const parseShopifyCSV = (text: string): any[] => {
         faturamento: idx.faturamento >= 0 ? parseNum(cols[idx.faturamento]) : 0,
         vendas_quantidade: idx.vendas_qty >= 0 ? parseIntSafe(cols[idx.vendas_qty]) : 0,
         vendas_valor: idx.faturamento >= 0 ? parseNum(cols[idx.faturamento]) : 0,
-        // Usa o parser seguro para sessões
+        // Usa o parser seguro para sessões (mapeado de "Visitantes" na Shopee)
         sessoes: idx.sessoes >= 0 ? parseIntSafe(cols[idx.sessoes]) : 0,
         investimento_trafego: idx.investimento >= 0 ? parseNum(cols[idx.investimento]) : 0,
       };
