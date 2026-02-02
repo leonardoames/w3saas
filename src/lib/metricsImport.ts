@@ -113,6 +113,62 @@ function findHeaderRowIndex(rows: unknown[][]): number {
   return 0;
 }
 
+// Detecta se é um relatório de resumo Shopify (headers sem coluna de data, com "Vendas líquidas", "Pedidos", etc.)
+function isShopifySummaryReport(headers: string[]): boolean {
+  const shopifyIndicators = [
+    "vendas líquidas",
+    "itens líquidos vendidos", 
+    "valor médio do pedido",
+    "total de vendas",
+    "pedidos",
+    "vendas brutas"
+  ];
+  const hasShopifyHeaders = shopifyIndicators.filter(ind => headers.includes(ind)).length >= 2;
+  const hasDataColumn = headers.includes("data") || headers.includes("date");
+  return hasShopifyHeaders && !hasDataColumn;
+}
+
+// Extrai data do nome do arquivo (ex: "Vendas_líquidas_-_2026-01-26_-_2026-02-02.csv")
+function extractDateFromFilename(filename?: string): string | null {
+  if (!filename) return null;
+  // Procura padrão YYYY-MM-DD no nome
+  const matches = filename.match(/(\d{4}-\d{2}-\d{2})/g);
+  if (matches && matches.length > 0) {
+    // Retorna a última data encontrada (data final do período)
+    return matches[matches.length - 1];
+  }
+  return null;
+}
+
+// Mapeia colunas de relatório resumo Shopify
+function mapShopifySummaryColumns(headers: string[]) {
+  const h = headers;
+  const idxFaturamento = getIndex(h, ["vendas brutas", "total de vendas", "vendas líquidas"]);
+  const idxVendasQtd = getIndex(h, ["pedidos", "itens líquidos vendidos"]);
+  const idxVendasValor = getIndex(h, ["vendas brutas", "total de vendas", "vendas líquidas"]);
+  // Shopify summary não tem sessões nem investimento
+  return { idxFaturamento, idxVendasQtd, idxVendasValor };
+}
+
+// Constrói linha de métrica a partir de relatório resumo Shopify
+function buildShopifySummaryRow(row: unknown[], map: ReturnType<typeof mapShopifySummaryColumns>, dateToUse: string): MetricImportRow | null {
+  const faturamento = map.idxFaturamento >= 0 ? parseLooseNumber(row[map.idxFaturamento]) : 0;
+  const vendasQtd = map.idxVendasQtd >= 0 ? parseLooseInt(row[map.idxVendasQtd]) : 0;
+  const vendasValor = map.idxVendasValor >= 0 ? parseLooseNumber(row[map.idxVendasValor]) : faturamento;
+
+  // Se todos os valores são 0, ignora
+  if (faturamento === 0 && vendasQtd === 0 && vendasValor === 0) return null;
+
+  return {
+    data: dateToUse,
+    faturamento,
+    sessoes: 0,
+    investimento_trafego: 0,
+    vendas_quantidade: vendasQtd,
+    vendas_valor: vendasValor,
+  };
+}
+
 function getIndex(headers: string[], aliases: string[]): number {
   for (const a of aliases) {
     const idx = headers.indexOf(a);
@@ -159,7 +215,7 @@ function buildRowFromMappedColumns(row: unknown[], map: ReturnType<typeof mapCol
   };
 }
 
-export function parseExcelMetricsFile(arrayBuffer: ArrayBuffer): MetricImportRow[] {
+export function parseExcelMetricsFile(arrayBuffer: ArrayBuffer, filename?: string): MetricImportRow[] {
   const bytes = new Uint8Array(arrayBuffer);
   const workbook = XLSX.read(bytes, { type: "array" });
   const sheetName = workbook.SheetNames[0];
@@ -169,6 +225,22 @@ export function parseExcelMetricsFile(arrayBuffer: ArrayBuffer): MetricImportRow
 
   const headerRowIndex = findHeaderRowIndex(matrix);
   const headers = (matrix[headerRowIndex] ?? []).map(normalizeHeader);
+  
+  // Detecta relatório de resumo Shopify (sem coluna de data)
+  if (isShopifySummaryReport(headers)) {
+    const dateToUse = extractDateFromFilename(filename) || new Date().toISOString().split('T')[0];
+    const shopifyMap = mapShopifySummaryColumns(headers);
+    const out: MetricImportRow[] = [];
+    
+    for (let i = headerRowIndex + 1; i < matrix.length; i++) {
+      const row = matrix[i];
+      if (!row || row.every((c) => String(c ?? "").trim() === "")) continue;
+      const built = buildShopifySummaryRow(row, shopifyMap, dateToUse);
+      if (built) out.push(built);
+    }
+    return out;
+  }
+  
   const map = mapColumns(headers);
 
   // Se não conseguimos mapear o mínimo, cai no formato padrão por posição (compatibilidade)
@@ -230,14 +302,32 @@ function parseCsvLine(line: string, delimiter: string): string[] {
   return out.map((s) => s.trim());
 }
 
-export function parseCsvMetricsFile(text: string): MetricImportRow[] {
+export function parseCsvMetricsFile(text: string, filename?: string): MetricImportRow[] {
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   if (!lines.length) return [];
 
   // Detect delimiter (simple)
   const delimiter = (lines[0].match(/;/g)?.length ?? 0) > (lines[0].match(/,/g)?.length ?? 0) ? ";" : ",";
 
-  // Find header
+  // Parse first line as headers
+  const headers = parseCsvLine(lines[0], delimiter).map(normalizeHeader);
+  
+  // Detecta relatório de resumo Shopify (sem coluna de data)
+  if (isShopifySummaryReport(headers)) {
+    const dateToUse = extractDateFromFilename(filename) || new Date().toISOString().split('T')[0];
+    const shopifyMap = mapShopifySummaryColumns(headers);
+    const out: MetricImportRow[] = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      const row = parseCsvLine(lines[i], delimiter);
+      if (!row.length) continue;
+      const built = buildShopifySummaryRow(row, shopifyMap, dateToUse);
+      if (built) out.push(built);
+    }
+    return out;
+  }
+
+  // Find header with date column (standard flow)
   let headerIndex = 0;
   for (let i = 0; i < Math.min(lines.length, 20); i++) {
     const cols = parseCsvLine(lines[i], delimiter).map(normalizeHeader);
@@ -248,8 +338,8 @@ export function parseCsvMetricsFile(text: string): MetricImportRow[] {
     }
   }
 
-  const headers = parseCsvLine(lines[headerIndex], delimiter).map(normalizeHeader);
-  const map = mapColumns(headers);
+  const standardHeaders = parseCsvLine(lines[headerIndex], delimiter).map(normalizeHeader);
+  const map = mapColumns(standardHeaders);
   const canMap = map.idxData >= 0;
 
   const out: MetricImportRow[] = [];
