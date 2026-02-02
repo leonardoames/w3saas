@@ -1,15 +1,31 @@
 import { FileUp, FileSpreadsheet } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useState } from "react";
+import { PlatformSelect } from "./PlatformSelect";
+import { PlatformType } from "@/lib/platformConfig";
 
 interface ImportFileCardProps {
-  onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onUpload: (e: React.ChangeEvent<HTMLInputElement>, platform: PlatformType) => void;
 }
 
 export function ImportCSVCard({ onUpload }: ImportFileCardProps) {
+  const [platform, setPlatform] = useState<PlatformType>("outros");
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onUpload(e, platform);
+  };
+
   return (
     <div className="bg-card border border-border rounded-lg p-5 md:p-6 shadow-sm">
       <h3 className="text-sm font-medium text-foreground mb-4">Importar Métricas (CSV ou Excel)</h3>
+      
+      {/* Seletor de plataforma */}
+      <div className="mb-4">
+        <Label className="text-xs text-muted-foreground mb-2 block">Selecione a plataforma de origem</Label>
+        <PlatformSelect value={platform} onValueChange={setPlatform} className="w-full" />
+      </div>
+      
       <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer">
         <Label htmlFor="file-upload" className="cursor-pointer block">
           <div className="flex justify-center gap-2 mb-4">
@@ -25,7 +41,7 @@ export function ImportCSVCard({ onUpload }: ImportFileCardProps) {
           id="file-upload" 
           type="file" 
           accept=".csv,.xlsx,.xls" 
-          onChange={onUpload} 
+          onChange={handleFileChange} 
           className="hidden" 
         />
       </div>
