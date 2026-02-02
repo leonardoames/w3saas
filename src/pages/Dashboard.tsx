@@ -23,107 +23,166 @@ import { PlatformBreakdownModal } from "@/components/dashboard/PlatformBreakdown
 
 // --- Funções Auxiliares ---
 
-// Função robusta para ler CSVs (Shopify, Shopee, etc)
-const parseShopifyCSV = (text: string): any[] => {
+// Função robusta e genérica para ler CSVs (Shopify, Shopee Ads, Shopee Shop, ML, etc)
+const parseGenericCSV = (text: string): any[] => {
   const lines = text.split("\n").filter((l) => l.trim());
   if (lines.length < 2) return [];
 
-  const firstLine = lines[0];
-  const delimiter = firstLine.includes(";") ? ";" : ",";
+  // 1. Detecção Inteligente do Cabeçalho
+  // Procura nas primeiras 20 linhas por uma linha que contenha colunas chave (Data + Alguma métrica)
+  let headerIndex = -1;
+  let delimiter = ",";
 
+  for (let i = 0; i < Math.min(lines.length, 20); i++) {
+    const line = lines[i].toLowerCase();
+    // Tenta detectar separador
+    const currentDelimiter = line.includes(";") ? ";" : ",";
+
+    // Palavras-chave obrigatórias para ser um cabeçalho válido
+    const hasDate = line.includes("data") || line.includes("date") || line.includes("dia") || line.includes("day");
+    const hasMetric =
+      line.includes("vendas") ||
+      line.includes("sales") ||
+      line.includes("gmv") ||
+      line.includes("impressões") ||
+      line.includes("visitas") ||
+      line.includes("cliques") ||
+      line.includes("status");
+
+    if (hasDate && hasMetric) {
+      headerIndex = i;
+      delimiter = currentDelimiter;
+      break;
+    }
+  }
+
+  // Se não achou cabeçalho, tenta assumir a linha 0
+  if (headerIndex === -1) headerIndex = 0;
+
+  const headerLine = lines[headerIndex];
   const clean = (val: string) => (val ? val.replace(/^"|"$/g, "").trim() : "");
-  // Remove aspas extras e converte para minúsculo para facilitar a busca
-  const headers = firstLine.split(delimiter).map((h) => clean(h).toLowerCase());
 
-  // Mapeamento expandido para encontrar as colunas corretas
+  // Divide o cabeçalho respeitando aspas se for vírgula
+  let headers: string[] = [];
+  if (delimiter === ",") {
+    headers = headerLine.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map((h) => clean(h).toLowerCase());
+  } else {
+    headers = headerLine.split(";").map((h) => clean(h).toLowerCase());
+  }
+
+  // 2. Mapeamento Estendido de Colunas (Suporte Shopee Ads e outros)
   const idx = {
     data: headers.findIndex((h) => h === "dia" || h === "day" || h === "date" || h === "data"),
+
+    // Faturamento: GMV (Shopee Ads), Receita, Vendas, Total Sales
     faturamento: headers.findIndex(
       (h) =>
+        h === "gmv" || // Shopee Ads
         h.includes("total de vendas") ||
         h.includes("total sales") ||
         h === "faturamento" ||
-        h.includes("gmv") ||
+        h === "receita" ||
         h.includes("vendas (brl)"),
     ),
+
+    // Vendas Qty: Conversões (Shopee Ads), Pedidos, Orders
     vendas_qty: headers.findIndex(
-      (h) => h.includes("pedidos") || h.includes("orders") || h === "vendas" || h.includes("orders placed"),
-    ),
-    // Mapeamento específico para Shopee (Visitantes) e Shopify (Sessões)
-    sessoes: headers.findIndex(
       (h) =>
-        h.includes("sessoes") ||
-        h.includes("sessions") ||
-        h.includes("visitantes") || // Shopee usa "Visitantes"
-        h.includes("visits") ||
-        h.includes("visitors") ||
-        h.includes("page views"),
+        h === "conversões" || // Shopee Ads
+        h === "conversions" ||
+        h.includes("pedidos") ||
+        h.includes("orders") ||
+        h === "vendas" ||
+        h === "itens vendidos",
     ),
+
+    // Sessões: Cliques (Shopee Ads - pedido do usuário), Visitantes, Visits
+    // Prioridade: Visitantes > Sessões > Cliques (Se não houver visitantes, usamos cliques como proxy)
+    sessoes: headers.findIndex(
+      (h) => h.includes("visitantes") || h.includes("visitors") || h.includes("sessoes") || h.includes("sessions"),
+    ),
+    cliques: headers.findIndex((h) => h === "cliques" || h === "clicks" || h === "clics"),
+
+    // Investimento: Despesas (Shopee Ads), Custo, Ad Spend
     investimento: headers.findIndex(
-      (h) => h.includes("investimento") || h.includes("cost") || h.includes("ad spend") || h.includes("amount spent"),
+      (h) =>
+        h === "despesas" || // Shopee Ads
+        h.includes("investimento") ||
+        h.includes("custo") ||
+        h.includes("cost") ||
+        h.includes("ad spend") ||
+        h.includes("amount spent"),
     ),
   };
 
+  // Se não achou coluna explícita de sessões, usa cliques
+  if (idx.sessoes === -1 && idx.cliques !== -1) {
+    idx.sessoes = idx.cliques;
+  }
+
+  // Se não achou data, retorna vazio (impossível importar para dashboard diário sem data)
+  if (idx.data === -1) return [];
+
   return lines
-    .slice(1)
+    .slice(headerIndex + 1)
     .map((line) => {
       let cols: string[];
 
-      // Lógica de SPLIT mais robusta para CSVs com aspas (ex: "1.234,56")
+      // Lógica de SPLIT robusta
       if (delimiter === ",") {
-        // Divide por vírgula APENAS se não estiver dentro de aspas
-        // Isso impede que "186,65" seja quebrado em duas colunas
         cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(clean);
       } else {
         cols = line.split(";").map(clean);
       }
 
-      // Validação: Se não achou a coluna de data, pula a linha
       if (!cols[idx.data]) return null;
 
       let dateStr = cols[idx.data];
 
-      // FILTRO SHOPEE: Ignorar linhas de resumo ou cabeçalhos repetidos
-      // A Shopee coloca uma linha com intervalo "03/01/2026-01/02/2026" logo no início, ou repete "Data"
-      if (dateStr.includes("-") && dateStr.length > 10) return null; // Intervalo de datas
-      if (dateStr.toLowerCase().includes("data")) return null; // Cabeçalho repetido
+      // Ignora linhas de resumo ou intervalos (ex: "01/01/2026-31/01/2026")
+      if (dateStr.includes("-") && dateStr.length > 10) return null;
+      if (dateStr.toLowerCase().includes("total")) return null;
 
       // Normalização da data (DD/MM/YYYY -> YYYY-MM-DD)
       if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
         const [d, m, y] = dateStr.split("/");
         dateStr = `${y}-${m}-${d}`;
+      } else if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        // Já está ok
+      } else {
+        // Tenta parsear formatos loucos ou ignora
+        const parsed = Date.parse(dateStr);
+        if (!isNaN(parsed)) {
+          dateStr = new Date(parsed).toISOString().split("T")[0];
+        }
       }
 
-      // Parser Numérico Melhorado para PT-BR (1.000,00) e EN-US (1,000.00)
+      // Parser Numérico
       const parseNum = (val: string) => {
         if (!val) return 0;
         let cleanVal = val;
 
-        // Detecção simples: se tem vírgula no final (ex: ,00 ou ,50), assume formato BR
-        if (val.includes(",") && !val.includes(".")) {
-          // Formato puro BR: 100,50
-          cleanVal = val.replace(",", ".");
-        } else if (val.includes(".") && val.includes(",")) {
-          // Misto (ex: 1.000,00 ou 1,000.00)
-          const lastDot = val.lastIndexOf(".");
-          const lastComma = val.lastIndexOf(",");
+        // Remove R$, BRL, etc
+        cleanVal = cleanVal.replace(/[^\d.,-]/g, "");
 
+        if (cleanVal.includes(",") && !cleanVal.includes(".")) {
+          cleanVal = cleanVal.replace(",", "."); // BR puro
+        } else if (cleanVal.includes(".") && cleanVal.includes(",")) {
+          const lastDot = cleanVal.lastIndexOf(".");
+          const lastComma = cleanVal.lastIndexOf(",");
           if (lastComma > lastDot) {
-            // Formato BR: 1.000,50 -> Remove pontos, troca vírgula por ponto
-            cleanVal = val.replace(/\./g, "").replace(",", ".");
+            // BR misto
+            cleanVal = cleanVal.replace(/\./g, "").replace(",", ".");
           } else {
-            // Formato US: 1,000.50 -> Remove vírgulas
-            cleanVal = val.replace(/,/g, "");
+            // US misto
+            cleanVal = cleanVal.replace(/,/g, "");
           }
         }
-
         return parseFloat(cleanVal) || 0;
       };
 
-      // Parser específico para inteiros (Sessões/Pedidos/Visitantes)
       const parseIntSafe = (val: string) => {
         if (!val) return 0;
-        // Remove tudo que não for número (ex: "1.234" vira "1234")
         const clean = val.replace(/\D/g, "");
         return parseInt(clean) || 0;
       };
@@ -133,12 +192,11 @@ const parseShopifyCSV = (text: string): any[] => {
         faturamento: idx.faturamento >= 0 ? parseNum(cols[idx.faturamento]) : 0,
         vendas_quantidade: idx.vendas_qty >= 0 ? parseIntSafe(cols[idx.vendas_qty]) : 0,
         vendas_valor: idx.faturamento >= 0 ? parseNum(cols[idx.faturamento]) : 0,
-        // Usa o parser seguro para sessões (mapeado de "Visitantes" na Shopee)
         sessoes: idx.sessoes >= 0 ? parseIntSafe(cols[idx.sessoes]) : 0,
         investimento_trafego: idx.investimento >= 0 ? parseNum(cols[idx.investimento]) : 0,
       };
     })
-    .filter(Boolean);
+    .filter((row) => row && row.data && (row.faturamento > 0 || row.sessoes > 0 || row.investimento_trafego > 0));
 };
 
 // Função para consolidar linhas duplicadas
@@ -434,14 +492,19 @@ export default function Dashboard() {
 
       if (isCsv) {
         const text = await file.text();
-        rows = parseShopifyCSV(text);
+        rows = parseGenericCSV(text);
       } else if (isExcel) {
         const arrayBuffer = await file.arrayBuffer();
         rows = parseExcelMetricsFile(arrayBuffer, file.name);
       }
 
       if (!rows.length) {
-        toast({ title: "Atenção", description: "Não encontrei linhas válidas no arquivo.", variant: "destructive" });
+        toast({
+          title: "Atenção",
+          description:
+            "Não encontrei linhas válidas. Verifique se o CSV possui colunas de Data e Métricas (ex: GMV, Cliques).",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -461,7 +524,7 @@ export default function Dashboard() {
 
       toast({
         title: "Importação concluída",
-        description: `${consolidatedPayload.length} dias processados.`,
+        description: `${consolidatedPayload.length} dias processados com sucesso.`,
       });
 
       await loadMetrics();
