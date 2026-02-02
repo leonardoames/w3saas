@@ -420,7 +420,7 @@ export default function Dashboard() {
     }
   };
 
-  // Importação IA - Corrigido para priorizar a plataforma detectada pela IA se disponível
+  // Importação IA - CORRIGIDA: Força a plataforma selecionada pelo usuário
   const handleAIUpload = async (file: File, platform: PlatformType) => {
     if (!file || !user) return;
 
@@ -454,14 +454,11 @@ export default function Dashboard() {
         .map((m: any) => {
           const cleanDate = normalizeDateToISO(m.data) || m.data;
 
-          // FIX: Se a IA retornar uma plataforma específica (ex: detectou shopee no arquivo), usamos ela.
-          // Caso contrário, usamos a selecionada pelo usuário.
-          const finalPlatform = m.platform ? m.platform.toLowerCase() : platform;
-
           return {
             user_id: user.id,
             data: cleanDate,
-            platform: finalPlatform,
+            // CORREÇÃO: Força o uso da plataforma selecionada pelo usuário
+            platform: platform,
             faturamento: typeof m.faturamento === "number" ? m.faturamento : parseLooseNumber(m.faturamento),
             sessoes: typeof m.sessoes === "number" ? m.sessoes : parseLooseInt(m.sessoes),
             investimento_trafego:
@@ -485,7 +482,7 @@ export default function Dashboard() {
 
       toast({
         title: "Sucesso!",
-        description: `${consolidatedMetrics.length} registros atualizados.`,
+        description: `${consolidatedMetrics.length} registros atualizados em ${platform}.`,
       });
 
       await loadMetrics();
