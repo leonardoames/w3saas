@@ -234,7 +234,7 @@ export default function Dashboard() {
   };
 
   // Importação manual CSV/XLSX (mantida como fallback)
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, platform: PlatformType) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
@@ -267,12 +267,12 @@ export default function Dashboard() {
       await supabase
         .from("metrics_diarias")
         .upsert(
-          rows.map((r) => ({ ...r, user_id: user.id, platform: 'outros' })),
+          rows.map((r) => ({ ...r, user_id: user.id, platform })),
         );
 
       toast({
         title: "Importação concluída",
-        description: `${rows.length} dias importados/atualizados.`,
+        description: `${rows.length} dias da plataforma "${platform}" importados/atualizados.`,
       });
 
       loadMetrics();
