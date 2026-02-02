@@ -180,15 +180,16 @@ function getIndex(headers: string[], aliases: string[]): number {
 
 function mapColumns(headers: string[]) {
   const h = headers;
-  // Incluir "dia" para relatórios Shopify que usam essa coluna
+  // Incluir "dia" para relatórios Shopify/Shopee que usam essa coluna
   const idxData = getIndex(h, ["data", "date", "dia", "day"]);
-  const idxSessoes = getIndex(h, ["sessoes", "sessões", "sessions", "visitas", "visits"]);
-  // "total de vendas" é o faturamento bruto no Shopify
-  const idxFaturamento = getIndex(h, ["faturamento", "revenue", "gross sales", "vendas brutas", "vendas_brutas", "total de vendas"]);
+  // "visitantes" é usado pela Shopee para sessões/visitas
+  const idxSessoes = getIndex(h, ["sessoes", "sessões", "sessions", "visitas", "visits", "visitantes", "visitors"]);
+  // "vendas (brl)" é o faturamento na Shopee
+  const idxFaturamento = getIndex(h, ["faturamento", "revenue", "gross sales", "vendas brutas", "vendas_brutas", "total de vendas", "vendas (brl)", "vendas"]);
   const idxInvest = getIndex(h, ["investimento_trafego", "investimento", "ad spend", "spend", "gasto"]);
-  // "pedidos" é a quantidade de vendas no Shopify
+  // "pedidos" é a quantidade de vendas no Shopify/Shopee
   const idxVendasQtd = getIndex(h, ["vendas_quantidade", "quantidade de vendas", "orders", "qtd vendas", "quantidade_vendas", "pedidos"]);
-  const idxVendasValor = getIndex(h, ["vendas_valor", "valor de vendas", "sales value", "vendas brutas", "gross sales", "total de vendas"]);
+  const idxVendasValor = getIndex(h, ["vendas_valor", "valor de vendas", "sales value", "vendas brutas", "gross sales", "total de vendas", "vendas (brl)", "vendas"]);
   return { idxData, idxSessoes, idxFaturamento, idxInvest, idxVendasQtd, idxVendasValor };
 }
 
