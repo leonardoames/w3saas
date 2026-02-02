@@ -49,6 +49,35 @@ interface FormData {
 
 type MetricType = "faturamento" | "roas" | "vendas" | "sessoes";
 
+// Função para consolidar linhas duplicadas (mesma data e plataforma) somando valores
+const consolidateMetrics = (metrics: any[]) => {
+  const map = new Map();
+
+  metrics.forEach((m) => {
+    const key = `${m.data}-${m.platform}`;
+
+    if (map.has(key)) {
+      const existing = map.get(key);
+      existing.faturamento += Number(m.faturamento) || 0;
+      existing.sessoes += Number(m.sessoes) || 0;
+      existing.investimento_trafego += Number(m.investimento_trafego) || 0;
+      existing.vendas_quantidade += Number(m.vendas_quantidade) || 0;
+      existing.vendas_valor += Number(m.vendas_valor) || 0;
+    } else {
+      map.set(key, {
+        ...m,
+        faturamento: Number(m.faturamento) || 0,
+        sessoes: Number(m.sessoes) || 0,
+        investimento_trafego: Number(m.investimento_trafego) || 0,
+        vendas_quantidade: Number(m.vendas_quantidade) || 0,
+        vendas_valor: Number(m.vendas_valor) || 0,
+      });
+    }
+  });
+
+  return Array.from(map.values());
+};
+
 export default function Dashboard() {
   const { toast } = useToast();
   const [user, setUser] = useState<any>(null);
@@ -312,14 +341,16 @@ export default function Dashboard() {
       }
 
       // Adicionar plataforma e user_id
-      const payload = rows.map((r) => ({
+      const rawPayload = rows.map((r) => ({
         ...r,
         user_id: user.id,
         platform: platform,
       }));
 
-      const { error } = await supabase.from("metrics_diarias").upsert(payload, {
-        // Tenta fazer o match pela chave composta. Se a tabela não tiver, vai falhar ou duplicar dependendo da config.
+      // Consolidar duplicatas somando valores
+      const consolidatedPayload = consolidateMetrics(rawPayload);
+
+      const { error } = await supabase.from("metrics_diarias").upsert(consolidatedPayload, {
         onConflict: "user_id, data, platform",
       });
 
@@ -327,7 +358,7 @@ export default function Dashboard() {
 
       toast({
         title: "Importação concluída",
-        description: `${rows.length} dias da plataforma "${platform}" importados.`,
+        description: `${consolidatedPayload.length} dias processados (duplicatas consolidadas).`,
       });
 
       await loadMetrics();
@@ -373,10 +404,9 @@ export default function Dashboard() {
         throw new Error("A IA não conseguiu identificar dados válidos.");
       }
 
-      // Preparar para salvar - Normalizar datas
-      const metricsToSave = data.metrics
+      // Preparar dados brutos
+      const rawMetrics = data.metrics
         .map((m: any) => {
-          // Tenta garantir formato YYYY-MM-DD
           const cleanDate = normalizeDateToISO(m.data) || m.data;
 
           return {
@@ -394,9 +424,12 @@ export default function Dashboard() {
             vendas_valor: typeof m.vendas_valor === "number" ? m.vendas_valor : parseLooseNumber(m.vendas_valor),
           };
         })
-        .filter((m: any) => m.data); // Remove entradas sem data válida
+        .filter((m: any) => m.data);
 
-      const { error: upsertError } = await supabase.from("metrics_diarias").upsert(metricsToSave, {
+      // Consolidar duplicatas somando valores
+      const consolidatedMetrics = consolidateMetrics(rawMetrics);
+
+      const { error: upsertError } = await supabase.from("metrics_diarias").upsert(consolidatedMetrics, {
         onConflict: "user_id, data, platform",
       });
 
@@ -404,7 +437,7 @@ export default function Dashboard() {
 
       toast({
         title: "Sucesso!",
-        description: `${metricsToSave.length} registros de ${platform} atualizados.`,
+        description: `${consolidatedMetrics.length} registros atualizados (duplicatas consolidadas).`,
       });
 
       // Forçar recarregamento imediato
