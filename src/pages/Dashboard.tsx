@@ -137,7 +137,29 @@ export default function Dashboard() {
   const investimentoTotal = filteredMetrics.reduce((sum, m) => sum + Number(m.investimento_trafego), 0);
   const vendasTotal = filteredMetrics.reduce((sum, m) => sum + Number(m.vendas_quantidade), 0);
   const sessoesTotal = filteredMetrics.reduce((sum, m) => sum + Number(m.sessoes), 0);
-  const roas = investimentoTotal > 0 ? faturamentoTotal / investimentoTotal : 0;
+  
+  // ROAS Médio: calcula o ROAS individual de cada plataforma e faz a média
+  const roasMedio = useMemo(() => {
+    // Agrupar por plataforma
+    const platformTotals: Record<string, { faturamento: number; investimento: number }> = {};
+    
+    filteredMetrics.forEach(m => {
+      const p = m.platform || 'outros';
+      if (!platformTotals[p]) platformTotals[p] = { faturamento: 0, investimento: 0 };
+      platformTotals[p].faturamento += Number(m.faturamento) || 0;
+      platformTotals[p].investimento += Number(m.investimento_trafego) || 0;
+    });
+    
+    // Calcular ROAS de cada plataforma (apenas as que têm investimento)
+    const roasValues = Object.values(platformTotals)
+      .filter(t => t.investimento > 0)
+      .map(t => t.faturamento / t.investimento);
+    
+    // Retornar a média dos ROAS
+    return roasValues.length > 0 
+      ? roasValues.reduce((sum, r) => sum + r, 0) / roasValues.length 
+      : 0;
+  }, [filteredMetrics]);
   
   // Calculated Metrics
   const ticketMedio = vendasTotal > 0 ? faturamentoTotal / vendasTotal : 0;
@@ -401,8 +423,8 @@ export default function Dashboard() {
             onClick={() => handleKPIClick('faturamento')}
           />
           <KPICard
-            title="ROAS"
-            value={roas.toFixed(2)}
+            title="ROAS Médio"
+            value={roasMedio.toFixed(2)}
             icon={TrendingUp}
             onClick={() => handleKPIClick('roas')}
           />
@@ -421,10 +443,10 @@ export default function Dashboard() {
         </div>
 
         {/* Alerts */}
-        {roas < 2 && roas > 0 && (
+        {roasMedio < 2 && roasMedio > 0 && (
           <Alert variant="destructive" className="border-destructive/50">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>Atenção: ROAS abaixo de 2.</AlertDescription>
+            <AlertDescription>Atenção: ROAS Médio abaixo de 2.</AlertDescription>
           </Alert>
         )}
         {ticketMedio > ticketMedioPrevious && ticketMedioPrevious > 0 && (
