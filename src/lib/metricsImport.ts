@@ -105,8 +105,9 @@ function findHeaderRowIndex(rows: unknown[][]): number {
   for (let i = 0; i < max; i++) {
     const r = rows[i] ?? [];
     const headers = r.map(normalizeHeader);
-    const hasData = headers.includes("data") || headers.includes("date");
-    const hasShopifySignals = headers.includes("vendas brutas") || headers.includes("quantidade de vendas") || headers.includes("visitas");
+    // Incluir "dia" para relatórios Shopify
+    const hasData = headers.includes("data") || headers.includes("date") || headers.includes("dia");
+    const hasShopifySignals = headers.includes("vendas brutas") || headers.includes("quantidade de vendas") || headers.includes("visitas") || headers.includes("total de vendas") || headers.includes("pedidos");
     const hasStandardSignals = headers.includes("faturamento") || headers.includes("sessoes") || headers.includes("sessões");
     if (hasData && (hasShopifySignals || hasStandardSignals)) return i;
   }
@@ -179,12 +180,15 @@ function getIndex(headers: string[], aliases: string[]): number {
 
 function mapColumns(headers: string[]) {
   const h = headers;
-  const idxData = getIndex(h, ["data", "date"]);
+  // Incluir "dia" para relatórios Shopify que usam essa coluna
+  const idxData = getIndex(h, ["data", "date", "dia", "day"]);
   const idxSessoes = getIndex(h, ["sessoes", "sessões", "sessions", "visitas", "visits"]);
-  const idxFaturamento = getIndex(h, ["faturamento", "revenue", "gross sales", "vendas brutas", "vendas_brutas"]);
+  // "total de vendas" é o faturamento bruto no Shopify
+  const idxFaturamento = getIndex(h, ["faturamento", "revenue", "gross sales", "vendas brutas", "vendas_brutas", "total de vendas"]);
   const idxInvest = getIndex(h, ["investimento_trafego", "investimento", "ad spend", "spend", "gasto"]);
-  const idxVendasQtd = getIndex(h, ["vendas_quantidade", "quantidade de vendas", "orders", "qtd vendas", "quantidade_vendas"]);
-  const idxVendasValor = getIndex(h, ["vendas_valor", "valor de vendas", "sales value", "vendas brutas", "gross sales"]);
+  // "pedidos" é a quantidade de vendas no Shopify
+  const idxVendasQtd = getIndex(h, ["vendas_quantidade", "quantidade de vendas", "orders", "qtd vendas", "quantidade_vendas", "pedidos"]);
+  const idxVendasValor = getIndex(h, ["vendas_valor", "valor de vendas", "sales value", "vendas brutas", "gross sales", "total de vendas"]);
   return { idxData, idxSessoes, idxFaturamento, idxInvest, idxVendasQtd, idxVendasValor };
 }
 
@@ -331,7 +335,8 @@ export function parseCsvMetricsFile(text: string, filename?: string): MetricImpo
   let headerIndex = 0;
   for (let i = 0; i < Math.min(lines.length, 20); i++) {
     const cols = parseCsvLine(lines[i], delimiter).map(normalizeHeader);
-    const hasData = cols.includes("data") || cols.includes("date") || cols.includes("data ");
+    // Incluir "dia" para relatórios Shopify
+    const hasData = cols.includes("data") || cols.includes("date") || cols.includes("data ") || cols.includes("dia");
     if (hasData) {
       headerIndex = i;
       break;
