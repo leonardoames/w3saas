@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format, subDays, parseISO, isWithinInterval, isValid } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { normalizeDateToISO, parseExcelMetricsFile, parseLooseInt, parseLooseNumber } from "@/lib/metricsImport";
-import { PlatformType, PLATFORMS } from "@/lib/platformConfig";
+import { PlatformType, PLATFORMS_LIST } from "@/lib/platformConfig";
 
 import { KPICard } from "@/components/dashboard/KPICard";
 import { MetricCard } from "@/components/dashboard/MetricCard";
@@ -201,7 +201,7 @@ const ScreenshotImportCard = ({
               <SelectValue placeholder="Selecione..." />
             </SelectTrigger>
             <SelectContent>
-              {PLATFORMS.map((p) => (
+              {PLATFORMS_LIST.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
                   {p.label}
                 </SelectItem>
