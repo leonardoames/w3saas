@@ -380,6 +380,7 @@ export type Database = {
           faturamento: number | null
           id: string
           investimento_trafego: number | null
+          platform: string | null
           sessoes: number | null
           updated_at: string
           user_id: string
@@ -392,6 +393,7 @@ export type Database = {
           faturamento?: number | null
           id?: string
           investimento_trafego?: number | null
+          platform?: string | null
           sessoes?: number | null
           updated_at?: string
           user_id: string
@@ -404,6 +406,7 @@ export type Database = {
           faturamento?: number | null
           id?: string
           investimento_trafego?: number | null
+          platform?: string | null
           sessoes?: number | null
           updated_at?: string
           user_id?: string

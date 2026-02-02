@@ -3,9 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEffect, useRef } from "react";
+import { PlatformSelect } from "./PlatformSelect";
+import { PlatformType } from "@/lib/platformConfig";
 
 interface FormData {
   data: string;
+  platform: string;
   faturamento: string;
   sessoes: string;
   investimento_trafego: string;
@@ -56,6 +59,14 @@ export function MetricModal({ open, onOpenChange, formData, onFormChange, onSubm
               />
             </div>
             <div className="space-y-2">
+              <Label className="text-sm font-medium">Plataforma</Label>
+              <PlatformSelect 
+                value={formData.platform || 'outros'} 
+                onValueChange={(value: PlatformType) => onFormChange({ ...formData, platform: value })} 
+                className="h-10"
+              />
+            </div>
+            <div className="space-y-2">
               <Label className="text-sm font-medium">Faturamento (R$)</Label>
               <Input 
                 type="number" 
@@ -101,7 +112,7 @@ export function MetricModal({ open, onOpenChange, formData, onFormChange, onSubm
                 className="h-10"
               />
             </div>
-            <div className="space-y-2">
+            <div className="col-span-2 space-y-2">
               <Label className="text-sm font-medium">Valor das Vendas (R$)</Label>
               <Input 
                 type="number" 
