@@ -7,13 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format, subDays, parseISO, isWithinInterval, isValid } from "date-fns";
 import { DateRange } from "react-day-picker";
-import {
-  normalizeDateToISO,
-  parseCsvMetricsFile,
-  parseExcelMetricsFile,
-  parseLooseInt,
-  parseLooseNumber,
-} from "@/lib/metricsImport";
+import { normalizeDateToISO, parseExcelMetricsFile, parseLooseInt, parseLooseNumber } from "@/lib/metricsImport";
 import { PlatformType } from "@/lib/platformConfig";
 
 import { KPICard } from "@/components/dashboard/KPICard";
@@ -27,29 +21,77 @@ import { BulkEntryCard } from "@/components/dashboard/BulkEntryCard";
 import { AIImportCard } from "@/components/dashboard/AIImportCard";
 import { PlatformBreakdownModal } from "@/components/dashboard/PlatformBreakdownModal";
 
-interface MetricData {
-  data: string;
-  platform: string;
-  faturamento: number;
-  sessoes: number;
-  investimento_trafego: number;
-  vendas_quantidade: number;
-  vendas_valor: number;
-}
+// --- Funções Auxiliares ---
 
-interface FormData {
-  data: string;
-  platform: string;
-  faturamento: string;
-  sessoes: string;
-  investimento_trafego: string;
-  vendas_quantidade: string;
-  vendas_valor: string;
-}
+// Função robusta para ler o CSV da Shopify
+const parseShopifyCSV = (text: string): any[] => {
+  const lines = text.split("\n").filter((l) => l.trim());
+  if (lines.length < 2) return [];
 
-type MetricType = "faturamento" | "roas" | "vendas" | "sessoes";
+  // Detectar delimitador (Vírgula ou Ponto e Vírgula)
+  const firstLine = lines[0];
+  const delimiter = firstLine.includes(";") ? ";" : ",";
 
-// Função para consolidar linhas duplicadas (mesma data e plataforma) somando valores
+  // Limpar aspas das strings (ex: "2026-01-01" -> 2026-01-01)
+  const clean = (val: string) => (val ? val.replace(/^"|"$/g, "").trim() : "");
+  const headers = firstLine.split(delimiter).map((h) => clean(h).toLowerCase());
+
+  // Mapear colunas
+  const idx = {
+    data: headers.findIndex((h) => h === "dia" || h === "day" || h === "date"),
+    faturamento: headers.findIndex(
+      (h) => h.includes("total de vendas") || h.includes("total sales") || h === "faturamento",
+    ),
+    vendas_qty: headers.findIndex((h) => h.includes("pedidos") || h.includes("orders") || h === "vendas"),
+    sessoes: headers.findIndex((h) => h.includes("sessoes") || h.includes("sessions")),
+    investimento: headers.findIndex((h) => h.includes("investimento") || h.includes("cost") || h.includes("ad spend")),
+  };
+
+  return lines
+    .slice(1)
+    .map((line) => {
+      let cols: string[];
+
+      // Split inteligente para lidar com vírgulas dentro de aspas (CSV padrão)
+      if (delimiter === ",") {
+        const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+        cols = matches ? matches.map(clean) : [];
+      } else {
+        cols = line.split(";").map(clean);
+      }
+
+      if (!cols[idx.data]) return null;
+
+      // Normalizar data
+      let dateStr = cols[idx.data];
+      // Se vier DD/MM/YYYY
+      if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+        const [d, m, y] = dateStr.split("/");
+        dateStr = `${y}-${m}-${d}`;
+      }
+      // Se vier YYYY-MM-DD (padrão shopify export), mantém
+
+      // Parsing seguro de números
+      const parseNum = (val: string) => {
+        if (!val) return 0;
+        // Se tiver vírgula decimal "100,50" e não tiver ponto separador de milhar confuso
+        if (val.includes(",") && !val.includes(".")) return parseFloat(val.replace(",", "."));
+        return parseFloat(val) || 0;
+      };
+
+      return {
+        data: dateStr,
+        faturamento: idx.faturamento >= 0 ? parseNum(cols[idx.faturamento]) : 0,
+        vendas_quantidade: idx.vendas_qty >= 0 ? parseInt(cols[idx.vendas_qty]) || 0 : 0,
+        vendas_valor: idx.faturamento >= 0 ? parseNum(cols[idx.faturamento]) : 0,
+        sessoes: idx.sessoes >= 0 ? parseInt(cols[idx.sessoes]) || 0 : 0,
+        investimento_trafego: idx.investimento >= 0 ? parseNum(cols[idx.investimento]) : 0,
+      };
+    })
+    .filter(Boolean);
+};
+
+// Função para consolidar linhas duplicadas
 const consolidateMetrics = (metrics: any[]) => {
   const map = new Map();
 
@@ -77,6 +119,30 @@ const consolidateMetrics = (metrics: any[]) => {
 
   return Array.from(map.values());
 };
+
+// --- Interfaces ---
+
+interface MetricData {
+  data: string;
+  platform: string;
+  faturamento: number;
+  sessoes: number;
+  investimento_trafego: number;
+  vendas_quantidade: number;
+  vendas_valor: number;
+}
+
+interface FormData {
+  data: string;
+  platform: string;
+  faturamento: string;
+  sessoes: string;
+  investimento_trafego: string;
+  vendas_quantidade: string;
+  vendas_valor: string;
+}
+
+type MetricType = "faturamento" | "roas" | "vendas" | "sessoes";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -146,7 +212,7 @@ export default function Dashboard() {
       return;
     }
 
-    // Normalizar dados para incluir platform e garantir números
+    // Normalizar dados
     const normalizedData = (data || []).map((d) => ({
       ...d,
       platform: d.platform || "outros",
@@ -165,10 +231,8 @@ export default function Dashboard() {
     setDateRange({ from: startDate, to: endDate });
   };
 
-  // Filtra as métricas baseadas no range de data selecionado
   const filteredMetrics = useMemo(() => {
     return allMetrics.filter((m) => {
-      // Garantir parsing seguro da data
       if (!m.data) return false;
       const date = parseISO(m.data);
       if (!isValid(date)) return false;
@@ -176,8 +240,6 @@ export default function Dashboard() {
     });
   }, [allMetrics, dateRange]);
 
-  // CRÍTICO: Agrega dados por data para o Gráfico
-  // Se houver 3 linhas no mesmo dia (Shopify, Meta, Google), soma tudo em uma única entrada para o gráfico
   const aggregatedData = useMemo(() => {
     const grouped: Record<string, MetricData> = {};
 
@@ -190,7 +252,7 @@ export default function Dashboard() {
           investimento_trafego: 0,
           vendas_quantidade: 0,
           vendas_valor: 0,
-          platform: "agregado", // Para display no gráfico
+          platform: "agregado",
         };
       }
       grouped[m.data].faturamento += m.faturamento;
@@ -214,20 +276,16 @@ export default function Dashboard() {
     });
   }, [allMetrics, dateRange]);
 
-  // Calculated KPIs
   const faturamentoTotal = filteredMetrics.reduce((sum, m) => sum + Number(m.faturamento), 0);
   const investimentoTotal = filteredMetrics.reduce((sum, m) => sum + Number(m.investimento_trafego), 0);
   const vendasTotal = filteredMetrics.reduce((sum, m) => sum + Number(m.vendas_quantidade), 0);
   const sessoesTotal = filteredMetrics.reduce((sum, m) => sum + Number(m.sessoes), 0);
 
-  // ROAS Médio
   const roasMedio = useMemo(() => {
-    // Agrupar por plataforma para ROAS
     const platformTotals: Record<string, { faturamento: number; investimento: number }> = {};
 
     filteredMetrics.forEach((m) => {
       const p = m.platform || "outros";
-      // Excluir Shopify do cálculo de ROAS
       if (p === "shopify") return;
 
       if (!platformTotals[p]) platformTotals[p] = { faturamento: 0, investimento: 0 };
@@ -273,7 +331,7 @@ export default function Dashboard() {
           vendas_valor: parseFloat(formData.vendas_valor) || 0,
         },
         {
-          onConflict: "user_id, data, platform", // Importante: garanta que sua tabela tenha essa constraint composta!
+          onConflict: "user_id, data, platform",
         },
       );
 
@@ -311,7 +369,6 @@ export default function Dashboard() {
     setModalOpen(true);
   };
 
-  // Importação manual
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, platform: PlatformType) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
@@ -327,12 +384,14 @@ export default function Dashboard() {
 
     try {
       let rows: any[] = [];
-      if (isExcel) {
+
+      // Se for CSV, usar o parser específico para Shopify/Formatos com aspas
+      if (isCsv) {
+        const text = await file.text();
+        rows = parseShopifyCSV(text);
+      } else if (isExcel) {
         const arrayBuffer = await file.arrayBuffer();
         rows = parseExcelMetricsFile(arrayBuffer, file.name);
-      } else {
-        const text = await file.text();
-        rows = parseCsvMetricsFile(text, file.name);
       }
 
       if (!rows.length) {
@@ -340,14 +399,12 @@ export default function Dashboard() {
         return;
       }
 
-      // Adicionar plataforma e user_id
       const rawPayload = rows.map((r) => ({
         ...r,
         user_id: user.id,
         platform: platform,
       }));
 
-      // Consolidar duplicatas somando valores
       const consolidatedPayload = consolidateMetrics(rawPayload);
 
       const { error } = await supabase.from("metrics_diarias").upsert(consolidatedPayload, {
@@ -358,7 +415,7 @@ export default function Dashboard() {
 
       toast({
         title: "Importação concluída",
-        description: `${consolidatedPayload.length} dias processados (duplicatas consolidadas).`,
+        description: `${consolidatedPayload.length} dias processados.`,
       });
 
       await loadMetrics();
@@ -374,7 +431,6 @@ export default function Dashboard() {
     }
   };
 
-  // Importação com IA
   const handleAIUpload = async (file: File, platform: PlatformType) => {
     if (!file || !user) return;
 
@@ -404,7 +460,6 @@ export default function Dashboard() {
         throw new Error("A IA não conseguiu identificar dados válidos.");
       }
 
-      // Preparar dados brutos
       const rawMetrics = data.metrics
         .map((m: any) => {
           const cleanDate = normalizeDateToISO(m.data) || m.data;
@@ -426,7 +481,6 @@ export default function Dashboard() {
         })
         .filter((m: any) => m.data);
 
-      // Consolidar duplicatas somando valores
       const consolidatedMetrics = consolidateMetrics(rawMetrics);
 
       const { error: upsertError } = await supabase.from("metrics_diarias").upsert(consolidatedMetrics, {
@@ -437,10 +491,9 @@ export default function Dashboard() {
 
       toast({
         title: "Sucesso!",
-        description: `${consolidatedMetrics.length} registros atualizados (duplicatas consolidadas).`,
+        description: `${consolidatedMetrics.length} registros atualizados.`,
       });
 
-      // Forçar recarregamento imediato
       await loadMetrics();
     } catch (error: any) {
       console.error("AI Import error:", error);
@@ -516,13 +569,11 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-10 space-y-8">
-        {/* Header */}
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">Visão unificada de todas as plataformas</p>
         </div>
 
-        {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard
             title="Faturamento"
@@ -552,7 +603,6 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Alerts */}
         {roasMedio < 2 && roasMedio > 0 && (
           <Alert variant="destructive" className="border-destructive/50">
             <AlertCircle className="h-4 w-4" />
@@ -566,7 +616,6 @@ export default function Dashboard() {
           </Alert>
         )}
 
-        {/* Filters */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <h2 className="text-sm font-medium text-muted-foreground">Filtrar período de análise</h2>
           <PeriodFilter
@@ -577,14 +626,12 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Secondary Metrics */}
         <div className="grid grid-cols-3 gap-4">
           <MetricCard title="Ticket Médio" value={`R$ ${ticketMedio.toFixed(2)}`} />
           <MetricCard title="Custo por Venda" value={`R$ ${custoMidiaPorVenda.toFixed(2)}`} />
           <MetricCard title="Taxa de Conversão" value={`${taxaConversao.toFixed(2)}%`} />
         </div>
 
-        {/* Main Content Tabs */}
         <Tabs defaultValue="historico" className="space-y-6">
           <TabsList className="bg-muted/50 p-1">
             <TabsTrigger value="historico" className="text-sm">
@@ -596,13 +643,11 @@ export default function Dashboard() {
           </TabsList>
 
           <TabsContent value="historico" className="space-y-8">
-            {/* Chart - Agora usando dados AGREGADOS */}
             <div className="bg-card border border-border rounded-lg p-5 md:p-6 shadow-sm">
               <h3 className="text-sm font-medium text-foreground mb-4">Evolução de Faturamento</h3>
               <RevenueChart data={aggregatedData} />
             </div>
 
-            {/* Table */}
             <div className="bg-card border border-border rounded-lg p-5 md:p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <h3 className="text-sm font-medium text-foreground">
@@ -638,7 +683,6 @@ export default function Dashboard() {
           </TabsContent>
         </Tabs>
 
-        {/* Modais */}
         <MetricModal
           open={modalOpen}
           onOpenChange={setModalOpen}
