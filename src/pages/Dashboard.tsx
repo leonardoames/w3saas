@@ -248,10 +248,10 @@ export default function Dashboard() {
 
       if (isExcel) {
         const arrayBuffer = await file.arrayBuffer();
-        rows = parseExcelMetricsFile(arrayBuffer);
+        rows = parseExcelMetricsFile(arrayBuffer, file.name);
       } else {
         const text = await file.text();
-        rows = parseCsvMetricsFile(text);
+        rows = parseCsvMetricsFile(text, file.name);
       }
 
       if (!rows.length) {
