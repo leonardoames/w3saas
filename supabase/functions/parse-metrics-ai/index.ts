@@ -11,98 +11,126 @@ serve(async (req) => {
   }
 
   try {
-    const { fileContent, userId } = await req.json();
+    const { fileContent, imageBase64, platform, userId } = await req.json();
     
-    if (!fileContent) {
-      throw new Error('Conteúdo do arquivo não enviado');
+    // Verificar se temos conteúdo para processar
+    if (!fileContent && !imageBase64) {
+      throw new Error('Nenhum conteúdo enviado (arquivo ou imagem)');
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY não configurada');
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    if (!OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY não configurada');
     }
 
-    // Limitar amostra para economizar tokens
-    const sampleText = fileContent.slice(0, 10000);
-
-    // Tentar extrair data do nome do arquivo ou usar data atual
     const today = new Date().toISOString().split('T')[0];
     
     const systemPrompt = `Você é um especialista em análise de dados de E-commerce brasileiro.
-Vou te enviar o conteúdo de um arquivo CSV ou Excel (convertido em texto).
+Sua tarefa é extrair métricas de vendas de imagens ou arquivos.
 
-Sua tarefa:
-1. Identificar de qual plataforma é esse arquivo baseado nas colunas e formato:
-   - shopee, amazon, mercado_livre, shein, shopify, nuvemshop, tray, loja_integrada, ou "outros"
-2. Extrair os dados de métricas
-
-TIPOS DE RELATÓRIOS:
-A) Relatório DIÁRIO: possui coluna de data e múltiplas linhas (uma por dia). Extraia cada linha.
-B) Relatório de RESUMO/AGREGADO: possui apenas totais sem coluna de data (comum em Shopify, Nuvemshop).
-   - Para resumos, use a data de hoje: ${today}
-   - Crie UMA entrada com os totais
-
-MAPEAMENTO DE COLUNAS:
-- faturamento: "Vendas brutas", "Total de vendas", "Vendas líquidas", "Revenue", "Gross Sales"
-- sessoes: "Visitas", "Sessões", "Sessions", "Visits" (se não existir, use 0)
-- vendas_quantidade: "Pedidos", "Orders", "Quantidade de pedidos", "Itens vendidos"
+CAMPOS A EXTRAIR:
+- faturamento: valor total de vendas/receita
+- sessoes: visitas, sessões, acessos (se não encontrar, use 0)
+- vendas_quantidade: número de pedidos/vendas
 - vendas_valor: igual ao faturamento se não houver campo específico
-- investimento_trafego: "Gasto com anúncios", "Ad Spend" (se não existir, use 0)
+- investimento_trafego: gasto com anúncios/ads (se não encontrar, use 0)
 
-IMPORTANTE:
+REGRAS:
+- A plataforma selecionada é: ${platform || 'outros'}
 - Datas devem estar no formato YYYY-MM-DD
+- Se não encontrar data específica, use: ${today}
 - Valores numéricos devem ser números (não strings)
-- Se um campo não existir no arquivo, use 0
+- Remova símbolos de moeda (R$) e separadores de milhares
+- Se um campo não existir, use 0
 
-Retorne APENAS um JSON válido (sem markdown) com este formato exato:
+Retorne APENAS um JSON válido (sem markdown) com este formato:
 {
-  "detectedPlatform": "shopify",
   "metrics": [
     {
       "data": "2026-01-15",
       "faturamento": 1500.50,
       "sessoes": 250,
-      "investimento_trafego": 0,
+      "investimento_trafego": 100.00,
       "vendas_quantidade": 12,
       "vendas_valor": 1500.50
     }
   ]
 }`;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    let messages: any[];
+
+    if (imageBase64) {
+      // Processamento de imagem com GPT-4 Vision
+      console.log('Processando imagem com GPT-4 Vision...');
+      
+      messages = [
+        { role: 'system', content: systemPrompt },
+        { 
+          role: 'user', 
+          content: [
+            { 
+              type: 'text', 
+              text: `Analise esta imagem de relatório da plataforma ${platform || 'e-commerce'} e extraia as métricas de vendas. Leia todos os números visíveis.` 
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageBase64.startsWith('data:') ? imageBase64 : `data:image/png;base64,${imageBase64}`,
+                detail: 'high'
+              }
+            }
+          ]
+        }
+      ];
+    } else {
+      // Processamento de arquivo texto
+      console.log('Processando arquivo texto...');
+      const sampleText = fileContent.slice(0, 10000);
+      
+      messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Analise este arquivo e extraia as métricas:\n\n${sampleText}` }
+      ];
+    }
+
+    console.log('Enviando para OpenAI...');
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Analise este arquivo e extraia as métricas:\n\n${sampleText}` }
-        ],
+        model: 'gpt-4o',
+        messages,
+        max_tokens: 2000,
+        temperature: 0.1,
       }),
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API error:', response.status, errorText);
+      
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: 'Limite de requisições atingido. Tente novamente em alguns segundos.' }), {
+        return new Response(JSON.stringify({ error: 'Limite de requisições da OpenAI atingido. Tente novamente em alguns segundos.' }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: 'Créditos de IA insuficientes.' }), {
-          status: 402,
+      if (response.status === 401) {
+        return new Response(JSON.stringify({ error: 'Chave da OpenAI inválida ou expirada.' }), {
+          status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
-      throw new Error('Erro ao processar com IA');
+      throw new Error(`Erro da API OpenAI: ${response.status}`);
     }
 
     const aiData = await response.json();
+    console.log('Resposta OpenAI recebida');
+    
     const content = aiData.choices?.[0]?.message?.content || '';
     
     // Limpar markdown se a IA enviar ```json
@@ -118,27 +146,47 @@ Retorne APENAS um JSON válido (sem markdown) com este formato exato:
     }
     jsonStr = jsonStr.trim();
 
+    console.log('JSON extraído:', jsonStr);
+
     const parsedResult = JSON.parse(jsonStr);
 
     // Validar estrutura
-    if (!parsedResult.detectedPlatform || !Array.isArray(parsedResult.metrics)) {
+    if (!Array.isArray(parsedResult.metrics)) {
       throw new Error('Formato de resposta inválido da IA');
     }
 
     // Normalizar métricas
     const normalizedMetrics = parsedResult.metrics.map((m: any) => ({
-      data: m.data,
-      platform: parsedResult.detectedPlatform,
+      data: m.data || today,
+      platform: platform || 'outros',
       faturamento: Number(m.faturamento) || 0,
       sessoes: Number(m.sessoes) || 0,
       investimento_trafego: Number(m.investimento_trafego) || 0,
       vendas_quantidade: Number(m.vendas_quantidade) || 0,
       vendas_valor: Number(m.vendas_valor) || 0,
-    })).filter((m: any) => m.data && /^\d{4}-\d{2}-\d{2}$/.test(m.data));
+    })).filter((m: any) => m.data);
+
+    // Garantir que datas estejam no formato correto
+    const finalMetrics = normalizedMetrics.map((m: any) => {
+      let dataFormatted = m.data;
+      // Se a data não estiver no formato YYYY-MM-DD, tentar corrigir
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dataFormatted)) {
+        // Tentar parse de formatos brasileiros (DD/MM/YYYY)
+        const brMatch = dataFormatted.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+        if (brMatch) {
+          dataFormatted = `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
+        } else {
+          dataFormatted = today;
+        }
+      }
+      return { ...m, data: dataFormatted };
+    });
+
+    console.log('Métricas normalizadas:', finalMetrics.length);
 
     return new Response(JSON.stringify({
-      detectedPlatform: parsedResult.detectedPlatform,
-      metrics: normalizedMetrics,
+      detectedPlatform: platform || 'outros',
+      metrics: finalMetrics,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
