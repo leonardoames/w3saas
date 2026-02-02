@@ -66,7 +66,12 @@ export function PlatformBreakdownModal({ open, onOpenChange, metricType, metrics
       breakdown[p].sessoes += Number(m.sessoes) || 0;
     });
 
-    return PLATFORMS_LIST.map(p => {
+    // Para ROAS, filtrar plataformas que não devem ser incluídas (ex: Shopify)
+    const platformsToShow = metricType === 'roas' 
+      ? PLATFORMS_LIST.filter(p => p.id !== 'shopify')
+      : PLATFORMS_LIST;
+
+    return platformsToShow.map(p => {
       const stats = breakdown[p.id];
       let value = 0;
       let formattedValue = "";

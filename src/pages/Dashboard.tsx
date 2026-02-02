@@ -139,12 +139,16 @@ export default function Dashboard() {
   const sessoesTotal = filteredMetrics.reduce((sum, m) => sum + Number(m.sessoes), 0);
   
   // ROAS Médio: calcula o ROAS individual de cada plataforma e faz a média
+  // Exclui Shopify do cálculo pois não possui dados de investimento relevantes
   const roasMedio = useMemo(() => {
-    // Agrupar por plataforma
+    // Agrupar por plataforma, excluindo Shopify
     const platformTotals: Record<string, { faturamento: number; investimento: number }> = {};
     
     filteredMetrics.forEach(m => {
       const p = m.platform || 'outros';
+      // Excluir Shopify do cálculo de ROAS
+      if (p === 'shopify') return;
+      
       if (!platformTotals[p]) platformTotals[p] = { faturamento: 0, investimento: 0 };
       platformTotals[p].faturamento += Number(m.faturamento) || 0;
       platformTotals[p].investimento += Number(m.investimento_trafego) || 0;
