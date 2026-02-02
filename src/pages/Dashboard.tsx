@@ -2,12 +2,18 @@ import { TrendingUp, DollarSign, ShoppingCart, MousePointerClick, AlertCircle, C
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { format, subDays, parseISO, isWithinInterval } from "date-fns";
+import { format, subDays, parseISO, isWithinInterval, isValid } from "date-fns";
 import { DateRange } from "react-day-picker";
-import { normalizeDateToISO, parseCsvMetricsFile, parseExcelMetricsFile, parseLooseInt, parseLooseNumber } from "@/lib/metricsImport";
+import {
+  normalizeDateToISO,
+  parseCsvMetricsFile,
+  parseExcelMetricsFile,
+  parseLooseInt,
+  parseLooseNumber,
+} from "@/lib/metricsImport";
 import { PlatformType } from "@/lib/platformConfig";
 
 import { KPICard } from "@/components/dashboard/KPICard";
@@ -41,7 +47,7 @@ interface FormData {
   vendas_valor: string;
 }
 
-type MetricType = 'faturamento' | 'roas' | 'vendas' | 'sessoes';
+type MetricType = "faturamento" | "roas" | "vendas" | "sessoes";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -51,22 +57,22 @@ export default function Dashboard() {
   const [processingAI, setProcessingAI] = useState(false);
   const [allMetrics, setAllMetrics] = useState<MetricData[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
-  
+
   // Modal de breakdown por plataforma
   const [breakdownModalOpen, setBreakdownModalOpen] = useState(false);
   const [selectedMetricType, setSelectedMetricType] = useState<MetricType | null>(null);
-  
+
   const [selectedPeriod, setSelectedPeriod] = useState("7d");
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: subDays(new Date(), 7),
-    to: new Date()
+    to: new Date(),
   });
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
-  
-  const [bulkRows, setBulkRows] = useState<Omit<FormData, 'platform'>[]>([
-    { data: "", faturamento: "", sessoes: "", investimento_trafego: "", vendas_quantidade: "", vendas_valor: "" }
+
+  const [bulkRows, setBulkRows] = useState<Omit<FormData, "platform">[]>([
+    { data: "", faturamento: "", sessoes: "", investimento_trafego: "", vendas_quantidade: "", vendas_valor: "" },
   ]);
-  
+
   const [formData, setFormData] = useState<FormData>({
     data: format(new Date(), "yyyy-MM-dd"),
     platform: "outros",
@@ -86,48 +92,95 @@ export default function Dashboard() {
   }, [user]);
 
   const checkUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     setUser(user);
     setLoading(false);
   };
 
-  const loadMetrics = async () => {
+  const loadMetrics = useCallback(async () => {
     if (!user) return;
-    const last60DaysDate = subDays(new Date(), 60);
-    const { data } = await supabase
+
+    // Buscar dados de um período maior para garantir histórico
+    const last90DaysDate = subDays(new Date(), 90);
+
+    const { data, error } = await supabase
       .from("metrics_diarias")
       .select("*")
       .eq("user_id", user.id)
-      .gte("data", format(last60DaysDate, "yyyy-MM-dd"))
+      .gte("data", format(last90DaysDate, "yyyy-MM-dd"))
       .order("data", { ascending: true });
-    
-    // Normalizar dados para incluir platform
-    const normalizedData = (data || []).map(d => ({
+
+    if (error) {
+      console.error("Erro ao carregar métricas:", error);
+      return;
+    }
+
+    // Normalizar dados para incluir platform e garantir números
+    const normalizedData = (data || []).map((d) => ({
       ...d,
-      platform: d.platform || 'outros'
+      platform: d.platform || "outros",
+      faturamento: Number(d.faturamento) || 0,
+      sessoes: Number(d.sessoes) || 0,
+      investimento_trafego: Number(d.investimento_trafego) || 0,
+      vendas_quantidade: Number(d.vendas_quantidade) || 0,
+      vendas_valor: Number(d.vendas_valor) || 0,
     }));
-    
+
     setAllMetrics(normalizedData);
-  };
+  }, [user]);
 
   const handlePeriodChange = (period: string, startDate: Date, endDate: Date) => {
     setSelectedPeriod(period);
     setDateRange({ from: startDate, to: endDate });
   };
 
+  // Filtra as métricas baseadas no range de data selecionado
   const filteredMetrics = useMemo(() => {
-    return allMetrics.filter(m => {
+    return allMetrics.filter((m) => {
+      // Garantir parsing seguro da data
+      if (!m.data) return false;
       const date = parseISO(m.data);
+      if (!isValid(date)) return false;
       return isWithinInterval(date, { start: dateRange.from, end: dateRange.to });
     });
   }, [allMetrics, dateRange]);
+
+  // CRÍTICO: Agrega dados por data para o Gráfico
+  // Se houver 3 linhas no mesmo dia (Shopify, Meta, Google), soma tudo em uma única entrada para o gráfico
+  const aggregatedData = useMemo(() => {
+    const grouped: Record<string, MetricData> = {};
+
+    filteredMetrics.forEach((m) => {
+      if (!grouped[m.data]) {
+        grouped[m.data] = {
+          ...m,
+          faturamento: 0,
+          sessoes: 0,
+          investimento_trafego: 0,
+          vendas_quantidade: 0,
+          vendas_valor: 0,
+          platform: "agregado", // Para display no gráfico
+        };
+      }
+      grouped[m.data].faturamento += m.faturamento;
+      grouped[m.data].sessoes += m.sessoes;
+      grouped[m.data].investimento_trafego += m.investimento_trafego;
+      grouped[m.data].vendas_quantidade += m.vendas_quantidade;
+      grouped[m.data].vendas_valor += m.vendas_valor;
+    });
+
+    return Object.values(grouped).sort((a, b) => a.data.localeCompare(b.data));
+  }, [filteredMetrics]);
 
   const previousPeriodMetrics = useMemo(() => {
     const periodLength = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24));
     const prevEnd = subDays(dateRange.from, 1);
     const prevStart = subDays(prevEnd, periodLength);
-    return allMetrics.filter(m => {
+    return allMetrics.filter((m) => {
       const date = parseISO(m.data);
+      if (!isValid(date)) return false;
       return isWithinInterval(date, { start: prevStart, end: prevEnd });
     });
   }, [allMetrics, dateRange]);
@@ -137,45 +190,37 @@ export default function Dashboard() {
   const investimentoTotal = filteredMetrics.reduce((sum, m) => sum + Number(m.investimento_trafego), 0);
   const vendasTotal = filteredMetrics.reduce((sum, m) => sum + Number(m.vendas_quantidade), 0);
   const sessoesTotal = filteredMetrics.reduce((sum, m) => sum + Number(m.sessoes), 0);
-  
-  // ROAS Médio: calcula o ROAS individual de cada plataforma e faz a média
-  // Exclui Shopify do cálculo pois não possui dados de investimento relevantes
+
+  // ROAS Médio
   const roasMedio = useMemo(() => {
-    // Agrupar por plataforma, excluindo Shopify
+    // Agrupar por plataforma para ROAS
     const platformTotals: Record<string, { faturamento: number; investimento: number }> = {};
-    
-    filteredMetrics.forEach(m => {
-      const p = m.platform || 'outros';
+
+    filteredMetrics.forEach((m) => {
+      const p = m.platform || "outros";
       // Excluir Shopify do cálculo de ROAS
-      if (p === 'shopify') return;
-      
+      if (p === "shopify") return;
+
       if (!platformTotals[p]) platformTotals[p] = { faturamento: 0, investimento: 0 };
       platformTotals[p].faturamento += Number(m.faturamento) || 0;
       platformTotals[p].investimento += Number(m.investimento_trafego) || 0;
     });
-    
-    // Calcular ROAS de cada plataforma (apenas as que têm investimento)
+
     const roasValues = Object.values(platformTotals)
-      .filter(t => t.investimento > 0)
-      .map(t => t.faturamento / t.investimento);
-    
-    // Retornar a média dos ROAS
-    return roasValues.length > 0 
-      ? roasValues.reduce((sum, r) => sum + r, 0) / roasValues.length 
-      : 0;
+      .filter((t) => t.investimento > 0)
+      .map((t) => t.faturamento / t.investimento);
+
+    return roasValues.length > 0 ? roasValues.reduce((sum, r) => sum + r, 0) / roasValues.length : 0;
   }, [filteredMetrics]);
-  
-  // Calculated Metrics
+
   const ticketMedio = vendasTotal > 0 ? faturamentoTotal / vendasTotal : 0;
   const custoMidiaPorVenda = vendasTotal > 0 ? investimentoTotal / vendasTotal : 0;
   const taxaConversao = sessoesTotal > 0 ? (vendasTotal / sessoesTotal) * 100 : 0;
-  
-  // Previous period for alerts
+
   const vendasPrevious = previousPeriodMetrics.reduce((sum, m) => sum + Number(m.vendas_quantidade), 0);
   const faturamentoPrevious = previousPeriodMetrics.reduce((sum, m) => sum + Number(m.faturamento), 0);
   const ticketMedioPrevious = vendasPrevious > 0 ? faturamentoPrevious / vendasPrevious : 0;
 
-  // Handler para clique nos KPIs
   const handleKPIClick = (metricType: MetricType) => {
     setSelectedMetricType(metricType);
     setBreakdownModalOpen(true);
@@ -187,32 +232,36 @@ export default function Dashboard() {
 
     setSaving(true);
     try {
-      // Tenta upsert - se falhar por constraint, faz insert normal
-      const { error } = await supabase.from("metrics_diarias").upsert({
-        user_id: user.id,
-        data: formData.data,
-        platform: formData.platform || 'outros',
-        faturamento: parseFloat(formData.faturamento) || 0,
-        sessoes: parseInt(formData.sessoes) || 0,
-        investimento_trafego: parseFloat(formData.investimento_trafego) || 0,
-        vendas_quantidade: parseInt(formData.vendas_quantidade) || 0,
-        vendas_valor: parseFloat(formData.vendas_valor) || 0,
-      });
+      const { error } = await supabase.from("metrics_diarias").upsert(
+        {
+          user_id: user.id,
+          data: formData.data,
+          platform: formData.platform || "outros",
+          faturamento: parseFloat(formData.faturamento) || 0,
+          sessoes: parseInt(formData.sessoes) || 0,
+          investimento_trafego: parseFloat(formData.investimento_trafego) || 0,
+          vendas_quantidade: parseInt(formData.vendas_quantidade) || 0,
+          vendas_valor: parseFloat(formData.vendas_valor) || 0,
+        },
+        {
+          onConflict: "user_id, data, platform", // Importante: garanta que sua tabela tenha essa constraint composta!
+        },
+      );
 
       if (error) throw error;
 
       toast({ title: "Sucesso!", description: "Métricas salvas." });
-      setFormData({ 
-        data: format(new Date(), "yyyy-MM-dd"), 
+      setFormData({
+        data: format(new Date(), "yyyy-MM-dd"),
         platform: "outros",
-        faturamento: "", 
-        sessoes: "", 
-        investimento_trafego: "", 
-        vendas_quantidade: "", 
-        vendas_valor: "" 
+        faturamento: "",
+        sessoes: "",
+        investimento_trafego: "",
+        vendas_quantidade: "",
+        vendas_valor: "",
       });
       setModalOpen(false);
-      loadMetrics();
+      await loadMetrics();
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } finally {
@@ -223,7 +272,7 @@ export default function Dashboard() {
   const handleEdit = (metric: MetricData) => {
     setFormData({
       data: metric.data,
-      platform: metric.platform || 'outros',
+      platform: metric.platform || "outros",
       faturamento: metric.faturamento.toString(),
       sessoes: metric.sessoes.toString(),
       investimento_trafego: metric.investimento_trafego.toString(),
@@ -233,7 +282,7 @@ export default function Dashboard() {
     setModalOpen(true);
   };
 
-  // Importação manual CSV/XLSX (mantida como fallback)
+  // Importação manual
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, platform: PlatformType) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
@@ -249,7 +298,6 @@ export default function Dashboard() {
 
     try {
       let rows: any[] = [];
-
       if (isExcel) {
         const arrayBuffer = await file.arrayBuffer();
         rows = parseExcelMetricsFile(arrayBuffer, file.name);
@@ -259,27 +307,35 @@ export default function Dashboard() {
       }
 
       if (!rows.length) {
-        toast({ title: "Nada para importar", description: "Não encontrei linhas válidas no arquivo.", variant: "destructive" });
-        e.target.value = "";
+        toast({ title: "Atenção", description: "Não encontrei linhas válidas no arquivo.", variant: "destructive" });
         return;
       }
 
-      await supabase
-        .from("metrics_diarias")
-        .upsert(
-          rows.map((r) => ({ ...r, user_id: user.id, platform })),
-        );
+      // Adicionar plataforma e user_id
+      const payload = rows.map((r) => ({
+        ...r,
+        user_id: user.id,
+        platform: platform,
+      }));
+
+      const { error } = await supabase.from("metrics_diarias").upsert(payload, {
+        // Tenta fazer o match pela chave composta. Se a tabela não tiver, vai falhar ou duplicar dependendo da config.
+        onConflict: "user_id, data, platform",
+      });
+
+      if (error) throw error;
 
       toast({
         title: "Importação concluída",
-        description: `${rows.length} dias da plataforma "${platform}" importados/atualizados.`,
+        description: `${rows.length} dias da plataforma "${platform}" importados.`,
       });
 
-      loadMetrics();
+      await loadMetrics();
     } catch (error: any) {
+      console.error(error);
       toast({
         title: "Erro na importação",
-        description: error?.message || "Não foi possível ler/importar o arquivo.",
+        description: error?.message || "Erro desconhecido.",
         variant: "destructive",
       });
     } finally {
@@ -287,65 +343,78 @@ export default function Dashboard() {
     }
   };
 
-  // Importação com IA - recebe o arquivo e a plataforma selecionada
+  // Importação com IA
   const handleAIUpload = async (file: File, platform: PlatformType) => {
     if (!file || !user) return;
 
     setProcessingAI(true);
-    toast({ title: "Analisando arquivo...", description: `Processando relatório da plataforma ${platform}...` });
+    toast({ title: "IA processando...", description: `Analisando arquivo para ${platform}...` });
 
     try {
-      // Ler arquivo como texto
       let fileContent = "";
-      
+
       if (file.name.toLowerCase().endsWith(".csv")) {
         fileContent = await file.text();
       } else {
-        // Para Excel, converter para CSV-like text
         const arrayBuffer = await file.arrayBuffer();
-        const XLSX = await import('xlsx');
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const XLSX = await import("xlsx");
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         fileContent = XLSX.utils.sheet_to_csv(firstSheet);
       }
 
-      // Chamar edge function passando a plataforma selecionada
-      const { data, error } = await supabase.functions.invoke('parse-metrics-ai', {
-        body: { fileContent, userId: user.id, platform }
+      const { data, error } = await supabase.functions.invoke("parse-metrics-ai", {
+        body: { fileContent, userId: user.id, platform },
       });
 
       if (error) throw error;
 
       if (!data?.metrics || data.metrics.length === 0) {
-        throw new Error('A IA não conseguiu extrair métricas do arquivo.');
+        throw new Error("A IA não conseguiu identificar dados válidos.");
       }
 
-      // Salvar métricas usando a plataforma selecionada pelo usuário
-      const metricsToSave = data.metrics.map((m: any) => ({
-        user_id: user.id,
-        data: m.data,
-        platform: platform, // Usar a plataforma escolhida pelo usuário
-        faturamento: m.faturamento || 0,
-        sessoes: m.sessoes || 0,
-        investimento_trafego: m.investimento_trafego || 0,
-        vendas_quantidade: m.vendas_quantidade || 0,
-        vendas_valor: m.vendas_valor || 0,
-      }));
+      // Preparar para salvar - Normalizar datas
+      const metricsToSave = data.metrics
+        .map((m: any) => {
+          // Tenta garantir formato YYYY-MM-DD
+          const cleanDate = normalizeDateToISO(m.data) || m.data;
 
-      await supabase.from("metrics_diarias").upsert(metricsToSave);
+          return {
+            user_id: user.id,
+            data: cleanDate,
+            platform: platform,
+            faturamento: typeof m.faturamento === "number" ? m.faturamento : parseLooseNumber(m.faturamento),
+            sessoes: typeof m.sessoes === "number" ? m.sessoes : parseLooseInt(m.sessoes),
+            investimento_trafego:
+              typeof m.investimento_trafego === "number"
+                ? m.investimento_trafego
+                : parseLooseNumber(m.investimento_trafego),
+            vendas_quantidade:
+              typeof m.vendas_quantidade === "number" ? m.vendas_quantidade : parseLooseInt(m.vendas_quantidade),
+            vendas_valor: typeof m.vendas_valor === "number" ? m.vendas_valor : parseLooseNumber(m.vendas_valor),
+          };
+        })
+        .filter((m: any) => m.data); // Remove entradas sem data válida
 
-      toast({ 
-        title: "Importação IA concluída!", 
-        description: `${data.metrics.length} registros da plataforma "${platform}" importados.` 
+      const { error: upsertError } = await supabase.from("metrics_diarias").upsert(metricsToSave, {
+        onConflict: "user_id, data, platform",
       });
-      
-      loadMetrics();
+
+      if (upsertError) throw upsertError;
+
+      toast({
+        title: "Sucesso!",
+        description: `${metricsToSave.length} registros de ${platform} atualizados.`,
+      });
+
+      // Forçar recarregamento imediato
+      await loadMetrics();
     } catch (error: any) {
-      console.error('AI Import error:', error);
-      toast({ 
-        title: "Erro na IA", 
-        description: error.message || "Falha ao processar arquivo.", 
-        variant: "destructive" 
+      console.error("AI Import error:", error);
+      toast({
+        title: "Erro na IA",
+        description: error.message || "Falha ao processar arquivo.",
+        variant: "destructive",
       });
     } finally {
       setProcessingAI(false);
@@ -363,7 +432,7 @@ export default function Dashboard() {
           return {
             user_id: user.id,
             data: iso,
-            platform: 'outros',
+            platform: "outros",
             faturamento: parseLooseNumber(row.faturamento),
             sessoes: parseLooseInt(row.sessoes),
             investimento_trafego: parseLooseNumber(row.investimento_trafego),
@@ -374,16 +443,21 @@ export default function Dashboard() {
         .filter(Boolean) as any[];
 
       if (!payload.length) {
-        toast({ title: "Nada para salvar", description: "Preencha uma data válida (ex: 30/01/2026).", variant: "destructive" });
+        toast({ title: "Erro", description: "Verifique as datas inseridas.", variant: "destructive" });
         return;
       }
 
-      await supabase.from("metrics_diarias").upsert(payload);
-      toast({ title: "Lote salvo", description: `${payload.length} dias salvos.` });
-      setBulkRows([{ data: "", faturamento: "", sessoes: "", investimento_trafego: "", vendas_quantidade: "", vendas_valor: "" }]);
-      loadMetrics();
+      await supabase.from("metrics_diarias").upsert(payload, {
+        onConflict: "user_id, data, platform",
+      });
+
+      toast({ title: "Salvo", description: "Lote processado com sucesso." });
+      setBulkRows([
+        { data: "", faturamento: "", sessoes: "", investimento_trafego: "", vendas_quantidade: "", vendas_valor: "" },
+      ]);
+      await loadMetrics();
     } catch (error: any) {
-      toast({ title: "Erro", description: error?.message || "Não foi possível salvar o lote.", variant: "destructive" });
+      toast({ title: "Erro", description: error?.message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -392,7 +466,7 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-muted-foreground">Carregando...</p>
+        <p className="text-muted-foreground animate-pulse">Carregando seus dados...</p>
       </div>
     );
   }
@@ -414,33 +488,34 @@ export default function Dashboard() {
           <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">Visão unificada de todas as plataformas</p>
         </div>
-        
-        {/* KPIs - Clicáveis para drill-down */}
+
+        {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard
             title="Faturamento"
             value={faturamentoTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-            subtitle={`Últimos ${selectedPeriod === "7d" ? "7 dias" : selectedPeriod === "14d" ? "14 dias" : selectedPeriod === "30d" ? "30 dias" : selectedPeriod === "month" ? "mês" : "período"}`}
+            subtitle="Total do período selecionado"
             icon={DollarSign}
-            onClick={() => handleKPIClick('faturamento')}
+            onClick={() => handleKPIClick("faturamento")}
           />
           <KPICard
             title="ROAS Médio"
             value={roasMedio.toFixed(2)}
+            subtitle="Média das plataformas de tráfego"
             icon={TrendingUp}
-            onClick={() => handleKPIClick('roas')}
+            onClick={() => handleKPIClick("roas")}
           />
           <KPICard
             title="Vendas"
             value={vendasTotal.toLocaleString("pt-BR")}
             icon={ShoppingCart}
-            onClick={() => handleKPIClick('vendas')}
+            onClick={() => handleKPIClick("vendas")}
           />
           <KPICard
             title="Sessões"
             value={sessoesTotal.toLocaleString("pt-BR")}
             icon={MousePointerClick}
-            onClick={() => handleKPIClick('sessoes')}
+            onClick={() => handleKPIClick("sessoes")}
           />
         </div>
 
@@ -448,19 +523,19 @@ export default function Dashboard() {
         {roasMedio < 2 && roasMedio > 0 && (
           <Alert variant="destructive" className="border-destructive/50">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>Atenção: ROAS Médio abaixo de 2.</AlertDescription>
+            <AlertDescription>Atenção: O ROAS médio das suas campanhas está abaixo de 2.</AlertDescription>
           </Alert>
         )}
         {ticketMedio > ticketMedioPrevious && ticketMedioPrevious > 0 && (
           <Alert className="border-success/50 bg-success/5 text-success">
             <CheckCircle2 className="h-4 w-4" />
-            <AlertDescription>Ticket médio aumentou!</AlertDescription>
+            <AlertDescription>Parabéns! Seu ticket médio aumentou em relação ao período anterior.</AlertDescription>
           </Alert>
         )}
 
-        {/* Period Filters */}
+        {/* Filters */}
         <div className="flex items-center justify-between flex-wrap gap-4">
-          <h2 className="text-sm font-medium text-muted-foreground">Filtrar período</h2>
+          <h2 className="text-sm font-medium text-muted-foreground">Filtrar período de análise</h2>
           <PeriodFilter
             selectedPeriod={selectedPeriod}
             onPeriodChange={handlePeriodChange}
@@ -469,72 +544,68 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Calculated Metrics - Compact */}
+        {/* Secondary Metrics */}
         <div className="grid grid-cols-3 gap-4">
           <MetricCard title="Ticket Médio" value={`R$ ${ticketMedio.toFixed(2)}`} />
           <MetricCard title="Custo por Venda" value={`R$ ${custoMidiaPorVenda.toFixed(2)}`} />
           <MetricCard title="Taxa de Conversão" value={`${taxaConversao.toFixed(2)}%`} />
         </div>
 
-        {/* Tabs */}
+        {/* Main Content Tabs */}
         <Tabs defaultValue="historico" className="space-y-6">
           <TabsList className="bg-muted/50 p-1">
-            <TabsTrigger value="historico" className="text-sm">Histórico</TabsTrigger>
-            <TabsTrigger value="importacao" className="text-sm">Importação</TabsTrigger>
+            <TabsTrigger value="historico" className="text-sm">
+              Histórico e Gráficos
+            </TabsTrigger>
+            <TabsTrigger value="importacao" className="text-sm">
+              Importar Dados
+            </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="historico" className="space-y-8">
-            {/* Chart */}
+            {/* Chart - Agora usando dados AGREGADOS */}
             <div className="bg-card border border-border rounded-lg p-5 md:p-6 shadow-sm">
-              <h3 className="text-sm font-medium text-foreground mb-4">Faturamento por Dia</h3>
-              <RevenueChart data={filteredMetrics} />
+              <h3 className="text-sm font-medium text-foreground mb-4">Evolução de Faturamento</h3>
+              <RevenueChart data={aggregatedData} />
             </div>
 
-            {/* History Table */}
+            {/* Table */}
             <div className="bg-card border border-border rounded-lg p-5 md:p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between flex-wrap gap-4">
-                <h3 className="text-sm font-medium text-foreground">Últimos 60 dias</h3>
-                <Button 
-                  onClick={() => { 
-                    setFormData({ 
-                      data: format(new Date(), "yyyy-MM-dd"), 
+                <h3 className="text-sm font-medium text-foreground">
+                  Detalhamento Diário ({filteredMetrics.length} registros)
+                </h3>
+                <Button
+                  onClick={() => {
+                    setFormData({
+                      data: format(new Date(), "yyyy-MM-dd"),
                       platform: "outros",
-                      faturamento: "", 
-                      sessoes: "", 
-                      investimento_trafego: "", 
-                      vendas_quantidade: "", 
-                      vendas_valor: "" 
-                    }); 
-                    setModalOpen(true); 
+                      faturamento: "",
+                      sessoes: "",
+                      investimento_trafego: "",
+                      vendas_quantidade: "",
+                      vendas_valor: "",
+                    });
+                    setModalOpen(true);
                   }}
                   size="sm"
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Adicionar Dia
+                  Adicionar Manualmente
                 </Button>
               </div>
-              <MetricsTable metrics={allMetrics} onEdit={handleEdit} />
+              <MetricsTable metrics={filteredMetrics} onEdit={handleEdit} />
             </div>
           </TabsContent>
-          
+
           <TabsContent value="importacao" className="space-y-6">
-            {/* AI Import - Principal */}
             <AIImportCard onUpload={handleAIUpload} processing={processingAI} />
-            
-            {/* Fallback: CSV/XLSX manual */}
             <ImportCSVCard onUpload={handleFileUpload} />
-            
-            {/* Manual bulk entry */}
-            <BulkEntryCard
-              rows={bulkRows}
-              onRowsChange={setBulkRows}
-              onSave={handleBulkSave}
-              saving={saving}
-            />
+            <BulkEntryCard rows={bulkRows} onRowsChange={setBulkRows} onSave={handleBulkSave} saving={saving} />
           </TabsContent>
         </Tabs>
 
-        {/* Modal de entrada manual */}
+        {/* Modais */}
         <MetricModal
           open={modalOpen}
           onOpenChange={setModalOpen}
@@ -544,7 +615,6 @@ export default function Dashboard() {
           saving={saving}
         />
 
-        {/* Modal de breakdown por plataforma */}
         <PlatformBreakdownModal
           open={breakdownModalOpen}
           onOpenChange={setBreakdownModalOpen}
