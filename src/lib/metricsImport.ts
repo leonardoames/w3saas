@@ -129,6 +129,97 @@ function isShopifySummaryReport(headers: string[]): boolean {
   return hasShopifyHeaders && !hasDataColumn;
 }
 
+// Detecta se é um relatório de Anúncios CPC da Shopee
+function isShopeeAdsReport(lines: string[]): boolean {
+  if (lines.length < 3) return false;
+  const firstLine = lines[0].toLowerCase();
+  return firstLine.includes("relatório") && firstLine.includes("anúncios") && firstLine.includes("shopee");
+}
+
+// Extrai período do relatório Shopee Ads (formato: "Período,02/01/2026 - 02/02/2026")
+function extractShopeeAdsPeriod(lines: string[]): { startDate: string | null; endDate: string | null } {
+  for (let i = 0; i < Math.min(lines.length, 10); i++) {
+    const line = lines[i];
+    if (line.toLowerCase().startsWith("período")) {
+      const parts = line.split(",");
+      if (parts.length >= 2) {
+        const periodStr = parts[1].trim();
+        const dates = periodStr.split(" - ");
+        if (dates.length === 2) {
+          const startDate = normalizeDateToISO(dates[0].trim());
+          const endDate = normalizeDateToISO(dates[1].trim());
+          return { startDate, endDate };
+        }
+      }
+    }
+  }
+  return { startDate: null, endDate: null };
+}
+
+// Processa relatório de Anúncios CPC da Shopee
+function parseShopeeAdsReport(lines: string[], delimiter: string): MetricImportRow[] {
+  const { startDate, endDate } = extractShopeeAdsPeriod(lines);
+  if (!startDate || !endDate) return [];
+
+  // Encontra a linha de headers (começa com #)
+  let headerIndex = -1;
+  for (let i = 0; i < Math.min(lines.length, 15); i++) {
+    if (lines[i].trim().startsWith("#,") || lines[i].trim().startsWith("#;")) {
+      headerIndex = i;
+      break;
+    }
+  }
+  if (headerIndex === -1) return [];
+
+  const headers = parseCsvLine(lines[headerIndex], delimiter).map(normalizeHeader);
+  
+  // Encontra índice da coluna "Despesas"
+  const idxDespesas = getIndex(headers, ["despesas", "despesa", "gasto", "custo", "cost", "spend"]);
+  if (idxDespesas === -1) return [];
+
+  // Soma todas as despesas
+  let totalDespesas = 0;
+  for (let i = headerIndex + 1; i < lines.length; i++) {
+    const row = parseCsvLine(lines[i], delimiter);
+    if (row.length <= idxDespesas) continue;
+    const despesa = parseLooseNumber(row[idxDespesas]);
+    totalDespesas += despesa;
+  }
+
+  // Calcula número de dias no período
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  const diffTime = Math.abs(end.getTime() - start.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+  // Distribui o investimento igualmente pelos dias do período
+  const dailyInvestment = totalDespesas / diffDays;
+
+  // Gera registros para cada dia do período
+  const result: MetricImportRow[] = [];
+  const currentDate = new Date(start);
+  
+  while (currentDate <= end) {
+    const yyyy = currentDate.getFullYear();
+    const mm = String(currentDate.getMonth() + 1).padStart(2, "0");
+    const dd = String(currentDate.getDate()).padStart(2, "0");
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    
+    result.push({
+      data: dateStr,
+      faturamento: 0, // Não temos faturamento neste relatório
+      sessoes: 0,
+      investimento_trafego: dailyInvestment,
+      vendas_quantidade: 0,
+      vendas_valor: 0,
+    });
+    
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return result;
+}
+
 // Extrai data do nome do arquivo (ex: "Vendas_líquidas_-_2026-01-26_-_2026-02-02.csv")
 function extractDateFromFilename(filename?: string): string | null {
   if (!filename) return null;
@@ -318,6 +409,11 @@ export function parseCsvMetricsFile(text: string, filename?: string): MetricImpo
 
   // Detect delimiter (simple)
   const delimiter = (lines[0].match(/;/g)?.length ?? 0) > (lines[0].match(/,/g)?.length ?? 0) ? ";" : ",";
+
+  // Detecta relatório de Anúncios CPC da Shopee (tem cabeçalho especial)
+  if (isShopeeAdsReport(lines)) {
+    return parseShopeeAdsReport(lines, delimiter);
+  }
 
   // Parse first line as headers
   const headers = parseCsvLine(lines[0], delimiter).map(normalizeHeader);
