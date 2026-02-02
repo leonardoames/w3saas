@@ -23,20 +23,17 @@ import { PlatformBreakdownModal } from "@/components/dashboard/PlatformBreakdown
 
 // --- Funções Auxiliares ---
 
-// Função robusta para ler o CSV da Shopify
+// Função robusta para ler CSVs (Shopify, etc) que podem ter aspas nas datas
 const parseShopifyCSV = (text: string): any[] => {
   const lines = text.split("\n").filter((l) => l.trim());
   if (lines.length < 2) return [];
 
-  // Detectar delimitador (Vírgula ou Ponto e Vírgula)
   const firstLine = lines[0];
   const delimiter = firstLine.includes(";") ? ";" : ",";
 
-  // Limpar aspas das strings (ex: "2026-01-01" -> 2026-01-01)
   const clean = (val: string) => (val ? val.replace(/^"|"$/g, "").trim() : "");
   const headers = firstLine.split(delimiter).map((h) => clean(h).toLowerCase());
 
-  // Mapear colunas
   const idx = {
     data: headers.findIndex((h) => h === "dia" || h === "day" || h === "date"),
     faturamento: headers.findIndex(
@@ -52,7 +49,6 @@ const parseShopifyCSV = (text: string): any[] => {
     .map((line) => {
       let cols: string[];
 
-      // Split inteligente para lidar com vírgulas dentro de aspas (CSV padrão)
       if (delimiter === ",") {
         const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
         cols = matches ? matches.map(clean) : [];
@@ -62,19 +58,14 @@ const parseShopifyCSV = (text: string): any[] => {
 
       if (!cols[idx.data]) return null;
 
-      // Normalizar data
       let dateStr = cols[idx.data];
-      // Se vier DD/MM/YYYY
       if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
         const [d, m, y] = dateStr.split("/");
         dateStr = `${y}-${m}-${d}`;
       }
-      // Se vier YYYY-MM-DD (padrão shopify export), mantém
 
-      // Parsing seguro de números
       const parseNum = (val: string) => {
         if (!val) return 0;
-        // Se tiver vírgula decimal "100,50" e não tiver ponto separador de milhar confuso
         if (val.includes(",") && !val.includes(".")) return parseFloat(val.replace(",", "."));
         return parseFloat(val) || 0;
       };
@@ -96,7 +87,9 @@ const consolidateMetrics = (metrics: any[]) => {
   const map = new Map();
 
   metrics.forEach((m) => {
-    const key = `${m.data}-${m.platform}`;
+    // Normaliza a plataforma para minúsculo para evitar duplicatas por casing
+    const p = (m.platform || "outros").toLowerCase();
+    const key = `${m.data}-${p}`;
 
     if (map.has(key)) {
       const existing = map.get(key);
@@ -108,6 +101,7 @@ const consolidateMetrics = (metrics: any[]) => {
     } else {
       map.set(key, {
         ...m,
+        platform: p, // Garante plataforma normalizada
         faturamento: Number(m.faturamento) || 0,
         sessoes: Number(m.sessoes) || 0,
         investimento_trafego: Number(m.investimento_trafego) || 0,
@@ -119,8 +113,6 @@ const consolidateMetrics = (metrics: any[]) => {
 
   return Array.from(map.values());
 };
-
-// --- Interfaces ---
 
 interface MetricData {
   data: string;
@@ -153,7 +145,6 @@ export default function Dashboard() {
   const [allMetrics, setAllMetrics] = useState<MetricData[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Modal de breakdown por plataforma
   const [breakdownModalOpen, setBreakdownModalOpen] = useState(false);
   const [selectedMetricType, setSelectedMetricType] = useState<MetricType | null>(null);
 
@@ -197,7 +188,6 @@ export default function Dashboard() {
   const loadMetrics = useCallback(async () => {
     if (!user) return;
 
-    // Buscar dados de um período maior para garantir histórico
     const last90DaysDate = subDays(new Date(), 90);
 
     const { data, error } = await supabase
@@ -212,7 +202,6 @@ export default function Dashboard() {
       return;
     }
 
-    // Normalizar dados
     const normalizedData = (data || []).map((d) => ({
       ...d,
       platform: d.platform || "outros",
@@ -385,7 +374,7 @@ export default function Dashboard() {
     try {
       let rows: any[] = [];
 
-      // Se for CSV, usar o parser específico para Shopify/Formatos com aspas
+      // Usa parser robusto para CSV, fallback para Excel
       if (isCsv) {
         const text = await file.text();
         rows = parseShopifyCSV(text);
@@ -431,6 +420,7 @@ export default function Dashboard() {
     }
   };
 
+  // Importação IA - Corrigido para priorizar a plataforma detectada pela IA se disponível
   const handleAIUpload = async (file: File, platform: PlatformType) => {
     if (!file || !user) return;
 
@@ -464,10 +454,14 @@ export default function Dashboard() {
         .map((m: any) => {
           const cleanDate = normalizeDateToISO(m.data) || m.data;
 
+          // FIX: Se a IA retornar uma plataforma específica (ex: detectou shopee no arquivo), usamos ela.
+          // Caso contrário, usamos a selecionada pelo usuário.
+          const finalPlatform = m.platform ? m.platform.toLowerCase() : platform;
+
           return {
             user_id: user.id,
             data: cleanDate,
-            platform: platform,
+            platform: finalPlatform,
             faturamento: typeof m.faturamento === "number" ? m.faturamento : parseLooseNumber(m.faturamento),
             sessoes: typeof m.sessoes === "number" ? m.sessoes : parseLooseInt(m.sessoes),
             investimento_trafego:
