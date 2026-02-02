@@ -186,7 +186,12 @@ function mapColumns(headers: string[]) {
   const idxSessoes = getIndex(h, ["sessoes", "sessões", "sessions", "visitas", "visits", "visitantes", "visitors"]);
   // "vendas (brl)" é o faturamento na Shopee
   const idxFaturamento = getIndex(h, ["faturamento", "revenue", "gross sales", "vendas brutas", "vendas_brutas", "total de vendas", "vendas (brl)", "vendas"]);
-  const idxInvest = getIndex(h, ["investimento_trafego", "investimento", "ad spend", "spend", "gasto"]);
+  // Shopee Ads usa "gasto", "custo", "despesa", "valor gasto", "cost", "spend"
+  const idxInvest = getIndex(h, [
+    "investimento_trafego", "investimento", "ad spend", "spend", "gasto", 
+    "custo", "despesa", "valor gasto", "cost", "gastos com anúncios",
+    "gasto total", "custo total", "total gasto", "budget spent"
+  ]);
   // "pedidos" é a quantidade de vendas no Shopify/Shopee
   const idxVendasQtd = getIndex(h, ["vendas_quantidade", "quantidade de vendas", "orders", "qtd vendas", "quantidade_vendas", "pedidos"]);
   const idxVendasValor = getIndex(h, ["vendas_valor", "valor de vendas", "sales value", "vendas brutas", "gross sales", "total de vendas", "vendas (brl)", "vendas"]);
