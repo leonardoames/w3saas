@@ -283,13 +283,12 @@ export default function Dashboard() {
     }
   };
 
-  // Importação com IA
-  const handleAIUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  // Importação com IA - recebe o arquivo e a plataforma selecionada
+  const handleAIUpload = async (file: File, platform: PlatformType) => {
     if (!file || !user) return;
 
     setProcessingAI(true);
-    toast({ title: "Analisando arquivo...", description: "A IA está identificando a plataforma e extraindo dados." });
+    toast({ title: "Analisando arquivo...", description: `Processando relatório da plataforma ${platform}...` });
 
     try {
       // Ler arquivo como texto
@@ -306,9 +305,9 @@ export default function Dashboard() {
         fileContent = XLSX.utils.sheet_to_csv(firstSheet);
       }
 
-      // Chamar edge function
+      // Chamar edge function passando a plataforma selecionada
       const { data, error } = await supabase.functions.invoke('parse-metrics-ai', {
-        body: { fileContent, userId: user.id }
+        body: { fileContent, userId: user.id, platform }
       });
 
       if (error) throw error;
@@ -317,11 +316,11 @@ export default function Dashboard() {
         throw new Error('A IA não conseguiu extrair métricas do arquivo.');
       }
 
-      // Salvar métricas
+      // Salvar métricas usando a plataforma selecionada pelo usuário
       const metricsToSave = data.metrics.map((m: any) => ({
         user_id: user.id,
         data: m.data,
-        platform: m.platform || data.detectedPlatform || 'outros',
+        platform: platform, // Usar a plataforma escolhida pelo usuário
         faturamento: m.faturamento || 0,
         sessoes: m.sessoes || 0,
         investimento_trafego: m.investimento_trafego || 0,
@@ -333,7 +332,7 @@ export default function Dashboard() {
 
       toast({ 
         title: "Importação IA concluída!", 
-        description: `${data.metrics.length} registros da plataforma "${data.detectedPlatform}" importados.` 
+        description: `${data.metrics.length} registros da plataforma "${platform}" importados.` 
       });
       
       loadMetrics();
@@ -346,7 +345,6 @@ export default function Dashboard() {
       });
     } finally {
       setProcessingAI(false);
-      e.target.value = "";
     }
   };
 
