@@ -23,7 +23,7 @@ import { PlatformBreakdownModal } from "@/components/dashboard/PlatformBreakdown
 
 // --- Funções Auxiliares ---
 
-// Função robusta para ler CSVs (Shopify, etc) que podem ter aspas nas datas
+// Função robusta para ler CSVs (Shopify, Shopee, etc)
 const parseShopifyCSV = (text: string): any[] => {
   const lines = text.split("\n").filter((l) => l.trim());
   if (lines.length < 2) return [];
@@ -34,14 +34,28 @@ const parseShopifyCSV = (text: string): any[] => {
   const clean = (val: string) => (val ? val.replace(/^"|"$/g, "").trim() : "");
   const headers = firstLine.split(delimiter).map((h) => clean(h).toLowerCase());
 
+  // Mapeamento expandido para encontrar as colunas corretas
   const idx = {
-    data: headers.findIndex((h) => h === "dia" || h === "day" || h === "date"),
+    data: headers.findIndex((h) => h === "dia" || h === "day" || h === "date" || h === "data"),
     faturamento: headers.findIndex(
-      (h) => h.includes("total de vendas") || h.includes("total sales") || h === "faturamento",
+      (h) => h.includes("total de vendas") || h.includes("total sales") || h === "faturamento" || h.includes("gmv"),
     ),
-    vendas_qty: headers.findIndex((h) => h.includes("pedidos") || h.includes("orders") || h === "vendas"),
-    sessoes: headers.findIndex((h) => h.includes("sessoes") || h.includes("sessions")),
-    investimento: headers.findIndex((h) => h.includes("investimento") || h.includes("cost") || h.includes("ad spend")),
+    vendas_qty: headers.findIndex(
+      (h) => h.includes("pedidos") || h.includes("orders") || h === "vendas" || h.includes("orders placed"),
+    ),
+    // Adicionado 'visitantes', 'visits', 'visitors' para capturar sessões corretamente
+    sessoes: headers.findIndex(
+      (h) =>
+        h.includes("sessoes") ||
+        h.includes("sessions") ||
+        h.includes("visitantes") ||
+        h.includes("visits") ||
+        h.includes("visitors") ||
+        h.includes("page views"),
+    ),
+    investimento: headers.findIndex(
+      (h) => h.includes("investimento") || h.includes("cost") || h.includes("ad spend") || h.includes("amount spent"),
+    ),
   };
 
   return lines
@@ -49,6 +63,7 @@ const parseShopifyCSV = (text: string): any[] => {
     .map((line) => {
       let cols: string[];
 
+      // Lógica para separar colunas respeitando aspas
       if (delimiter === ",") {
         const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
         cols = matches ? matches.map(clean) : [];
@@ -58,24 +73,55 @@ const parseShopifyCSV = (text: string): any[] => {
 
       if (!cols[idx.data]) return null;
 
+      // Normalização da data (DD/MM/YYYY -> YYYY-MM-DD)
       let dateStr = cols[idx.data];
       if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
         const [d, m, y] = dateStr.split("/");
         dateStr = `${y}-${m}-${d}`;
       }
 
+      // Parser Numérico Melhorado para PT-BR (1.000,00) e EN-US (1,000.00)
       const parseNum = (val: string) => {
         if (!val) return 0;
-        if (val.includes(",") && !val.includes(".")) return parseFloat(val.replace(",", "."));
-        return parseFloat(val) || 0;
+        let cleanVal = val;
+
+        // Detecção simples: se tem vírgula no final (ex: ,00 ou ,50), assume formato BR
+        if (val.includes(",") && !val.includes(".")) {
+          // Formato puro BR: 100,50
+          cleanVal = val.replace(",", ".");
+        } else if (val.includes(".") && val.includes(",")) {
+          // Misto (ex: 1.000,00 ou 1,000.00)
+          const lastDot = val.lastIndexOf(".");
+          const lastComma = val.lastIndexOf(",");
+
+          if (lastComma > lastDot) {
+            // Formato BR: 1.000,50 -> Remove pontos, troca vírgula por ponto
+            cleanVal = val.replace(/\./g, "").replace(",", ".");
+          } else {
+            // Formato US: 1,000.50 -> Remove vírgulas
+            cleanVal = val.replace(/,/g, "");
+          }
+        }
+
+        return parseFloat(cleanVal) || 0;
+      };
+
+      // Parser específico para inteiros (Sessões/Pedidos) - Remove pontuação de milhar
+      const parseIntSafe = (val: string) => {
+        if (!val) return 0;
+        // Remove tudo que não for número (ex: "1.234" vira "1234")
+        // Cuidado: isso assume que sessões são números inteiros (sem decimais)
+        const clean = val.replace(/\D/g, "");
+        return parseInt(clean) || 0;
       };
 
       return {
         data: dateStr,
         faturamento: idx.faturamento >= 0 ? parseNum(cols[idx.faturamento]) : 0,
-        vendas_quantidade: idx.vendas_qty >= 0 ? parseInt(cols[idx.vendas_qty]) || 0 : 0,
+        vendas_quantidade: idx.vendas_qty >= 0 ? parseIntSafe(cols[idx.vendas_qty]) : 0,
         vendas_valor: idx.faturamento >= 0 ? parseNum(cols[idx.faturamento]) : 0,
-        sessoes: idx.sessoes >= 0 ? parseInt(cols[idx.sessoes]) || 0 : 0,
+        // Usa o parser seguro para sessões
+        sessoes: idx.sessoes >= 0 ? parseIntSafe(cols[idx.sessoes]) : 0,
         investimento_trafego: idx.investimento >= 0 ? parseNum(cols[idx.investimento]) : 0,
       };
     })
@@ -87,7 +133,6 @@ const consolidateMetrics = (metrics: any[]) => {
   const map = new Map();
 
   metrics.forEach((m) => {
-    // Normaliza a plataforma para minúsculo para evitar duplicatas por casing
     const p = (m.platform || "outros").toLowerCase();
     const key = `${m.data}-${p}`;
 
@@ -101,7 +146,7 @@ const consolidateMetrics = (metrics: any[]) => {
     } else {
       map.set(key, {
         ...m,
-        platform: p, // Garante plataforma normalizada
+        platform: p,
         faturamento: Number(m.faturamento) || 0,
         sessoes: Number(m.sessoes) || 0,
         investimento_trafego: Number(m.investimento_trafego) || 0,
@@ -374,7 +419,6 @@ export default function Dashboard() {
     try {
       let rows: any[] = [];
 
-      // Usa parser robusto para CSV, fallback para Excel
       if (isCsv) {
         const text = await file.text();
         rows = parseShopifyCSV(text);
@@ -420,7 +464,7 @@ export default function Dashboard() {
     }
   };
 
-  // Importação IA - CORRIGIDA: Força a plataforma selecionada pelo usuário
+  // Importação IA
   const handleAIUpload = async (file: File, platform: PlatformType) => {
     if (!file || !user) return;
 
@@ -457,8 +501,7 @@ export default function Dashboard() {
           return {
             user_id: user.id,
             data: cleanDate,
-            // CORREÇÃO: Força o uso da plataforma selecionada pelo usuário
-            platform: platform,
+            platform: platform, // Força a plataforma selecionada
             faturamento: typeof m.faturamento === "number" ? m.faturamento : parseLooseNumber(m.faturamento),
             sessoes: typeof m.sessoes === "number" ? m.sessoes : parseLooseInt(m.sessoes),
             investimento_trafego:
