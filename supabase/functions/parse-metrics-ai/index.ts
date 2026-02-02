@@ -25,28 +25,41 @@ serve(async (req) => {
     // Limitar amostra para economizar tokens
     const sampleText = fileContent.slice(0, 10000);
 
+    // Tentar extrair data do nome do arquivo ou usar data atual
+    const today = new Date().toISOString().split('T')[0];
+    
     const systemPrompt = `Você é um especialista em análise de dados de E-commerce brasileiro.
 Vou te enviar o conteúdo de um arquivo CSV ou Excel (convertido em texto).
 
 Sua tarefa:
 1. Identificar de qual plataforma é esse arquivo baseado nas colunas e formato:
    - shopee, amazon, mercado_livre, shein, shopify, nuvemshop, tray, loja_integrada, ou "outros"
-2. Extrair os dados diários agregados
+2. Extrair os dados de métricas
+
+TIPOS DE RELATÓRIOS:
+A) Relatório DIÁRIO: possui coluna de data e múltiplas linhas (uma por dia). Extraia cada linha.
+B) Relatório de RESUMO/AGREGADO: possui apenas totais sem coluna de data (comum em Shopify, Nuvemshop).
+   - Para resumos, use a data de hoje: ${today}
+   - Crie UMA entrada com os totais
+
+MAPEAMENTO DE COLUNAS:
+- faturamento: "Vendas brutas", "Total de vendas", "Vendas líquidas", "Revenue", "Gross Sales"
+- sessoes: "Visitas", "Sessões", "Sessions", "Visits" (se não existir, use 0)
+- vendas_quantidade: "Pedidos", "Orders", "Quantidade de pedidos", "Itens vendidos"
+- vendas_valor: igual ao faturamento se não houver campo específico
+- investimento_trafego: "Gasto com anúncios", "Ad Spend" (se não existir, use 0)
 
 IMPORTANTE:
 - Datas devem estar no formato YYYY-MM-DD
-- Se houver múltiplas linhas para o mesmo dia, some os valores
-- Para faturamento, use a coluna de receita bruta/vendas brutas
-- Para sessões, use visitas/acessos
-- Para vendas_quantidade, use quantidade de pedidos/vendas
+- Valores numéricos devem ser números (não strings)
 - Se um campo não existir no arquivo, use 0
 
 Retorne APENAS um JSON válido (sem markdown) com este formato exato:
 {
-  "detectedPlatform": "shopee",
+  "detectedPlatform": "shopify",
   "metrics": [
     {
-      "data": "2025-01-15",
+      "data": "2026-01-15",
       "faturamento": 1500.50,
       "sessoes": 250,
       "investimento_trafego": 0,
