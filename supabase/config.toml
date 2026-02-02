@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.parse-metrics-ai]
 verify_jwt = false
+
+[functions.scan-screenshot]
+verify_jwt = false
