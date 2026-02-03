@@ -129,15 +129,14 @@ const CRMInfluenciadores = () => {
     fetchInfluenciadores();
   }, []);
 
+  // --- CORREÇÃO 1: BUSCAR DADOS DIRETO DO BANCO ---
   const fetchInfluenciadores = async () => {
     try {
-      const { data: response, error } = await supabase.functions.invoke("influenciadores-api", {
-        method: "GET",
-      });
+      const { data, error } = await supabase.from("influenciadores").select("*");
 
       if (error) throw error;
 
-      const mappedData = (response || []).map((item: Influenciador) => ({
+      const mappedData = (data || []).map((item: any) => ({
         ...item,
         tags: item.tags || [],
         status: item.status || "em_aberto",
@@ -163,6 +162,7 @@ const CRMInfluenciadores = () => {
       .filter((tag) => tag.length > 0);
   };
 
+  // --- CORREÇÃO 2: ADICIONAR DIRETO NO BANCO ---
   const handleAddInfluenciador = async () => {
     if (!formNome.trim()) {
       toast({
@@ -174,25 +174,30 @@ const CRMInfluenciadores = () => {
     }
 
     try {
+      // Pega o usuário atual para vincular o registro (obrigatório se RLS estiver ativo)
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       const maxOrder = influenciadores
         .filter((i) => i.stage === "em_qualificacao")
         .reduce((max, i) => Math.max(max, i.stage_order), -1);
 
       const tags = parseTags(formTags);
 
-      const { data, error } = await supabase.functions.invoke("influenciadores-api", {
-        method: "POST",
-        body: {
-          nome: formNome.trim(),
-          social_handle: formSocialHandle.trim() || null,
-          telefone: unformatPhone(formTelefone) || null,
-          observacoes: formObservacoes.trim() || null,
-          stage: "em_qualificacao",
-          stage_order: maxOrder + 1,
-          tags: tags,
-          status: "em_aberto",
-        },
-      });
+      const newInfluenciador = {
+        nome: formNome.trim(),
+        social_handle: formSocialHandle.trim() || null,
+        telefone: unformatPhone(formTelefone) || null,
+        observacoes: formObservacoes.trim() || null,
+        stage: "em_qualificacao",
+        stage_order: maxOrder + 1,
+        tags: tags,
+        status: "em_aberto",
+        user_id: user?.id, // Adiciona o user_id se disponível
+      };
+
+      const { data, error } = await supabase.from("influenciadores").insert(newInfluenciador).select().single();
 
       if (error) throw error;
 
@@ -228,7 +233,7 @@ const CRMInfluenciadores = () => {
     e.dataTransfer.dropEffect = "move";
   };
 
-  // --- ATUALIZAÇÃO PRINCIPAL AQUI ---
+  // --- CORREÇÃO 3: MOVER (DRAG & DROP) DIRETO NO BANCO ---
   const handleDrop = async (e: React.DragEvent, targetStage: string) => {
     e.preventDefault();
     if (!draggedCard) return;
@@ -253,10 +258,8 @@ const CRMInfluenciadores = () => {
         updated_at: new Date().toISOString(),
       };
 
-      // Atualização Otimista
       setInfluenciadores((prev) => prev.map((i) => (i.id === draggedCard ? updatedCard : i)));
 
-      // ATUALIZAÇÃO DIRETA NO BANCO (Ignorando a Edge Function para evitar o erro)
       const { error } = await supabase
         .from("influenciadores")
         .update({
@@ -274,18 +277,16 @@ const CRMInfluenciadores = () => {
       });
     } catch (error) {
       console.error("Error moving card:", error);
-      setInfluenciadores(previousInfluenciadores); // Reverte se der erro
-
+      setInfluenciadores(previousInfluenciadores);
       toast({
         title: "Erro",
-        description: "Não foi possível mover o influenciador. Tente novamente.",
+        description: "Não foi possível mover o influenciador.",
         variant: "destructive",
       });
     } finally {
       setDraggedCard(null);
     }
   };
-  // ----------------------------------
 
   const handleCardClick = (influenciador: Influenciador) => {
     setSelectedInfluenciador(influenciador);
@@ -298,6 +299,7 @@ const CRMInfluenciadores = () => {
     setIsDetailSheetOpen(true);
   };
 
+  // --- CORREÇÃO 4: SALVAR EDIÇÃO (STATUS/WHATSAPP) DIRETO NO BANCO ---
   const handleSaveInfluenciador = async () => {
     if (!selectedInfluenciador) return;
 
@@ -312,32 +314,27 @@ const CRMInfluenciadores = () => {
 
     try {
       const tags = parseTags(editTags);
+      const unformattedPhone = unformatPhone(editTelefone);
 
-      const { error } = await supabase.functions.invoke("influenciadores-api", {
-        method: "PUT",
-        body: {
-          id: selectedInfluenciador.id,
-          nome: editNome.trim(),
-          social_handle: editSocialHandle.trim() || null,
-          telefone: unformatPhone(editTelefone) || null,
-          observacoes: editObservacoes.trim() || null,
-          tags: tags,
-          status: editStatus,
-          stage: selectedInfluenciador.stage,
-          stage_order: selectedInfluenciador.stage_order,
-        },
-      });
-
-      if (error) throw error;
-
-      const updatedInfluenciador = {
-        ...selectedInfluenciador,
+      // Objeto com as atualizações
+      const updates = {
         nome: editNome.trim(),
         social_handle: editSocialHandle.trim() || null,
-        telefone: unformatPhone(editTelefone) || null,
+        telefone: unformattedPhone || null,
         observacoes: editObservacoes.trim() || null,
         tags: tags,
         status: editStatus,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase.from("influenciadores").update(updates).eq("id", selectedInfluenciador.id);
+
+      if (error) throw error;
+
+      // Atualiza estado local
+      const updatedInfluenciador = {
+        ...selectedInfluenciador,
+        ...updates,
       };
 
       setInfluenciadores((prev) => prev.map((i) => (i.id === selectedInfluenciador.id ? updatedInfluenciador : i)));
@@ -358,14 +355,12 @@ const CRMInfluenciadores = () => {
     }
   };
 
+  // --- CORREÇÃO 5: DELETAR DIRETO NO BANCO ---
   const handleDeleteInfluenciador = async () => {
     if (!selectedInfluenciador) return;
 
     try {
-      const { error } = await supabase.functions.invoke("influenciadores-api", {
-        method: "DELETE",
-        body: { id: selectedInfluenciador.id },
-      });
+      const { error } = await supabase.from("influenciadores").delete().eq("id", selectedInfluenciador.id);
 
       if (error) throw error;
 
