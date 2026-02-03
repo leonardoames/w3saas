@@ -55,21 +55,23 @@ const unformatPhone = (value: string): string => {
   return value.replace(/\D/g, "");
 };
 
-// Gera link do WhatsApp Robusto
-const getWhatsAppLink = (phone: string): string => {
-  let digits = unformatPhone(phone);
+// Gera link do WhatsApp (somente se tiver um número válido)
+const getWhatsAppLink = (phone?: string | null): string | null => {
+  if (!phone) return null;
 
-  // Remove zero à esquerda se houver (ex: 047...)
-  digits = digits.replace(/^0+/, "");
+  let digits = unformatPhone(phone).replace(/^0+/, "");
+  if (!digits) return null;
 
-  // Verifica se o número já começa com 55 (Brasil) e tem tamanho suficiente (DDD + 9 digitos = 11, + 55 = 13)
-  // Se tiver menos de 12 dígitos, assumimos que é local e adicionamos 55.
-  // Se tiver 12 ou 13 e começar com 55, não adicionamos.
-  if (digits.length < 12 || !digits.startsWith("55")) {
-    digits = `55${digits}`;
-  }
+  // Se já tiver DDI (55), remove para validar tamanho local
+  const localDigits = digits.startsWith("55") ? digits.slice(2) : digits;
 
-  return `https://api.whatsapp.com/send?phone=${digits}`;
+  // DDD + número (10 ou 11 dígitos no BR)
+  if (localDigits.length < 10) return null;
+
+  if (!digits.startsWith("55")) digits = `55${digits}`;
+
+  // wa.me tende a abrir melhor no mobile
+  return `https://wa.me/${digits}`;
 };
 
 const CRMInfluenciadores = () => {
@@ -134,12 +136,28 @@ const CRMInfluenciadores = () => {
     fetchInfluenciadores();
   }, []);
 
-  // --- FUNÇÃO CORRIGIDA: Usa Supabase Client direto ---
+  type ApiMethod = "GET" | "POST" | "PUT" | "DELETE";
+  const callInfluenciadoresApi = async <T,>(method: ApiMethod, body: Record<string, unknown> = {}): Promise<T> => {
+    const { data, error } = await supabase.functions.invoke("influenciadores-api", {
+      body,
+      headers: {
+        "x-http-method-override": method,
+      },
+    });
+
+    if (error) throw error;
+    if (data && typeof data === "object" && "error" in (data as Record<string, unknown>)) {
+      const msg = (data as { error?: string }).error;
+      if (msg) throw new Error(msg);
+    }
+
+    return data as T;
+  };
+
+  // Busca via backend (tabela tem RLS bloqueando acesso direto)
   const fetchInfluenciadores = async () => {
     try {
-      const { data, error } = await supabase.from("influenciadores").select("*");
-
-      if (error) throw error;
+      const data = await callInfluenciadoresApi<Influenciador[]>("GET");
 
       const mappedData = (data || []).map((item: any) => ({
         ...item,
@@ -167,7 +185,7 @@ const CRMInfluenciadores = () => {
       .filter((tag) => tag.length > 0);
   };
 
-  // --- FUNÇÃO CORRIGIDA: Insert direto ---
+  // Cria via backend (tabela tem RLS bloqueando acesso direto)
   const handleAddInfluenciador = async () => {
     if (!formNome.trim()) {
       toast({
@@ -179,11 +197,6 @@ const CRMInfluenciadores = () => {
     }
 
     try {
-      // Pega o usuário logado para o RLS
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
       const maxOrder = influenciadores
         .filter((i) => i.stage === "em_qualificacao")
         .reduce((max, i) => Math.max(max, i.stage_order), -1);
@@ -199,14 +212,18 @@ const CRMInfluenciadores = () => {
         stage_order: maxOrder + 1,
         tags: tags,
         status: "em_aberto",
-        user_id: user?.id, // Importante para permissão
       };
 
-      const { data, error } = await supabase.from("influenciadores").insert(newInfluenciador).select().single();
+      const created = await callInfluenciadoresApi<Influenciador>("POST", newInfluenciador as unknown as Record<string, unknown>);
 
-      if (error) throw error;
-
-      setInfluenciadores([...influenciadores, { ...data, tags: data.tags || [], status: data.status || "em_aberto" }]);
+      setInfluenciadores((prev) => [
+        ...prev,
+        {
+          ...(created as any),
+          tags: (created as any).tags || [],
+          status: (created as any).status || "em_aberto",
+        },
+      ]);
 
       // Limpa formulário
       setFormNome("");
@@ -240,7 +257,7 @@ const CRMInfluenciadores = () => {
     e.dataTransfer.dropEffect = "move";
   };
 
-  // --- FUNÇÃO CORRIGIDA: Update direto ---
+  // Move via backend (tabela tem RLS bloqueando acesso direto)
   const handleDrop = async (e: React.DragEvent, targetStage: string) => {
     e.preventDefault();
     if (!draggedCard) return;
@@ -268,16 +285,11 @@ const CRMInfluenciadores = () => {
       // Atualização Otimista
       setInfluenciadores((prev) => prev.map((i) => (i.id === draggedCard ? updatedCard : i)));
 
-      const { error } = await supabase
-        .from("influenciadores")
-        .update({
-          stage: targetStage,
-          stage_order: newOrder,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", draggedCard);
-
-      if (error) throw error;
+      await callInfluenciadoresApi("PUT", {
+        id: draggedCard,
+        stage: targetStage,
+        stage_order: newOrder,
+      });
 
       toast({
         title: "Movido",
@@ -307,7 +319,7 @@ const CRMInfluenciadores = () => {
     setIsDetailSheetOpen(true);
   };
 
-  // --- FUNÇÃO CORRIGIDA: Update direto (Edição) ---
+  // Edita via backend (tabela tem RLS bloqueando acesso direto)
   const handleSaveInfluenciador = async () => {
     if (!selectedInfluenciador) return;
 
@@ -331,12 +343,12 @@ const CRMInfluenciadores = () => {
         observacoes: editObservacoes.trim() || null,
         tags: tags,
         status: editStatus,
-        updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase.from("influenciadores").update(updates).eq("id", selectedInfluenciador.id);
-
-      if (error) throw error;
+      await callInfluenciadoresApi("PUT", {
+        id: selectedInfluenciador.id,
+        ...updates,
+      } as unknown as Record<string, unknown>);
 
       const updatedInfluenciador = {
         ...selectedInfluenciador,
@@ -360,14 +372,12 @@ const CRMInfluenciadores = () => {
     }
   };
 
-  // --- FUNÇÃO CORRIGIDA: Delete direto ---
+  // Remove via backend (tabela tem RLS bloqueando acesso direto)
   const handleDeleteInfluenciador = async () => {
     if (!selectedInfluenciador) return;
 
     try {
-      const { error } = await supabase.from("influenciadores").delete().eq("id", selectedInfluenciador.id);
-
-      if (error) throw error;
+      await callInfluenciadoresApi("DELETE", { id: selectedInfluenciador.id });
 
       setInfluenciadores((prev) => prev.filter((i) => i.id !== selectedInfluenciador.id));
       setIsDetailSheetOpen(false);
@@ -549,16 +559,19 @@ const CRMInfluenciadores = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 flex-1 overflow-y-auto px-2 pb-3">
-                {getCardsByStage(stage.id).map((influenciador) => (
-                  <div
-                    key={influenciador.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, influenciador.id)}
-                    onClick={() => handleCardClick(influenciador)}
-                    className={`bg-card border border-border rounded-lg p-2 sm:p-3 cursor-pointer hover:border-primary/50 transition-colors ${
-                      draggedCard === influenciador.id ? "opacity-50" : ""
-                    }`}
-                  >
+                {getCardsByStage(stage.id).map((influenciador) => {
+                  const whatsLink = getWhatsAppLink(influenciador.telefone);
+
+                  return (
+                    <div
+                      key={influenciador.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, influenciador.id)}
+                      onClick={() => handleCardClick(influenciador)}
+                      className={`bg-card border border-border rounded-lg p-2 sm:p-3 cursor-pointer hover:border-primary/50 transition-colors ${
+                        draggedCard === influenciador.id ? "opacity-50" : ""
+                      }`}
+                    >
                     <div className="flex items-start gap-1.5">
                       <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0 hidden sm:block" />
                       <div className="flex-1 min-w-0 space-y-1">
@@ -576,9 +589,9 @@ const CRMInfluenciadores = () => {
                         {influenciador.social_handle && (
                           <p className="text-xs text-muted-foreground truncate">{influenciador.social_handle}</p>
                         )}
-                        {influenciador.telefone && (
+                        {whatsLink && influenciador.telefone && (
                           <a
-                            href={getWhatsAppLink(influenciador.telefone)}
+                            href={whatsLink}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
@@ -605,8 +618,9 @@ const CRMInfluenciadores = () => {
                         )}
                       </div>
                     </div>
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
           </div>
@@ -664,18 +678,22 @@ const CRMInfluenciadores = () => {
                         placeholder="(11) 99999-9999"
                       />
                     </div>
-                    {editTelefone && (
-                      <Button variant="outline" size="icon" asChild>
-                        <a
-                          href={getWhatsAppLink(editTelefone)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-green-600"
-                        >
-                          <MessageCircle className="h-4 w-4" />
-                        </a>
-                      </Button>
-                    )}
+                    {(() => {
+                      const whatsLink = getWhatsAppLink(editTelefone);
+                      if (!whatsLink) return null;
+                      return (
+                        <Button variant="outline" size="icon" asChild>
+                          <a
+                            href={whatsLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-green-600"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      );
+                    })()}
                   </div>
                 </div>
 
