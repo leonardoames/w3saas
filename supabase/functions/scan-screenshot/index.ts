@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,7 +12,37 @@ serve(async (req) => {
   }
 
   try {
-    const { image, platform, userId } = await req.json();
+    // ========== AUTENTICAÇÃO ==========
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      console.log("Missing or invalid authorization header");
+      return new Response(
+        JSON.stringify({ error: "Autenticação necessária" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      console.log("Invalid token:", claimsError?.message);
+      return new Response(
+        JSON.stringify({ error: "Autenticação inválida" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const userId = claimsData.claims.sub;
+    console.log("Authenticated user:", userId);
+    // ========== FIM AUTENTICAÇÃO ==========
+
+    const { image, platform } = await req.json();
     
     if (!image) {
       throw new Error('Imagem não enviada');
