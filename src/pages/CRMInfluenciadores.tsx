@@ -7,26 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, GripVertical, User, Phone, AtSign, Search, X, Tag, MessageCircle } from "lucide-react";
 
 interface Influenciador {
@@ -110,9 +93,9 @@ const CRMInfluenciadores = () => {
   // Get all unique tags from influenciadores
   const allTags = useMemo(() => {
     const tags = new Set<string>();
-    influenciadores.forEach(i => {
+    influenciadores.forEach((i) => {
       if (i.tags) {
-        i.tags.forEach(tag => tags.add(tag));
+        i.tags.forEach((tag) => tags.add(tag));
       }
     });
     return Array.from(tags).sort();
@@ -120,7 +103,7 @@ const CRMInfluenciadores = () => {
 
   // Filtered influenciadores
   const filteredInfluenciadores = useMemo(() => {
-    return influenciadores.filter(i => {
+    return influenciadores.filter((i) => {
       // Status filter
       if (statusFilter && i.status !== statusFilter) return false;
 
@@ -134,7 +117,7 @@ const CRMInfluenciadores = () => {
         const matchesSocial = i.social_handle?.toLowerCase().includes(query);
         const matchesPhone = i.telefone?.includes(query);
         const matchesNotes = i.observacoes?.toLowerCase().includes(query);
-        const matchesTags = i.tags?.some(tag => tag.toLowerCase().includes(query));
+        const matchesTags = i.tags?.some((tag) => tag.toLowerCase().includes(query));
         if (!matchesName && !matchesSocial && !matchesPhone && !matchesNotes && !matchesTags) return false;
       }
 
@@ -148,19 +131,19 @@ const CRMInfluenciadores = () => {
 
   const fetchInfluenciadores = async () => {
     try {
-      const { data: response, error } = await supabase.functions.invoke('influenciadores-api', {
-        method: 'GET'
+      const { data: response, error } = await supabase.functions.invoke("influenciadores-api", {
+        method: "GET",
       });
 
       if (error) throw error;
-      
+
       // Map data to include tags and status with defaults
       const mappedData = (response || []).map((item: Influenciador) => ({
         ...item,
         tags: item.tags || [],
-        status: item.status || 'em_aberto'
+        status: item.status || "em_aberto",
       }));
-      
+
       setInfluenciadores(mappedData);
     } catch (error) {
       console.error("Error fetching influenciadores:", error);
@@ -177,8 +160,8 @@ const CRMInfluenciadores = () => {
   const parseTags = (tagsString: string): string[] => {
     return tagsString
       .split(",")
-      .map(tag => tag.trim())
-      .filter(tag => tag.length > 0);
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
   };
 
   const handleAddInfluenciador = async () => {
@@ -193,13 +176,13 @@ const CRMInfluenciadores = () => {
 
     try {
       const maxOrder = influenciadores
-        .filter(i => i.stage === "em_qualificacao")
+        .filter((i) => i.stage === "em_qualificacao")
         .reduce((max, i) => Math.max(max, i.stage_order), -1);
 
       const tags = parseTags(formTags);
 
-      const { data, error } = await supabase.functions.invoke('influenciadores-api', {
-        method: 'POST',
+      const { data, error } = await supabase.functions.invoke("influenciadores-api", {
+        method: "POST",
         body: {
           nome: formNome.trim(),
           social_handle: formSocialHandle.trim() || null,
@@ -209,12 +192,12 @@ const CRMInfluenciadores = () => {
           stage_order: maxOrder + 1,
           tags: tags,
           status: "em_aberto",
-        }
+        },
       });
 
       if (error) throw error;
 
-      setInfluenciadores([...influenciadores, { ...data, tags: data.tags || [], status: data.status || 'em_aberto' }]);
+      setInfluenciadores([...influenciadores, { ...data, tags: data.tags || [], status: data.status || "em_aberto" }]);
       setFormNome("");
       setFormSocialHandle("");
       setFormTelefone("");
@@ -250,41 +233,49 @@ const CRMInfluenciadores = () => {
     e.preventDefault();
     if (!draggedCard) return;
 
-    const card = influenciadores.find(i => i.id === draggedCard);
+    const card = influenciadores.find((i) => i.id === draggedCard);
     if (!card || card.stage === targetStage) {
       setDraggedCard(null);
       return;
     }
 
-    try {
-      const cardsInTargetStage = influenciadores.filter(i => i.stage === targetStage);
-      const maxOrder = cardsInTargetStage.reduce((max, i) => Math.max(max, i.stage_order), -1);
+    // Backup do estado anterior para caso de erro (rollback)
+    const previousInfluenciadores = [...influenciadores];
 
-      const { error } = await supabase.functions.invoke('influenciadores-api', {
-        method: 'PATCH',
-        body: {
-          id: draggedCard,
-          stage: targetStage,
-          stage_order: maxOrder + 1
-        }
+    try {
+      const cardsInTargetStage = influenciadores.filter((i) => i.stage === targetStage);
+      const maxOrder = cardsInTargetStage.reduce((max, i) => Math.max(max, i.stage_order), -1);
+      const newOrder = maxOrder + 1;
+
+      // Cria o objeto atualizado
+      const updatedCard = {
+        ...card,
+        stage: targetStage,
+        stage_order: newOrder,
+        updated_at: new Date().toISOString(),
+      };
+
+      // 1. Atualização Otimista: Atualiza a tela imediatamente
+      setInfluenciadores((prev) => prev.map((i) => (i.id === draggedCard ? updatedCard : i)));
+
+      // 2. Chamada à API: Usando PUT com o objeto completo para consistência
+      const { error } = await supabase.functions.invoke("influenciadores-api", {
+        method: "PUT",
+        body: updatedCard,
       });
 
       if (error) throw error;
 
-      setInfluenciadores(prev =>
-        prev.map(i =>
-          i.id === draggedCard
-            ? { ...i, stage: targetStage, stage_order: maxOrder + 1 }
-            : i
-        )
-      );
-
       toast({
         title: "Movido",
-        description: `Influenciador movido para "${STAGES.find(s => s.id === targetStage)?.label}"`,
+        description: `Influenciador movido para "${STAGES.find((s) => s.id === targetStage)?.label}"`,
       });
     } catch (error) {
       console.error("Error moving card:", error);
+
+      // Rollback: Reverte para o estado anterior se der erro
+      setInfluenciadores(previousInfluenciadores);
+
       toast({
         title: "Erro",
         description: "Não foi possível mover o influenciador.",
@@ -321,8 +312,8 @@ const CRMInfluenciadores = () => {
     try {
       const tags = parseTags(editTags);
 
-      const { error } = await supabase.functions.invoke('influenciadores-api', {
-        method: 'PUT',
+      const { error } = await supabase.functions.invoke("influenciadores-api", {
+        method: "PUT",
         body: {
           id: selectedInfluenciador.id,
           nome: editNome.trim(),
@@ -331,7 +322,10 @@ const CRMInfluenciadores = () => {
           observacoes: editObservacoes.trim() || null,
           tags: tags,
           status: editStatus,
-        }
+          // Mantemos o stage atual ao editar detalhes
+          stage: selectedInfluenciador.stage,
+          stage_order: selectedInfluenciador.stage_order,
+        },
       });
 
       if (error) throw error;
@@ -346,9 +340,7 @@ const CRMInfluenciadores = () => {
         status: editStatus,
       };
 
-      setInfluenciadores(prev =>
-        prev.map(i => i.id === selectedInfluenciador.id ? updatedInfluenciador : i)
-      );
+      setInfluenciadores((prev) => prev.map((i) => (i.id === selectedInfluenciador.id ? updatedInfluenciador : i)));
 
       setSelectedInfluenciador(updatedInfluenciador);
 
@@ -370,14 +362,14 @@ const CRMInfluenciadores = () => {
     if (!selectedInfluenciador) return;
 
     try {
-      const { error } = await supabase.functions.invoke('influenciadores-api', {
-        method: 'DELETE',
-        body: { id: selectedInfluenciador.id }
+      const { error } = await supabase.functions.invoke("influenciadores-api", {
+        method: "DELETE",
+        body: { id: selectedInfluenciador.id },
       });
 
       if (error) throw error;
 
-      setInfluenciadores(prev => prev.filter(i => i.id !== selectedInfluenciador.id));
+      setInfluenciadores((prev) => prev.filter((i) => i.id !== selectedInfluenciador.id));
       setIsDetailSheetOpen(false);
       setSelectedInfluenciador(null);
 
@@ -396,9 +388,7 @@ const CRMInfluenciadores = () => {
   };
 
   const getCardsByStage = (stageId: string) => {
-    return filteredInfluenciadores
-      .filter(i => i.stage === stageId)
-      .sort((a, b) => a.stage_order - b.stage_order);
+    return filteredInfluenciadores.filter((i) => i.stage === stageId).sort((a, b) => a.stage_order - b.stage_order);
   };
 
   const clearFilters = () => {
@@ -422,9 +412,7 @@ const CRMInfluenciadores = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground truncate">CRM de Influenciadores</h1>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Gerencie suas parcerias com influenciadores
-            </p>
+            <p className="text-muted-foreground mt-1 text-sm">Gerencie suas parcerias com influenciadores</p>
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
@@ -511,8 +499,10 @@ const CRMInfluenciadores = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
-                {STATUS_OPTIONS.map(status => (
-                  <SelectItem key={status.id} value={status.id}>{status.label}</SelectItem>
+                {STATUS_OPTIONS.map((status) => (
+                  <SelectItem key={status.id} value={status.id}>
+                    {status.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -523,8 +513,10 @@ const CRMInfluenciadores = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas</SelectItem>
-                {allTags.map(tag => (
-                  <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+                {allTags.map((tag) => (
+                  <SelectItem key={tag} value={tag}>
+                    {tag}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -574,17 +566,15 @@ const CRMInfluenciadores = () => {
                           <p className="font-medium text-foreground text-sm truncate flex-1 min-w-0">
                             {influenciador.nome}
                           </p>
-                          <Badge 
-                            variant="secondary" 
-                            className={`text-[10px] sm:text-xs shrink-0 ${STATUS_OPTIONS.find(s => s.id === influenciador.status)?.color}`}
+                          <Badge
+                            variant="secondary"
+                            className={`text-[10px] sm:text-xs shrink-0 ${STATUS_OPTIONS.find((s) => s.id === influenciador.status)?.color}`}
                           >
-                            {STATUS_OPTIONS.find(s => s.id === influenciador.status)?.label}
+                            {STATUS_OPTIONS.find((s) => s.id === influenciador.status)?.label}
                           </Badge>
                         </div>
                         {influenciador.social_handle && (
-                          <p className="text-xs text-muted-foreground truncate">
-                            {influenciador.social_handle}
-                          </p>
+                          <p className="text-xs text-muted-foreground truncate">{influenciador.social_handle}</p>
                         )}
                         {influenciador.telefone && (
                           <a
@@ -601,7 +591,7 @@ const CRMInfluenciadores = () => {
                         )}
                         {influenciador.tags && influenciador.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1">
-                            {influenciador.tags.slice(0, 2).map(tag => (
+                            {influenciador.tags.slice(0, 2).map((tag) => (
                               <Badge key={tag} variant="outline" className="text-[10px] px-1 py-0">
                                 {tag}
                               </Badge>
@@ -638,18 +628,14 @@ const CRMInfluenciadores = () => {
                   </div>
                   <div className="flex-1">
                     <p className="text-sm text-muted-foreground">
-                      {STAGES.find(s => s.id === selectedInfluenciador.stage)?.label}
+                      {STAGES.find((s) => s.id === selectedInfluenciador.stage)?.label}
                     </p>
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="edit-nome">Nome *</Label>
-                  <Input
-                    id="edit-nome"
-                    value={editNome}
-                    onChange={(e) => setEditNome(e.target.value)}
-                  />
+                  <Input id="edit-nome" value={editNome} onChange={(e) => setEditNome(e.target.value)} />
                 </div>
 
                 <div className="space-y-2">
@@ -679,11 +665,7 @@ const CRMInfluenciadores = () => {
                       />
                     </div>
                     {editTelefone && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        asChild
-                      >
+                      <Button variant="outline" size="icon" asChild>
                         <a
                           href={getWhatsAppLink(editTelefone)}
                           target="_blank"
@@ -704,8 +686,10 @@ const CRMInfluenciadores = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {STATUS_OPTIONS.map(status => (
-                        <SelectItem key={status.id} value={status.id}>{status.label}</SelectItem>
+                      {STATUS_OPTIONS.map((status) => (
+                        <SelectItem key={status.id} value={status.id}>
+                          {status.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -742,11 +726,7 @@ const CRMInfluenciadores = () => {
               </div>
 
               <div className="pt-4 border-t border-border">
-                <Button
-                  variant="destructive"
-                  onClick={handleDeleteInfluenciador}
-                  className="w-full"
-                >
+                <Button variant="destructive" onClick={handleDeleteInfluenciador} className="w-full">
                   Remover Influenciador
                 </Button>
               </div>
