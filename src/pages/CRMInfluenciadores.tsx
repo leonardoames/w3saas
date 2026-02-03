@@ -129,12 +129,17 @@ const CRMInfluenciadores = () => {
     fetchInfluenciadores();
   }, []);
 
-  // --- CORREÇÃO 1: BUSCAR DADOS DIRETO DO BANCO ---
   const fetchInfluenciadores = async () => {
     try {
-      const { data, error } = await supabase.from("influenciadores").select("*");
+      const { data, error } = await supabase
+        .from("influenciadores")
+        .select("*")
+        .order("stage_order", { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro Supabase (Fetch):", error);
+        throw error;
+      }
 
       const mappedData = (data || []).map((item: any) => ({
         ...item,
@@ -144,10 +149,10 @@ const CRMInfluenciadores = () => {
 
       setInfluenciadores(mappedData);
     } catch (error) {
-      console.error("Error fetching influenciadores:", error);
+      console.error("Erro ao buscar influenciadores:", error);
       toast({
-        title: "Erro",
-        description: "Não foi possível carregar os influenciadores.",
+        title: "Erro de Conexão",
+        description: "Não foi possível carregar os dados. Verifique o console.",
         variant: "destructive",
       });
     } finally {
@@ -162,7 +167,6 @@ const CRMInfluenciadores = () => {
       .filter((tag) => tag.length > 0);
   };
 
-  // --- CORREÇÃO 2: ADICIONAR DIRETO NO BANCO ---
   const handleAddInfluenciador = async () => {
     if (!formNome.trim()) {
       toast({
@@ -174,10 +178,19 @@ const CRMInfluenciadores = () => {
     }
 
     try {
-      // Pega o usuário atual para vincular o registro (obrigatório se RLS estiver ativo)
+      // Verifica autenticação
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
+      if (!user) {
+        toast({
+          title: "Não autenticado",
+          description: "Você precisa estar logado para adicionar.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       const maxOrder = influenciadores
         .filter((i) => i.stage === "em_qualificacao")
@@ -194,12 +207,17 @@ const CRMInfluenciadores = () => {
         stage_order: maxOrder + 1,
         tags: tags,
         status: "em_aberto",
-        user_id: user?.id, // Adiciona o user_id se disponível
+        user_id: user.id,
       };
+
+      console.log("Tentando adicionar:", newInfluenciador);
 
       const { data, error } = await supabase.from("influenciadores").insert(newInfluenciador).select().single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro Supabase (Insert):", error);
+        throw error;
+      }
 
       setInfluenciadores([...influenciadores, { ...data, tags: data.tags || [], status: data.status || "em_aberto" }]);
       setFormNome("");
@@ -213,11 +231,11 @@ const CRMInfluenciadores = () => {
         title: "Sucesso",
         description: "Influenciador adicionado com sucesso!",
       });
-    } catch (error) {
-      console.error("Error adding influenciador:", error);
+    } catch (error: any) {
+      console.error("Erro completo:", error);
       toast({
-        title: "Erro",
-        description: "Não foi possível adicionar o influenciador.",
+        title: "Erro ao adicionar",
+        description: error.message || "Não foi possível adicionar o influenciador.",
         variant: "destructive",
       });
     }
@@ -233,7 +251,6 @@ const CRMInfluenciadores = () => {
     e.dataTransfer.dropEffect = "move";
   };
 
-  // --- CORREÇÃO 3: MOVER (DRAG & DROP) DIRETO NO BANCO ---
   const handleDrop = async (e: React.DragEvent, targetStage: string) => {
     e.preventDefault();
     if (!draggedCard) return;
@@ -269,18 +286,21 @@ const CRMInfluenciadores = () => {
         })
         .eq("id", draggedCard);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro Supabase (Update Move):", error);
+        throw error;
+      }
 
       toast({
         title: "Movido",
         description: `Influenciador movido para "${STAGES.find((s) => s.id === targetStage)?.label}"`,
       });
-    } catch (error) {
-      console.error("Error moving card:", error);
+    } catch (error: any) {
+      console.error("Erro ao mover:", error);
       setInfluenciadores(previousInfluenciadores);
       toast({
-        title: "Erro",
-        description: "Não foi possível mover o influenciador.",
+        title: "Erro ao mover",
+        description: error.message || "Verifique permissões do banco de dados.",
         variant: "destructive",
       });
     } finally {
@@ -299,7 +319,6 @@ const CRMInfluenciadores = () => {
     setIsDetailSheetOpen(true);
   };
 
-  // --- CORREÇÃO 4: SALVAR EDIÇÃO (STATUS/WHATSAPP) DIRETO NO BANCO ---
   const handleSaveInfluenciador = async () => {
     if (!selectedInfluenciador) return;
 
@@ -329,7 +348,10 @@ const CRMInfluenciadores = () => {
 
       const { error } = await supabase.from("influenciadores").update(updates).eq("id", selectedInfluenciador.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro Supabase (Update Save):", error);
+        throw error;
+      }
 
       // Atualiza estado local
       const updatedInfluenciador = {
@@ -345,24 +367,26 @@ const CRMInfluenciadores = () => {
         title: "Salvo",
         description: "Influenciador atualizado com sucesso!",
       });
-    } catch (error) {
-      console.error("Error saving influenciador:", error);
+    } catch (error: any) {
+      console.error("Erro ao salvar:", error);
       toast({
-        title: "Erro",
-        description: "Não foi possível salvar as alterações.",
+        title: "Erro ao salvar",
+        description: error.message || "Não foi possível salvar as alterações.",
         variant: "destructive",
       });
     }
   };
 
-  // --- CORREÇÃO 5: DELETAR DIRETO NO BANCO ---
   const handleDeleteInfluenciador = async () => {
     if (!selectedInfluenciador) return;
 
     try {
       const { error } = await supabase.from("influenciadores").delete().eq("id", selectedInfluenciador.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro Supabase (Delete):", error);
+        throw error;
+      }
 
       setInfluenciadores((prev) => prev.filter((i) => i.id !== selectedInfluenciador.id));
       setIsDetailSheetOpen(false);
@@ -372,11 +396,11 @@ const CRMInfluenciadores = () => {
         title: "Removido",
         description: "Influenciador removido com sucesso!",
       });
-    } catch (error) {
-      console.error("Error deleting influenciador:", error);
+    } catch (error: any) {
+      console.error("Erro ao deletar:", error);
       toast({
-        title: "Erro",
-        description: "Não foi possível remover o influenciador.",
+        title: "Erro ao remover",
+        description: error.message || "Não foi possível remover o influenciador.",
         variant: "destructive",
       });
     }
