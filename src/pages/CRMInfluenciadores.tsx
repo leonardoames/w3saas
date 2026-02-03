@@ -137,7 +137,6 @@ const CRMInfluenciadores = () => {
 
       if (error) throw error;
 
-      // Map data to include tags and status with defaults
       const mappedData = (response || []).map((item: Influenciador) => ({
         ...item,
         tags: item.tags || [],
@@ -229,6 +228,7 @@ const CRMInfluenciadores = () => {
     e.dataTransfer.dropEffect = "move";
   };
 
+  // --- ATUALIZAÇÃO PRINCIPAL AQUI ---
   const handleDrop = async (e: React.DragEvent, targetStage: string) => {
     e.preventDefault();
     if (!draggedCard) return;
@@ -239,7 +239,6 @@ const CRMInfluenciadores = () => {
       return;
     }
 
-    // Backup do estado anterior para caso de erro (rollback)
     const previousInfluenciadores = [...influenciadores];
 
     try {
@@ -247,7 +246,6 @@ const CRMInfluenciadores = () => {
       const maxOrder = cardsInTargetStage.reduce((max, i) => Math.max(max, i.stage_order), -1);
       const newOrder = maxOrder + 1;
 
-      // Cria o objeto atualizado
       const updatedCard = {
         ...card,
         stage: targetStage,
@@ -255,14 +253,18 @@ const CRMInfluenciadores = () => {
         updated_at: new Date().toISOString(),
       };
 
-      // 1. Atualização Otimista: Atualiza a tela imediatamente
+      // Atualização Otimista
       setInfluenciadores((prev) => prev.map((i) => (i.id === draggedCard ? updatedCard : i)));
 
-      // 2. Chamada à API: Usando PUT com o objeto completo para consistência
-      const { error } = await supabase.functions.invoke("influenciadores-api", {
-        method: "PUT",
-        body: updatedCard,
-      });
+      // ATUALIZAÇÃO DIRETA NO BANCO (Ignorando a Edge Function para evitar o erro)
+      const { error } = await supabase
+        .from("influenciadores")
+        .update({
+          stage: targetStage,
+          stage_order: newOrder,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", draggedCard);
 
       if (error) throw error;
 
@@ -272,19 +274,18 @@ const CRMInfluenciadores = () => {
       });
     } catch (error) {
       console.error("Error moving card:", error);
-
-      // Rollback: Reverte para o estado anterior se der erro
-      setInfluenciadores(previousInfluenciadores);
+      setInfluenciadores(previousInfluenciadores); // Reverte se der erro
 
       toast({
         title: "Erro",
-        description: "Não foi possível mover o influenciador.",
+        description: "Não foi possível mover o influenciador. Tente novamente.",
         variant: "destructive",
       });
     } finally {
       setDraggedCard(null);
     }
   };
+  // ----------------------------------
 
   const handleCardClick = (influenciador: Influenciador) => {
     setSelectedInfluenciador(influenciador);
@@ -322,7 +323,6 @@ const CRMInfluenciadores = () => {
           observacoes: editObservacoes.trim() || null,
           tags: tags,
           status: editStatus,
-          // Mantemos o stage atual ao editar detalhes
           stage: selectedInfluenciador.stage,
           stage_order: selectedInfluenciador.stage_order,
         },
