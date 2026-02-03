@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,31 @@ const unformatPhone = (value: string): string => {
 const getWhatsAppLink = (phone: string): string => {
   const digits = unformatPhone(phone);
   return `https://wa.me/55${digits}`;
+};
+
+// Helper para chamar a edge function com método HTTP correto
+const callInfluenciadoresApi = async (method: 'GET' | 'POST' | 'PUT' | 'DELETE', body?: object) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Não autenticado');
+
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/influenciadores-api`;
+  
+  const response = await fetch(url, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+      'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+    },
+    body: method !== 'GET' ? JSON.stringify(body) : undefined,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Erro ${response.status}`);
+  }
+
+  return response.json();
 };
 
 const CRMInfluenciadores = () => {
@@ -137,16 +162,9 @@ const CRMInfluenciadores = () => {
         return;
       }
 
-      const response = await supabase.functions.invoke('influenciadores-api', {
-        method: 'GET',
-      });
+      const data = await callInfluenciadoresApi('GET');
 
-      if (response.error) {
-        console.error("Erro API (Fetch):", response.error);
-        throw response.error;
-      }
-
-      const mappedData = (response.data || []).map((item: any) => ({
+      const mappedData = (data || []).map((item: any) => ({
         ...item,
         tags: item.tags || [],
         status: item.status || "em_aberto",
@@ -202,17 +220,8 @@ const CRMInfluenciadores = () => {
 
       console.log("Tentando adicionar:", newInfluenciador);
 
-      const response = await supabase.functions.invoke('influenciadores-api', {
-        method: 'POST',
-        body: newInfluenciador,
-      });
+      const data = await callInfluenciadoresApi('POST', newInfluenciador);
 
-      if (response.error) {
-        console.error("Erro API (Insert):", response.error);
-        throw response.error;
-      }
-
-      const data = response.data;
       setInfluenciadores([...influenciadores, { ...data, tags: data.tags || [], status: data.status || "em_aberto" }]);
       setFormNome("");
       setFormSocialHandle("");
@@ -271,19 +280,11 @@ const CRMInfluenciadores = () => {
 
       setInfluenciadores((prev) => prev.map((i) => (i.id === draggedCard ? updatedCard : i)));
 
-      const response = await supabase.functions.invoke('influenciadores-api', {
-        method: 'PUT',
-        body: {
-          id: draggedCard,
-          stage: targetStage,
-          stage_order: newOrder,
-        },
+      await callInfluenciadoresApi('PUT', {
+        id: draggedCard,
+        stage: targetStage,
+        stage_order: newOrder,
       });
-
-      if (response.error) {
-        console.error("Erro API (Update Move):", response.error);
-        throw response.error;
-      }
 
       toast({
         title: "Movido",
@@ -339,15 +340,7 @@ const CRMInfluenciadores = () => {
         status: editStatus,
       };
 
-      const response = await supabase.functions.invoke('influenciadores-api', {
-        method: 'PUT',
-        body: updates,
-      });
-
-      if (response.error) {
-        console.error("Erro API (Update Save):", response.error);
-        throw response.error;
-      }
+      await callInfluenciadoresApi('PUT', updates);
 
       const updatedInfluenciador = {
         ...selectedInfluenciador,
@@ -377,15 +370,7 @@ const CRMInfluenciadores = () => {
     if (!selectedInfluenciador) return;
 
     try {
-      const response = await supabase.functions.invoke('influenciadores-api', {
-        method: 'DELETE',
-        body: { id: selectedInfluenciador.id },
-      });
-
-      if (response.error) {
-        console.error("Erro API (Delete):", response.error);
-        throw response.error;
-      }
+      await callInfluenciadoresApi('DELETE', { id: selectedInfluenciador.id });
 
       setInfluenciadores((prev) => prev.filter((i) => i.id !== selectedInfluenciador.id));
       setIsDetailSheetOpen(false);
