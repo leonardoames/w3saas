@@ -117,8 +117,9 @@ const CRMInfluenciadores = () => {
   // Filtered influenciadores
   const filteredInfluenciadores = useMemo(() => {
     return influenciadores.filter((i) => {
-      if (statusFilter && i.status !== statusFilter) return false;
-      if (selectedTagFilter && (!i.tags || !i.tags.includes(selectedTagFilter))) return false;
+      // "all" ou vazio = mostra todos
+      if (statusFilter && statusFilter !== "all" && i.status !== statusFilter) return false;
+      if (selectedTagFilter && selectedTagFilter !== "all" && (!i.tags || !i.tags.includes(selectedTagFilter))) return false;
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const matchesName = i.nome.toLowerCase().includes(query);
