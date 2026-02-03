@@ -55,29 +55,21 @@ const unformatPhone = (value: string): string => {
   return value.replace(/\D/g, "");
 };
 
-// Gera link do WhatsApp com DDI 55
+// Gera link do WhatsApp Robusto
 const getWhatsAppLink = (phone: string): string => {
-  const digits = unformatPhone(phone);
-  return `https://wa.me/55${digits}`;
-};
+  let digits = unformatPhone(phone);
 
-type InfluenciadoresApiMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  // Remove zero à esquerda se houver (ex: 047...)
+  digits = digits.replace(/^0+/, "");
 
-// Chamada padronizada para a função do backend.
-// Observação: `invoke` faz POST, então usamos override via header.
-const callInfluenciadoresApi = async <T = any>(method: InfluenciadoresApiMethod, body?: object): Promise<T> => {
-  const { data, error } = await supabase.functions.invoke("influenciadores-api", {
-    body: body ?? {},
-    headers: {
-      "x-http-method-override": method,
-    },
-  });
-
-  if (error) {
-    throw new Error(error.message || "Falha ao chamar API");
+  // Verifica se o número já começa com 55 (Brasil) e tem tamanho suficiente (DDD + 9 digitos = 11, + 55 = 13)
+  // Se tiver menos de 12 dígitos, assumimos que é local e adicionamos 55.
+  // Se tiver 12 ou 13 e começar com 55, não adicionamos.
+  if (digits.length < 12 || !digits.startsWith("55")) {
+    digits = `55${digits}`;
   }
 
-  return data as T;
+  return `https://api.whatsapp.com/send?phone=${digits}`;
 };
 
 const CRMInfluenciadores = () => {
@@ -109,7 +101,7 @@ const CRMInfluenciadores = () => {
   const [editTags, setEditTags] = useState("");
   const [editStatus, setEditStatus] = useState("");
 
-  // Get all unique tags from influenciadores
+  // Get all unique tags
   const allTags = useMemo(() => {
     const tags = new Set<string>();
     influenciadores.forEach((i) => {
@@ -123,13 +115,8 @@ const CRMInfluenciadores = () => {
   // Filtered influenciadores
   const filteredInfluenciadores = useMemo(() => {
     return influenciadores.filter((i) => {
-      // Status filter
       if (statusFilter && i.status !== statusFilter) return false;
-
-      // Tag filter
       if (selectedTagFilter && (!i.tags || !i.tags.includes(selectedTagFilter))) return false;
-
-      // Search query
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const matchesName = i.nome.toLowerCase().includes(query);
@@ -139,7 +126,6 @@ const CRMInfluenciadores = () => {
         const matchesTags = i.tags?.some((tag) => tag.toLowerCase().includes(query));
         if (!matchesName && !matchesSocial && !matchesPhone && !matchesNotes && !matchesTags) return false;
       }
-
       return true;
     });
   }, [influenciadores, searchQuery, selectedTagFilter, statusFilter]);
@@ -148,15 +134,12 @@ const CRMInfluenciadores = () => {
     fetchInfluenciadores();
   }, []);
 
+  // --- FUNÇÃO CORRIGIDA: Usa Supabase Client direto ---
   const fetchInfluenciadores = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setLoading(false);
-        return;
-      }
+      const { data, error } = await supabase.from("influenciadores").select("*");
 
-      const data = await callInfluenciadoresApi('GET');
+      if (error) throw error;
 
       const mappedData = (data || []).map((item: any) => ({
         ...item,
@@ -169,7 +152,7 @@ const CRMInfluenciadores = () => {
       console.error("Erro ao buscar influenciadores:", error);
       toast({
         title: "Erro de Conexão",
-        description: "Não foi possível carregar os dados. Verifique o console.",
+        description: "Não foi possível carregar os dados.",
         variant: "destructive",
       });
     } finally {
@@ -184,6 +167,7 @@ const CRMInfluenciadores = () => {
       .filter((tag) => tag.length > 0);
   };
 
+  // --- FUNÇÃO CORRIGIDA: Insert direto ---
   const handleAddInfluenciador = async () => {
     if (!formNome.trim()) {
       toast({
@@ -195,6 +179,11 @@ const CRMInfluenciadores = () => {
     }
 
     try {
+      // Pega o usuário logado para o RLS
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       const maxOrder = influenciadores
         .filter((i) => i.stage === "em_qualificacao")
         .reduce((max, i) => Math.max(max, i.stage_order), -1);
@@ -210,13 +199,16 @@ const CRMInfluenciadores = () => {
         stage_order: maxOrder + 1,
         tags: tags,
         status: "em_aberto",
+        user_id: user?.id, // Importante para permissão
       };
 
-      console.log("Tentando adicionar:", newInfluenciador);
+      const { data, error } = await supabase.from("influenciadores").insert(newInfluenciador).select().single();
 
-      const data = await callInfluenciadoresApi('POST', newInfluenciador);
+      if (error) throw error;
 
       setInfluenciadores([...influenciadores, { ...data, tags: data.tags || [], status: data.status || "em_aberto" }]);
+
+      // Limpa formulário
       setFormNome("");
       setFormSocialHandle("");
       setFormTelefone("");
@@ -232,7 +224,7 @@ const CRMInfluenciadores = () => {
       console.error("Erro completo:", error);
       toast({
         title: "Erro ao adicionar",
-        description: error.message || "Não foi possível adicionar o influenciador.",
+        description: error.message || "Verifique se você está logado e as permissões.",
         variant: "destructive",
       });
     }
@@ -248,6 +240,7 @@ const CRMInfluenciadores = () => {
     e.dataTransfer.dropEffect = "move";
   };
 
+  // --- FUNÇÃO CORRIGIDA: Update direto ---
   const handleDrop = async (e: React.DragEvent, targetStage: string) => {
     e.preventDefault();
     if (!draggedCard) return;
@@ -272,13 +265,19 @@ const CRMInfluenciadores = () => {
         updated_at: new Date().toISOString(),
       };
 
+      // Atualização Otimista
       setInfluenciadores((prev) => prev.map((i) => (i.id === draggedCard ? updatedCard : i)));
 
-      await callInfluenciadoresApi('PUT', {
-        id: draggedCard,
-        stage: targetStage,
-        stage_order: newOrder,
-      });
+      const { error } = await supabase
+        .from("influenciadores")
+        .update({
+          stage: targetStage,
+          stage_order: newOrder,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", draggedCard);
+
+      if (error) throw error;
 
       toast({
         title: "Movido",
@@ -308,6 +307,7 @@ const CRMInfluenciadores = () => {
     setIsDetailSheetOpen(true);
   };
 
+  // --- FUNÇÃO CORRIGIDA: Update direto (Edição) ---
   const handleSaveInfluenciador = async () => {
     if (!selectedInfluenciador) return;
 
@@ -325,25 +325,25 @@ const CRMInfluenciadores = () => {
       const unformattedPhone = unformatPhone(editTelefone);
 
       const updates = {
-        id: selectedInfluenciador.id,
         nome: editNome.trim(),
         social_handle: editSocialHandle.trim() || null,
         telefone: unformattedPhone || null,
         observacoes: editObservacoes.trim() || null,
         tags: tags,
         status: editStatus,
+        updated_at: new Date().toISOString(),
       };
 
-      await callInfluenciadoresApi('PUT', updates);
+      const { error } = await supabase.from("influenciadores").update(updates).eq("id", selectedInfluenciador.id);
+
+      if (error) throw error;
 
       const updatedInfluenciador = {
         ...selectedInfluenciador,
         ...updates,
-        updated_at: new Date().toISOString(),
       };
 
       setInfluenciadores((prev) => prev.map((i) => (i.id === selectedInfluenciador.id ? updatedInfluenciador : i)));
-
       setSelectedInfluenciador(updatedInfluenciador);
 
       toast({
@@ -354,17 +354,20 @@ const CRMInfluenciadores = () => {
       console.error("Erro ao salvar:", error);
       toast({
         title: "Erro ao salvar",
-        description: error.message || "Não foi possível salvar as alterações.",
+        description: error.message,
         variant: "destructive",
       });
     }
   };
 
+  // --- FUNÇÃO CORRIGIDA: Delete direto ---
   const handleDeleteInfluenciador = async () => {
     if (!selectedInfluenciador) return;
 
     try {
-      await callInfluenciadoresApi('DELETE', { id: selectedInfluenciador.id });
+      const { error } = await supabase.from("influenciadores").delete().eq("id", selectedInfluenciador.id);
+
+      if (error) throw error;
 
       setInfluenciadores((prev) => prev.filter((i) => i.id !== selectedInfluenciador.id));
       setIsDetailSheetOpen(false);
@@ -378,7 +381,7 @@ const CRMInfluenciadores = () => {
       console.error("Erro ao deletar:", error);
       toast({
         title: "Erro ao remover",
-        description: error.message || "Não foi possível remover o influenciador.",
+        description: error.message,
         variant: "destructive",
       });
     }
