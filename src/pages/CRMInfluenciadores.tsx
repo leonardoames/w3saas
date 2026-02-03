@@ -131,17 +131,22 @@ const CRMInfluenciadores = () => {
 
   const fetchInfluenciadores = async () => {
     try {
-      const { data, error } = await supabase
-        .from("influenciadores")
-        .select("*")
-        .order("stage_order", { ascending: true });
-
-      if (error) {
-        console.error("Erro Supabase (Fetch):", error);
-        throw error;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setLoading(false);
+        return;
       }
 
-      const mappedData = (data || []).map((item: any) => ({
+      const response = await supabase.functions.invoke('influenciadores-api', {
+        method: 'GET',
+      });
+
+      if (response.error) {
+        console.error("Erro API (Fetch):", response.error);
+        throw response.error;
+      }
+
+      const mappedData = (response.data || []).map((item: any) => ({
         ...item,
         tags: item.tags || [],
         status: item.status || "em_aberto",
@@ -178,20 +183,6 @@ const CRMInfluenciadores = () => {
     }
 
     try {
-      // Verifica autenticação
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        toast({
-          title: "Não autenticado",
-          description: "Você precisa estar logado para adicionar.",
-          variant: "destructive",
-        });
-        return;
-      }
-
       const maxOrder = influenciadores
         .filter((i) => i.stage === "em_qualificacao")
         .reduce((max, i) => Math.max(max, i.stage_order), -1);
@@ -207,18 +198,21 @@ const CRMInfluenciadores = () => {
         stage_order: maxOrder + 1,
         tags: tags,
         status: "em_aberto",
-        user_id: user.id,
       };
 
       console.log("Tentando adicionar:", newInfluenciador);
 
-      const { data, error } = await supabase.from("influenciadores").insert(newInfluenciador).select().single();
+      const response = await supabase.functions.invoke('influenciadores-api', {
+        method: 'POST',
+        body: newInfluenciador,
+      });
 
-      if (error) {
-        console.error("Erro Supabase (Insert):", error);
-        throw error;
+      if (response.error) {
+        console.error("Erro API (Insert):", response.error);
+        throw response.error;
       }
 
+      const data = response.data;
       setInfluenciadores([...influenciadores, { ...data, tags: data.tags || [], status: data.status || "em_aberto" }]);
       setFormNome("");
       setFormSocialHandle("");
@@ -277,18 +271,18 @@ const CRMInfluenciadores = () => {
 
       setInfluenciadores((prev) => prev.map((i) => (i.id === draggedCard ? updatedCard : i)));
 
-      const { error } = await supabase
-        .from("influenciadores")
-        .update({
+      const response = await supabase.functions.invoke('influenciadores-api', {
+        method: 'PUT',
+        body: {
+          id: draggedCard,
           stage: targetStage,
           stage_order: newOrder,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", draggedCard);
+        },
+      });
 
-      if (error) {
-        console.error("Erro Supabase (Update Move):", error);
-        throw error;
+      if (response.error) {
+        console.error("Erro API (Update Move):", response.error);
+        throw response.error;
       }
 
       toast({
@@ -335,28 +329,30 @@ const CRMInfluenciadores = () => {
       const tags = parseTags(editTags);
       const unformattedPhone = unformatPhone(editTelefone);
 
-      // Objeto com as atualizações
       const updates = {
+        id: selectedInfluenciador.id,
         nome: editNome.trim(),
         social_handle: editSocialHandle.trim() || null,
         telefone: unformattedPhone || null,
         observacoes: editObservacoes.trim() || null,
         tags: tags,
         status: editStatus,
-        updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase.from("influenciadores").update(updates).eq("id", selectedInfluenciador.id);
+      const response = await supabase.functions.invoke('influenciadores-api', {
+        method: 'PUT',
+        body: updates,
+      });
 
-      if (error) {
-        console.error("Erro Supabase (Update Save):", error);
-        throw error;
+      if (response.error) {
+        console.error("Erro API (Update Save):", response.error);
+        throw response.error;
       }
 
-      // Atualiza estado local
       const updatedInfluenciador = {
         ...selectedInfluenciador,
         ...updates,
+        updated_at: new Date().toISOString(),
       };
 
       setInfluenciadores((prev) => prev.map((i) => (i.id === selectedInfluenciador.id ? updatedInfluenciador : i)));
@@ -381,11 +377,14 @@ const CRMInfluenciadores = () => {
     if (!selectedInfluenciador) return;
 
     try {
-      const { error } = await supabase.from("influenciadores").delete().eq("id", selectedInfluenciador.id);
+      const response = await supabase.functions.invoke('influenciadores-api', {
+        method: 'DELETE',
+        body: { id: selectedInfluenciador.id },
+      });
 
-      if (error) {
-        console.error("Erro Supabase (Delete):", error);
-        throw error;
+      if (response.error) {
+        console.error("Erro API (Delete):", response.error);
+        throw response.error;
       }
 
       setInfluenciadores((prev) => prev.filter((i) => i.id !== selectedInfluenciador.id));
