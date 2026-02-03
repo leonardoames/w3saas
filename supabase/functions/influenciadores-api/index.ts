@@ -2,7 +2,8 @@ import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-http-method-override, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
 }
 
 // Simple XOR-based encryption for demonstration
@@ -146,7 +147,10 @@ Deno.serve(async (req) => {
 
     const url = new URL(req.url)
     const path = url.pathname.split('/').pop() || ''
-    const method = req.method
+
+    // supabase-js `functions.invoke` uses POST; allow overriding for routing
+    const methodOverride = req.headers.get('x-http-method-override')
+    const method = (methodOverride || req.method).toUpperCase()
 
     console.log(`[influenciadores-api] ${method} ${path} by user ${user.id}`)
 

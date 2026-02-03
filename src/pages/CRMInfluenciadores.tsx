@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -61,29 +61,23 @@ const getWhatsAppLink = (phone: string): string => {
   return `https://wa.me/55${digits}`;
 };
 
-// Helper para chamar a edge function com método HTTP correto
-const callInfluenciadoresApi = async (method: 'GET' | 'POST' | 'PUT' | 'DELETE', body?: object) => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) throw new Error('Não autenticado');
+type InfluenciadoresApiMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
-  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/influenciadores-api`;
-  
-  const response = await fetch(url, {
-    method,
+// Chamada padronizada para a função do backend.
+// Observação: `invoke` faz POST, então usamos override via header.
+const callInfluenciadoresApi = async <T = any>(method: InfluenciadoresApiMethod, body?: object): Promise<T> => {
+  const { data, error } = await supabase.functions.invoke("influenciadores-api", {
+    body: body ?? {},
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
-      'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      "x-http-method-override": method,
     },
-    body: method !== 'GET' ? JSON.stringify(body) : undefined,
   });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `Erro ${response.status}`);
+  if (error) {
+    throw new Error(error.message || "Falha ao chamar API");
   }
 
-  return response.json();
+  return data as T;
 };
 
 const CRMInfluenciadores = () => {
