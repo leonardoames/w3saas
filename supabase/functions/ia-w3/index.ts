@@ -385,8 +385,45 @@ serve(async (req) => {
       );
     }
 
-    // Build system prompt with optional mode
-    let systemPrompt = SYSTEM_PROMPT;
+    // ========== BUSCAR DOCUMENTOS DO CÉREBRO IA ==========
+    let knowledgeContext = "";
+    try {
+      const { data: documents } = await supabase
+        .from("ia_documents")
+        .select("file_name, content_text")
+        .eq("user_id", userId)
+        .eq("status", "ready")
+        .limit(10);
+
+      if (documents && documents.length > 0) {
+        console.log(`Found ${documents.length} documents for context`);
+        
+        // Build context from documents (limit total size)
+        const MAX_CONTEXT_SIZE = 15000; // ~15KB of context
+        let contextSize = 0;
+        const contextParts: string[] = [];
+
+        for (const doc of documents) {
+          if (doc.content_text) {
+            const docContext = `\n--- Documento: ${doc.file_name} ---\n${doc.content_text.substring(0, 3000)}\n`;
+            if (contextSize + docContext.length <= MAX_CONTEXT_SIZE) {
+              contextParts.push(docContext);
+              contextSize += docContext.length;
+            }
+          }
+        }
+
+        if (contextParts.length > 0) {
+          knowledgeContext = `\n\n=== BASE DE CONHECIMENTO DO USUÁRIO ===\nO usuário tem os seguintes documentos em sua base de conhecimento. Use essas informações para personalizar suas respostas quando relevante:\n${contextParts.join("")}\n=== FIM DA BASE DE CONHECIMENTO ===\n`;
+        }
+      }
+    } catch (docError) {
+      console.log("Error fetching documents (non-critical):", docError);
+    }
+    // ========== FIM BUSCA DOCUMENTOS ==========
+
+    // Build system prompt with optional mode and knowledge base
+    let systemPrompt = SYSTEM_PROMPT + knowledgeContext;
     if (mode && MODE_INSTRUCTIONS[mode]) {
       systemPrompt += MODE_INSTRUCTIONS[mode];
     }

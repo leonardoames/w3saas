@@ -217,6 +217,48 @@ export type Database = {
         }
         Relationships: []
       }
+      ia_documents: {
+        Row: {
+          content_text: string | null
+          created_at: string | null
+          error_message: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content_text?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content_text?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       influenciador_contacts: {
         Row: {
           created_at: string

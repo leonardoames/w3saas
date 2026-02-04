@@ -6,6 +6,7 @@ import {
   Calculator,
   GitCompare,
   Sparkles,
+  Brain,
   Store,
   ShoppingBag,
   Users,
@@ -61,6 +62,11 @@ const menuItems = [
     title: "IA W3",
     icon: Sparkles,
     path: "/app/ia-w3",
+  },
+  {
+    title: "Cérebro IA",
+    icon: Brain,
+    path: "/app/ia-w3/cerebro",
   },
   {
     title: "Calendário Comercial",

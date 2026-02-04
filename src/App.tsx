@@ -23,6 +23,7 @@ import Calculadora from "./pages/Calculadora";
 import SimulacaoCenarios from "./pages/SimulacaoCenarios";
 import CRMInfluenciadores from "./pages/CRMInfluenciadores";
 import IAW3 from "./pages/IAW3";
+import IABrain from "./pages/IABrain";
 import Catalogo from "./pages/Catalogo";
 import Produtos from "./pages/Produtos";
 import CalendarioComercial from "./pages/CalendarioComercial";
@@ -67,6 +68,7 @@ const App = () => (
                         <Route path="/simulacao" element={<SimulacaoCenarios />} />
                         <Route path="/crm-influenciadores" element={<CRMInfluenciadores />} />
                         <Route path="/ia-w3" element={<IAW3 />} />
+                        <Route path="/ia-w3/cerebro" element={<IABrain />} />
                         <Route path="/catalogo" element={<Catalogo />} />
                         <Route path="/produtos" element={<Produtos />} />
                         <Route path="/calendario" element={<CalendarioComercial />} />

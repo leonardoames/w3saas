@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.scan-screenshot]
 verify_jwt = false
+
+[functions.process-ia-document]
+verify_jwt = false
