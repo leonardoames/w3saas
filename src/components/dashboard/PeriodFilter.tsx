@@ -49,7 +49,10 @@ export function PeriodFilter({
           variant={selectedPeriod === period.value ? "default" : "outline"}
           size="sm"
           onClick={() => handlePeriodClick(period)}
-          className="text-xs"
+          className={cn(
+            "text-xs",
+            selectedPeriod === period.value && "text-primary-foreground"
+          )}
         >
           {period.label}
         </Button>
@@ -60,7 +63,11 @@ export function PeriodFilter({
           <Button
             variant={selectedPeriod === "custom" ? "default" : "outline"}
             size="sm"
-            className={cn("text-xs gap-1", !customRange && "text-muted-foreground")}
+            className={cn(
+              "text-xs gap-1",
+              selectedPeriod === "custom" && "text-primary-foreground",
+              !customRange && selectedPeriod !== "custom" && "text-muted-foreground"
+            )}
           >
             <CalendarIcon className="h-3 w-3" />
             {customRange?.from ? (
