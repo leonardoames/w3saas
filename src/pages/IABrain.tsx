@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Brain, ArrowLeft, RefreshCw } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,7 +28,7 @@ export default function IABrain() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   const fetchDocuments = async () => {
     if (!user) return;
@@ -56,6 +56,11 @@ export default function IABrain() {
   useEffect(() => {
     fetchDocuments();
   }, [user]);
+
+  // Redirect non-admins (after hooks)
+  if (!isAdmin) {
+    return <Navigate to="/app" replace />;
+  }
 
   const handleUpload = async (file: File) => {
     if (!user) return;
@@ -168,7 +173,8 @@ export default function IABrain() {
               Cérebro da IA
             </h1>
             <p className="mt-1 text-muted-foreground">
-              Gerencie os documentos que a IA W3 consulta para respostas personalizadas
+              Gerencie os documentos que a IA W3 consulta para respostas personalizadas.
+              <span className="block text-sm text-primary">Estes documentos são compartilhados com todos os usuários.</span>
             </p>
           </div>
         </div>
