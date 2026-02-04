@@ -13,7 +13,7 @@ export function KPICard({ title, value, subtitle, icon: Icon, onClick }: KPICard
   
   return (
     <div 
-      className={`bg-card border border-border rounded-lg p-5 md:p-6 shadow-sm transition-all ${
+      className={`bg-card border border-border/50 rounded-lg p-5 md:p-6 shadow-sm transition-all ${
         isClickable 
           ? 'cursor-pointer hover:shadow-md hover:border-primary/50 hover:bg-accent/30 group' 
           : 'hover:shadow-md'
@@ -24,9 +24,11 @@ export function KPICard({ title, value, subtitle, icon: Icon, onClick }: KPICard
       onKeyDown={isClickable ? (e) => e.key === 'Enter' && onClick?.() : undefined}
     >
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm text-muted-foreground font-medium">{title}</span>
+        <span className="text-sm text-muted-foreground/70 font-medium">{title}</span>
         <div className="flex items-center gap-1">
-          <Icon className="h-4 w-4 text-muted-foreground" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+            <Icon className="h-4 w-4 text-primary" />
+          </div>
           {isClickable && (
             <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
           )}
@@ -34,7 +36,7 @@ export function KPICard({ title, value, subtitle, icon: Icon, onClick }: KPICard
       </div>
       <div className="text-2xl md:text-3xl font-bold text-foreground">{value}</div>
       {subtitle && (
-        <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
+        <p className="text-xs text-muted-foreground/70 mt-1">{subtitle}</p>
       )}
     </div>
   );

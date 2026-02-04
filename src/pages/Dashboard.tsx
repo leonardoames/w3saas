@@ -9,6 +9,9 @@ import {
   Camera,
   Image as ImageIcon,
   Loader2,
+  Receipt,
+  Wallet,
+  Percent,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -823,20 +826,34 @@ export default function Dashboard() {
           </Alert>
         )}
 
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <h2 className="text-sm font-medium text-muted-foreground">Filtrar período de análise</h2>
-          <PeriodFilter
-            selectedPeriod={selectedPeriod}
-            onPeriodChange={handlePeriodChange}
-            customRange={customRange}
-            onCustomRangeChange={setCustomRange}
-          />
-        </div>
+        {/* Layout reorganizado: Gráfico à esquerda, Métricas + Filtros à direita */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Gráfico - ocupa 2/3 da largura no desktop */}
+          <div className="lg:col-span-2 bg-card border border-border/50 rounded-lg p-5 md:p-6 shadow-sm">
+            <h3 className="text-sm font-medium text-foreground mb-4">Evolução de Faturamento</h3>
+            <RevenueChart data={aggregatedData} />
+          </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <MetricCard title="Ticket Médio" value={`R$ ${ticketMedio.toFixed(2)}`} />
-          <MetricCard title="Custo por Venda" value={`R$ ${custoMidiaPorVenda.toFixed(2)}`} />
-          <MetricCard title="Taxa de Conversão" value={`${taxaConversao.toFixed(2)}%`} />
+          {/* Coluna lateral - Filtros + Métricas secundárias */}
+          <div className="space-y-4">
+            {/* Filtros de período */}
+            <div className="bg-card border border-border/50 rounded-lg p-4 shadow-sm">
+              <h3 className="text-xs font-medium text-muted-foreground/70 mb-3">Período de análise</h3>
+              <PeriodFilter
+                selectedPeriod={selectedPeriod}
+                onPeriodChange={handlePeriodChange}
+                customRange={customRange}
+                onCustomRangeChange={setCustomRange}
+              />
+            </div>
+
+            {/* Métricas secundárias empilhadas */}
+            <div className="grid grid-cols-1 gap-4">
+              <MetricCard title="Ticket Médio" value={`R$ ${ticketMedio.toFixed(2)}`} icon={Receipt} />
+              <MetricCard title="Custo por Venda" value={`R$ ${custoMidiaPorVenda.toFixed(2)}`} icon={Wallet} />
+              <MetricCard title="Taxa de Conversão" value={`${taxaConversao.toFixed(2)}%`} icon={Percent} />
+            </div>
+          </div>
         </div>
 
         <Tabs defaultValue="historico" className="space-y-6">
@@ -850,12 +867,7 @@ export default function Dashboard() {
           </TabsList>
 
           <TabsContent value="historico" className="space-y-8">
-            <div className="bg-card border border-border rounded-lg p-5 md:p-6 shadow-sm">
-              <h3 className="text-sm font-medium text-foreground mb-4">Evolução de Faturamento</h3>
-              <RevenueChart data={aggregatedData} />
-            </div>
-
-            <div className="bg-card border border-border rounded-lg p-5 md:p-6 shadow-sm space-y-4">
+            <div className="bg-card border border-border/50 rounded-lg p-5 md:p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <h3 className="text-sm font-medium text-foreground">
                   Detalhamento Diário ({filteredMetrics.length} registros)
