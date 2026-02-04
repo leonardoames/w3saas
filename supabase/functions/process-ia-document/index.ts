@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -262,46 +263,45 @@ async function extractPdfText(fileData: Blob): Promise<string> {
   return textMatches.join(" ").replace(/\s+/g, " ");
 }
 
-// Simple DOCX text extraction (DOCX is a ZIP with XML)
+// DOCX text extraction using JSZip (DOCX is a ZIP with XML)
 async function extractDocxText(fileData: Blob): Promise<string> {
   try {
-    // DOCX files are ZIP archives
     const arrayBuffer = await fileData.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
     
-    // Convert to string to search for XML content
-    const content = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+    // Use JSZip to properly decompress the DOCX file
+    const zip = await JSZip.loadAsync(arrayBuffer);
     
-    // Find and extract text from document.xml patterns
-    const textPattern = /<w:t[^>]*>([^<]+)<\/w:t>/g;
+    // Get the main document content
+    const documentXml = zip.file("word/document.xml");
+    if (!documentXml) {
+      throw new Error("Arquivo DOCX inválido: word/document.xml não encontrado");
+    }
+    
+    const xmlContent = await documentXml.async("string");
+    
+    // Extract text from <w:t> elements (where Word stores text)
+    const textPattern = /<w:t[^>]*>([^<]*)<\/w:t>/g;
     const texts: string[] = [];
     let match;
     
-    while ((match = textPattern.exec(content)) !== null) {
-      const text = match[1].trim();
+    while ((match = textPattern.exec(xmlContent)) !== null) {
+      const text = match[1];
       if (text) {
         texts.push(text);
       }
     }
 
     if (texts.length === 0) {
-      // Fallback: try to find any text between XML tags
-      const anyTextPattern = />([A-Za-zÀ-ÿ][^<]{5,})</g;
-      while ((match = anyTextPattern.exec(content)) !== null) {
-        const text = match[1].trim();
-        if (text && !text.includes("xmlns") && !text.includes("http://")) {
-          texts.push(text);
-        }
-      }
+      throw new Error("Não foi possível extrair texto do DOCX. O arquivo pode estar vazio.");
     }
 
-    if (texts.length === 0) {
-      throw new Error("Não foi possível extrair texto do DOCX.");
-    }
-
-    return texts.join(" ").replace(/\s+/g, " ");
+    console.log(`DOCX: extracted ${texts.length} text segments`);
+    return texts.join("").replace(/\s+/g, " ").trim();
   } catch (error) {
     console.error("DOCX extraction error:", error);
-    throw new Error("Erro ao processar arquivo DOCX. Tente converter para TXT.");
+    if (error instanceof Error && error.message.includes("DOCX")) {
+      throw error;
+    }
+    throw new Error("Erro ao processar arquivo DOCX. Verifique se o arquivo não está corrompido.");
   }
 }
