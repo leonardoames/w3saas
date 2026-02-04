@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const SYSTEM_PROMPT = `
@@ -76,259 +77,272 @@ Regra final
 - Você sempre responde dentro do escopo de e-commerce/marketplaces e regras de negócio do cliente fornecidas no contexto.
 `.trim();
 
+// ==================================================================================
+// MÓDULOS OTIMIZADOS (PREMIUM VISUAL & ESTRATÉGICO)
+// ==================================================================================
 const MODE_INSTRUCTIONS: Record<string, string> = {
   "copy-site": `
+MODO: Copywriting Premium para E-commerce (Landing Page High-End)
 
-MODO: Copy Produto para E-commerce (Site Próprio)
+OBJETIVO: Criar uma estrutura de página de vendas visualmente impressionante e focada em conversão, usando HTML e CSS Inline moderno.
 
-Você deve criar uma descrição de produto PREMIUM com alta conversão para e-commerce próprio.
+INSTRUÇÕES DE DESIGN E CONTEÚDO:
+Gere um código HTML que possa ser renderizado diretamente, contendo:
+1. **Estilo Inline (CSS):** Use divs com \`style="..."\` para criar cards com sombra suave, botões de CTA pulsantes e tipografia hierárquica.
+2. **Estrutura:** - Hero Section (Headline + Subheadline + CTA).
+   - Grid de Benefícios (Ícones + Títulos curtos).
+   - Prova Social (Simulação de reviews).
+   - Tabela Técnica (Zebrada).
+   - FAQ (Perguntas de objeção).
 
-FORMATO DE SAÍDA OBRIGATÓRIO - HTML COMPLETO E VISUAL:
-<div class="product-description">
-  <h2>[Título SEO com palavra-chave principal - máx 60 caracteres]</h2>
-  
-  <p class="headline">[Headline persuasiva focada no benefício principal]</p>
-  
-  <div class="benefits">
-    <h3>✨ Por que escolher [produto]?</h3>
-    <ul>
-      <li><strong>Benefício 1:</strong> descrição curta</li>
-      <li><strong>Benefício 2:</strong> descrição curta</li>
-      <li><strong>Benefício 3:</strong> descrição curta</li>
-    </ul>
+FORMATO DE SAÍDA OBRIGATÓRIO (HTML):
+<div style="font-family: 'Segoe UI', system-ui, sans-serif; max-width: 800px; margin: 0 auto; color: #333; line-height: 1.6;">
+  <div style="text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #f9f9f9 0%, #e3e3e3 100%); border-radius: 12px; margin-bottom: 30px;">
+    <h1 style="color: #e65100; margin-bottom: 10px; font-size: 2.2rem;">[Headline de Alto Impacto]</h1>
+    <p style="font-size: 1.1rem; color: #555;">[Subheadline que ataca a dor principal]</p>
+    <button style="background-color: #e65100; color: white; padding: 15px 30px; border: none; border-radius: 50px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 20px; box-shadow: 0 4px 6px rgba(230, 81, 0, 0.3);">COMPRAR AGORA ➔</button>
   </div>
-  
-  <div class="features">
-    <h3>📦 O que você recebe:</h3>
-    <ul>
-      <li>Item 1</li>
-      <li>Item 2</li>
-    </ul>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px;">
+    <div style="padding: 20px; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+       <h3 style="color: #e65100;">✨ [Benefício 1]</h3>
+       <p>[Descrição curta]</p>
+    </div>
+    </div>
+
+  <div style="margin-bottom: 40px;">
+     <h2>Por que você precisa disso?</h2>
+     <p>[Texto focado na transformação do usuário, usando parágrafos curtos]</p>
   </div>
-  
-  <div class="specs">
-    <h3>📋 Especificações Técnicas</h3>
-    <table>
-      <tr><td>Característica</td><td>Valor</td></tr>
+
+  <div style="background: #f9f9f9; padding: 20px; border-radius: 8px;">
+    <h3>📋 Ficha Técnica</h3>
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr style="border-bottom: 1px solid #ddd;"><td style="padding: 10px; font-weight: bold;">Característica</td><td style="padding: 10px;">Valor</td></tr>
     </table>
   </div>
   
-  <div class="guarantee">
-    <p>🛡️ <strong>Garantia:</strong> [info da garantia]</p>
-    <p>🚚 <strong>Frete:</strong> [info do frete]</p>
-  </div>
-  
-  <div class="cta">
-    <p><strong>Compre agora e receba [benefício urgente]!</strong></p>
+  <div style="margin-top: 30px; padding: 15px; border-left: 4px solid #4CAF50; background: #e8f5e9;">
+    <p>🛡️ <strong>Garantia Blindada:</strong> [Texto de garantia]</p>
   </div>
 </div>
-
-Use emojis estrategicamente, crie urgência, destaque benefícios antes de características.`,
+`,
 
   "copy-marketplace": `
+MODO: Estrategista Global de Marketplaces (Omnichannel)
 
-MODO: Copy Produto para Marketplaces (ML, Shopee, Amazon)
+OBJETIVO: Criar anúncios otimizados respeitando a "psicologia" e o algoritmo de cada plataforma (ML, Shopee, Amazon, Shein, Temu).
 
-Você deve criar texto otimizado para marketplaces. NÃO use HTML pois não é suportado.
+INSTRUÇÕES ESTRATÉGICAS:
+1. **Mercado Livre (Meli):** Foco em dados técnicos e rapidez. Título RÍGIDO de 60 caracteres. Descrição em "Pirâmide Invertida" (o mais importante primeiro).
+2. **Shopee / Temu:** Foco em descoberta e gamificação. Títulos longos permitidos, uso estratégico de Emojis ⚡🔥, Hashtags e gatilhos de urgência.
+3. **Amazon:** Foco em SEO Semântico e Confiança. Títulos longos com palavras-chave. O foco são os 5 Bullet Points (Sobre este item).
+4. **Shein:** Foco em Lifestyle e Tendência. Linguagem de moda/decoração, "Vibe" do produto, Guia de Tamanhos obrigatório.
 
-FORMATO DE SAÍDA - TEXTO PURO ESTRUTURADO:
+FORMATO DE SAÍDA (HTML VISUAL):
 
-<h4>Título do Anúncio (máx 60 chars ML / 120 chars Shopee):</h4>
-<p>[Título com palavras-chave de busca interna do marketplace]</p>
+<div style="font-family: sans-serif; color: #333;">
 
-<h4>Descrição:</h4>
-<p>[Texto corrido SEM HTML, focado em:</p>
-<ul>
-<li>Palavras-chave que o comprador pesquisa</li>
-<li>Benefícios claros e diretos</li>
-<li>Especificações importantes</li>
-<li>Diferenciais do vendedor</li>
-</ul>
-<p>]</p>
+  <div style="background: #f4f4f4; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+    <h3 style="margin-top:0;">🧠 Estratégia Central</h3>
+    <p><strong>Palavra-chave Principal:</strong> [KW Principal]</p>
+    <p><strong>Diferencial Competitivo:</strong> [O que destaca esse produto]</p>
+  </div>
 
-<h4>Palavras-chave sugeridas para o anúncio:</h4>
-<ul>
-<li>[lista de 5-10 palavras-chave relevantes]</li>
-</ul>
+  <div style="border: 1px solid #ffe600; border-left: 6px solid #ffe600; padding: 15px; margin-bottom: 20px; border-radius: 6px;">
+    <h3 style="color: #2d3277; margin-top: 0;">💛 Mercado Livre (Técnico)</h3>
+    <p><strong>Título (Max 60 chars):</strong><br>
+    [Produto] [Marca] [Modelo] [Atributo Principal]</p>
+    
+    <p><strong>Ficha Técnica (Essencial para Ranking):</strong></p>
+    <ul>
+      <li><strong>Marca/Modelo:</strong> ...</li>
+      <li><strong>Características Chave:</strong> ...</li>
+    </ul>
+    
+    <p><strong>Descrição (Plain Text):</strong><br>
+    [Texto direto. Foco em compatibilidade, itens inclusos e garantia. Sem links. Sem saudações longas].</p>
+  </div>
 
-<h4>Dicas de otimização:</h4>
-<ul>
-<li>[3 dicas específicas para ranquear melhor]</li>
-</ul>
+  <div style="border: 1px solid #ee4d2d; border-left: 6px solid #ee4d2d; padding: 15px; margin-bottom: 20px; border-radius: 6px;">
+    <h3 style="color: #ee4d2d; margin-top: 0;">🧡 Shopee & Temu (Descoberta)</h3>
+    <p><strong>Título Chamativo (Com Emojis):</strong><br>
+    🔥 [Benefício] [Nome Produto] [Adjetivo] ⚡ Envio Rápido</p>
+    
+    <p><strong>Descrição (Gatilhos):</strong><br>
+    🛑 PARE DE SOFRER COM [Problema]!<br>
+    ✨ <strong>POR QUE AMAMOS:</strong><br>
+    ✅ [Benefício 1]<br>
+    🚚 <strong>Estoque no Brasil | Envio Imediato</strong>
+    </p>
+    <p><strong>Hashtags:</strong> #[Nicho] #[Produto] #Promoção</p>
+  </div>
 
-Foque em palavras-chave de busca, linguagem direta, sem formatação visual elaborada.`,
+  <div style="border: 1px solid #232f3e; border-left: 6px solid #232f3e; padding: 15px; margin-bottom: 20px; border-radius: 6px;">
+    <h3 style="color: #232f3e; margin-top: 0;">💙 Amazon (Confiança & SEO)</h3>
+    <p><strong>Título (Longo & Rico):</strong><br>
+    [Marca] [Nome Produto], [Característica 1], [Característica 2], Ideal para [Uso], [Cor/Tamanho]</p>
+    
+    <p><strong>Bullet Points (Sobre este item - Vital):</strong></p>
+    <ul>
+      <li>🔹 <strong>[BENEFÍCIO 1]:</strong> [Explicação detalhada com palavras-chave].</li>
+      <li>🔹 <strong>[BENEFÍCIO 2]:</strong> [Explicação detalhada focada em materiais/tecnologia].</li>
+      <li>🔹 <strong>[BENEFÍCIO 3]:</strong> [Explicação detalhada focada em durabilidade].</li>
+    </ul>
+  </div>
 
-  "seo": `
+  <div style="border: 1px solid #000; border-left: 6px solid #000; padding: 15px; margin-bottom: 20px; border-radius: 6px;">
+    <h3 style="color: #000; margin-top: 0;">🖤 Shein (Trend & Vibe)</h3>
+    <p><strong>Título:</strong> [Estilo] [Nome do Produto] [Detalhe Visual]</p>
+    <p><strong>Descrição:</strong> A peça que faltava no seu [Look/Casa]. Com design [Adjetivo], traz aquela vibe [Estilo] tendência.</p>
+    <p><strong>Medidas:</strong> [Guia de tamanhos claro]</p>
+  </div>
 
-MODO: SEO para E-commerce
+</div>
+`,
 
-Você deve entregar análise e sugestões de SEO. Use formatação HTML simples para organização.
+  seo: `
+MODO: Auditoria e Estratégia de SEO (Google & E-commerce)
 
-FORMATO DE SAÍDA:
+OBJETIVO: Analisar o conteúdo como um "Googlebot" e sugerir melhorias estruturais e semânticas.
 
-<h4>🎯 Palavra-chave Principal:</h4>
-<p>[palavra-chave]</p>
-
-<h4>📝 Title Tag (máx 60 caracteres):</h4>
-<p>[sugestão de title]</p>
-
-<h4>📄 Meta Description (máx 160 caracteres):</h4>
-<p>[sugestão de meta description]</p>
-
-<h4>🏷️ H1 Sugerido:</h4>
-<p>[sugestão de H1]</p>
-
-<h4>🔑 Palavras-chave Secundárias:</h4>
-<ul>
-<li>[lista de palavras relacionadas]</li>
-</ul>
-
-<h4>📊 Estrutura de Headings Sugerida:</h4>
-<ul>
-<li>H1: [...]</li>
-<li>H2: [...]</li>
-<li>H3: [...]</li>
-</ul>
-
-<h4>💡 Recomendações de Otimização:</h4>
-<ul>
-<li>[ações prioritárias]</li>
-</ul>`,
-
-  "diagnostico": `
-
-MODO: Diagnóstico de Performance
-
-Você deve analisar métricas e identificar gargalos. Use formatação HTML simples.
-
-FORMATO DE SAÍDA:
-
-<h4>🔍 Diagnóstico</h4>
-<p>[análise da situação baseada nos dados fornecidos]</p>
-
-<h4>⚠️ Principais Gargalos Identificados:</h4>
-<ol>
-<li><strong>Gargalo 1:</strong> explicação</li>
-<li><strong>Gargalo 2:</strong> explicação</li>
-</ol>
-
-<h4>📋 Plano de Ação (por prioridade):</h4>
-<ol>
-<li><strong>Ação 1:</strong> [o que fazer] - Impacto: [alto/médio] - Esforço: [baixo/médio]</li>
-<li><strong>Ação 2:</strong> [o que fazer] - Impacto: [alto/médio] - Esforço: [baixo/médio]</li>
-</ol>
-
-<h4>📈 Métricas para Acompanhar:</h4>
-<ul>
-<li>[métricas relevantes]</li>
-</ul>
-
-Se faltarem dados, liste as métricas necessárias antes de dar o diagnóstico.`,
-
-  "anuncios": `
-
-MODO: Copy para Anúncios (Meta Ads, Google Ads)
-
-Você deve criar copies para anúncios pagos. Use formatação HTML simples.
+INSTRUÇÕES:
+1. **Intenção:** Identifique se é Transacional (comprar) ou Informacional (aprender).
+2. **Estrutura:** Verifique H1, Title Tag e Meta Description.
+3. **Dados Estruturados:** Sugira Schema Markup para Rich Snippets.
 
 FORMATO DE SAÍDA:
+<h4>🔍 Raio-X de SEO</h4>
+<p><strong>Intenção da KW:</strong> [Transacional/Informacional]</p>
+<p><strong>Dificuldade Estimada:</strong> [Baixa/Média/Alta]</p>
 
-<h4>📱 Meta Ads (Facebook/Instagram)</h4>
-
-<p><strong>Headline 1 (40 chars):</strong> [texto]</p>
-<p><strong>Headline 2 (40 chars):</strong> [texto]</p>
-<p><strong>Headline 3 (40 chars):</strong> [texto]</p>
-
-<p><strong>Texto Principal (125 chars):</strong></p>
-<p>[copy persuasiva]</p>
-
-<p><strong>Descrição (30 chars):</strong> [texto]</p>
-
-<h4>🔍 Google Ads</h4>
-
-<p><strong>Título 1 (30 chars):</strong> [texto]</p>
-<p><strong>Título 2 (30 chars):</strong> [texto]</p>
-<p><strong>Título 3 (30 chars):</strong> [texto]</p>
-
-<p><strong>Descrição 1 (90 chars):</strong> [texto]</p>
-<p><strong>Descrição 2 (90 chars):</strong> [texto]</p>
-
-<h4>💡 Variações para Teste A/B:</h4>
+<h4>🏗️ Estrutura On-Page Recomendada</h4>
 <ul>
-<li>[2-3 variações alternativas]</li>
-</ul>`,
+  <li><strong>Title Tag:</strong> [Título com gatilho de clique] (aprox. 55 chars)</li>
+  <li><strong>Meta Description:</strong> [Resumo persuasivo com CTA] (aprox. 155 chars)</li>
+  <li><strong>H1:</strong> [Palavra-chave exata + Benefício Principal]</li>
+  <li><strong>H2s (Subtópicos):</strong> [Lista de tópicos para cobrir a semântica]</li>
+</ul>
+
+<h4>🤖 Dados Estruturados (Schema.org)</h4>
+<p>Recomendo implementar o JSON-LD do tipo: <strong>[Product / Article / FAQPage]</strong> para ganhar destaque na SERP.</p>
+
+<h4>🚀 Oportunidades (Gap Analysis)</h4>
+<ul>
+  <li>[O que falta no conteúdo para superar o top 3 do Google]</li>
+</ul>
+`,
+
+  diagnostico: `
+MODO: Diagnóstico de Performance com Metodologia ICE
+
+OBJETIVO: Analisar métricas, encontrar o gargalo e priorizar a solução baseada em ROI.
+
+INSTRUÇÕES:
+1. **Analise o Funil:** Impressões -> CTR -> Conversão.
+2. **Priorização ICE:** Impacto (I), Confiança (C), Facilidade (E).
+3. **Apresentação:** Use tabelas visuais.
+
+FORMATO DE SAÍDA:
+<h4>📊 Análise do Funil</h4>
+<div style="background:#f0f0f0; padding:15px; border-radius:8px; border-left: 5px solid #d32f2f;">
+  <p><strong>Diagnóstico Principal:</strong> O problema está na etapa de [Atração/Interesse/Decisão].</p>
+  <p><strong>Evidência:</strong> [Dado que comprova, ex: CTR baixo de 0.5%]</p>
+</div>
+
+<h4>🚦 Plano de Ação (Matriz ICE)</h4>
+<table style="width:100%; border-collapse:collapse; margin-top:15px;">
+  <tr style="background:#ddd; text-align:left;">
+    <th style="padding:8px;">Ação Recomendada</th>
+    <th style="padding:8px;">Impacto (0-10)</th>
+    <th style="padding:8px;">Prioridade</th>
+  </tr>
+  <tr>
+    <td style="padding:8px;"><strong>1. [Ação Principal]</strong><br><small>[Por que fazer]</small></td>
+    <td style="padding:8px;">Alta (9)</td>
+    <td style="padding:8px;">🔴 Fazer Agora</td>
+  </tr>
+  <tr>
+    <td style="padding:8px;">2. [Ação Secundária]</td>
+    <td style="padding:8px;">Média (6)</td>
+    <td style="padding:8px;">🟡 Planejar</td>
+  </tr>
+</table>
+
+<h4>📈 KPIs de Sucesso</h4>
+<ul>
+  <li>Meta de CTR: [X]%</li>
+  <li>Meta de Conversão: [X]%</li>
+</ul>
+`,
+
+  anuncios: `
+MODO: Copywriting para Tráfego Pago (Meta, Google, Native)
+
+OBJETIVO: Criar anúncios específicos para a mentalidade de cada plataforma.
+- **Meta (FB/IG):** Interrupção. Use AIDA (Atenção, Interesse, Desejo, Ação).
+- **Google Search:** Intenção. Resposta direta à busca.
+- **Native (Taboola):** Curiosidade. Estilo "Notícia" ou "Clickbait Ético".
+
+FORMATO DE SAÍDA:
+<h4>🔵 Meta Ads (Facebook & Instagram)</h4>
+<div style="border-left: 4px solid #1877F2; padding-left: 10px; margin-bottom: 20px;">
+  <p><strong>Ideia de Criativo:</strong> [Descrição visual: ex: Vídeo UGC mostrando problema]</p>
+  <p><strong>Headline:</strong> [Curta e urgente, max 40 chars]</p>
+  <p><strong>Texto Principal (AIDA):</strong> [Copy focada na dor e solução imediata]</p>
+  <p><strong>CTA:</strong> [Comprar Agora / Saiba Mais]</p>
+</div>
+
+<h4>🟢 Google Ads (Rede de Pesquisa)</h4>
+<div style="border-left: 4px solid #34A853; padding-left: 10px; margin-bottom: 20px;">
+  <p><strong>Título 1:</strong> [Palavra-chave Exata]</p>
+  <p><strong>Título 2:</strong> [Benefício / Preço]</p>
+  <p><strong>Título 3:</strong> [Gatilho de Autoridade]</p>
+  <p><strong>Descrição:</strong> [Resumo denso com diferenciais e chamada para ação]</p>
+</div>
+
+<h4>🟠 Native Ads (Taboola / Outbrain)</h4>
+<div style="border-left: 4px solid #dddddd; padding-left: 10px;">
+  <p><strong>Manchete Curiosa:</strong> "O método simples que [Público] está usando para [Resultado]..."</p>
+  <p><strong>Imagem Sugerida:</strong> [Foto amadora/realista, close-up, sem texto]</p>
+</div>
+`,
 
   "roteiro-influencer": `
+MODO: Estratégia de Influenciadores (Briefing + Roteiro)
 
-MODO: Roteiro de Storytelling para Influenciadores
-
-Você deve criar um roteiro de NARRATIVA em múltiplos dias para influenciadores/creators. O foco é storytelling com experiência do usuário, não stories soltos.
-
-IMPORTANTE:
-- Todos os conteúdos devem ser em formato REELS (vídeo vertical)
-- Incluir DATAS específicas (Dia 1, Dia 2, etc.)
-- Criar arco narrativo com: descoberta → experiência → transformação → recomendação
-- Incluir elementos de antecipação e curiosidade
-- Focar em feedbacks positivos e prova social
-- Mostrar bastidores e autenticidade
+OBJETIVO: Profissionalizar a abordagem e garantir conteúdo que converte (Reels/TikTok).
 
 FORMATO DE SAÍDA:
+<h3>🤝 Parte 1: O Briefing (Abordagem Comercial)</h3>
+<p><strong>Assunto:</strong> Parceria com [Sua Marca] 🚀 Proposta para você</p>
+<p><strong>Mensagem:</strong> "Oi [Nome]! Acompanhamos seu conteúdo sobre [Nicho] e adoramos sua autenticidade. Temos o produto [Nome] que resolve [Problema] da sua audiência. Topa testar?..."</p>
 
-<h3>🎬 Roteiro de Storytelling: [Nome da Campanha]</h3>
+<h3>🎬 Parte 2: O Roteiro (Estrutura de Retenção)</h3>
+<div style="background:#fff; border:1px solid #ddd; padding:15px; border-radius:8px;">
+  <h4>00:00 - 00:03s (O Gancho Visual)</h4>
+  <p><strong>Visual:</strong> [O que mostrar para parar o scroll]</p>
+  <p><strong>Fala:</strong> "Se você [tem o problema], para tudo e olha isso!"</p>
+</div>
 
-<p><strong>Objetivo:</strong> [objetivo da campanha]</p>
-<p><strong>Duração:</strong> [X dias]</p>
-<p><strong>Formato:</strong> Reels (vídeo vertical)</p>
+<div style="background:#fff; border:1px solid #ddd; padding:15px; border-radius:8px; margin-top: 10px;">
+  <h4>00:03 - 00:20s (A Transformação)</h4>
+  <p><strong>Visual:</strong> [Demonstração do produto em uso/Antes e Depois]</p>
+  <p><strong>Fala:</strong> "Eu testei o [Produto] e olha a diferença..."</p>
+</div>
 
-<hr>
+<div style="background:#fff; border:1px solid #ddd; padding:15px; border-radius:8px; margin-top: 10px;">
+  <h4>00:20 - 00:30s (CTA Único)</h4>
+  <p><strong>Fala:</strong> "Clica no link da bio e usa meu cupom [NOME]!"</p>
+</div>
 
-<h4>📅 DIA 1 - [Título do dia: ex: "A Descoberta"]</h4>
-<p><strong>Objetivo do dia:</strong> [criar curiosidade/apresentar problema]</p>
-<p><strong>Formato:</strong> Reels de [X segundos]</p>
-<p><strong>Roteiro:</strong></p>
+<h4>📌 Checklist de Entrega:</h4>
 <ul>
-<li><strong>Abertura (0-3s):</strong> [gancho de atenção]</li>
-<li><strong>Desenvolvimento (3-20s):</strong> [conteúdo principal]</li>
-<li><strong>CTA/Gancho (20-30s):</strong> [chamada para próximo conteúdo]</li>
+  <li>✅ Iluminação natural</li>
+  <li>✅ Legendas nativas da plataforma</li>
+  <li>✅ Link na bio antes de postar</li>
 </ul>
-<p><strong>Texto sugerido:</strong> "[fala do influenciador]"</p>
-<p><strong>Elementos visuais:</strong> [o que mostrar]</p>
-
-<hr>
-
-<h4>📅 DIA 2 - [Título: ex: "Primeira Experiência"]</h4>
-[mesmo formato...]
-
-<hr>
-
-<h4>📅 DIA 3 - [Título: ex: "Os Resultados"]</h4>
-[mesmo formato...]
-
-<hr>
-
-<h4>📅 DIA 4 - [Título: ex: "Feedback Real"]</h4>
-[mesmo formato...]
-
-<hr>
-
-<h4>📅 DIA 5 - [Título: ex: "A Recomendação"]</h4>
-[mesmo formato...]
-
-<hr>
-
-<h4>📌 Dicas de Produção:</h4>
-<ul>
-<li>[dicas específicas para o influenciador]</li>
-</ul>
-
-<h4>📊 Métricas para Acompanhar:</h4>
-<ul>
-<li>Views e retenção de cada Reels</li>
-<li>Engajamento (comentários, salvamentos)</li>
-<li>Cliques no link/cupom</li>
-</ul>
-
-Adapte o número de dias conforme a necessidade (mínimo 3, ideal 5-7 dias).`,
+`,
 };
 
 serve(async (req) => {
@@ -341,10 +355,10 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       console.log("Missing or invalid authorization header");
-      return new Response(
-        JSON.stringify({ error: "Autenticação necessária" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Autenticação necessária" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -357,10 +371,10 @@ serve(async (req) => {
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
     if (claimsError || !claimsData?.claims) {
       console.log("Invalid token:", claimsError?.message);
-      return new Response(
-        JSON.stringify({ error: "Autenticação inválida" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Autenticação inválida" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const userId = claimsData.claims.sub;
@@ -368,21 +382,21 @@ serve(async (req) => {
     // ========== FIM AUTENTICAÇÃO ==========
 
     const { userMessage, mode, chatHistory } = await req.json();
-    
+
     if (!userMessage || typeof userMessage !== "string") {
-      return new Response(
-        JSON.stringify({ error: "userMessage é obrigatório" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "userMessage é obrigatório" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) {
       console.error("OPENAI_API_KEY not configured");
-      return new Response(
-        JSON.stringify({ error: "API key da OpenAI não configurada" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "API key da OpenAI não configurada" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // ========== BUSCAR DOCUMENTOS DO CÉREBRO IA (COMPARTILHADO) ==========
@@ -397,7 +411,7 @@ serve(async (req) => {
 
       if (documents && documents.length > 0) {
         console.log(`Found ${documents.length} documents for context`);
-        
+
         // Build context from documents (limit total size)
         const MAX_CONTEXT_SIZE = 15000; // ~15KB of context
         let contextSize = 0;
@@ -429,9 +443,7 @@ serve(async (req) => {
     }
 
     // Build messages array with chat history
-    const messages: Array<{ role: string; content: string }> = [
-      { role: "system", content: systemPrompt },
-    ];
+    const messages: Array<{ role: string; content: string }> = [{ role: "system", content: systemPrompt }];
 
     // Add chat history if provided (last 10 turns)
     if (chatHistory && Array.isArray(chatHistory)) {
@@ -462,24 +474,24 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("OpenAI API error:", response.status, errorText);
-      
+
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Limite de requisições atingido. Tente novamente em alguns segundos." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
       if (response.status === 401) {
-        return new Response(
-          JSON.stringify({ error: "Chave da API OpenAI inválida ou expirada." }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Chave da API OpenAI inválida ou expirada." }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
-      
-      return new Response(
-        JSON.stringify({ error: "Erro ao processar sua solicitação" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+
+      return new Response(JSON.stringify({ error: "Erro ao processar sua solicitação" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await response.json();
@@ -495,25 +507,25 @@ serve(async (req) => {
         answerHtml: answerContent,
         followUpQuestions,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
     console.error("Error in ia-w3 function:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
 
 function generateFollowUpQuestions(mode: string | undefined, answer: string): string[] {
   const questions: string[] = [];
-  
+
   // Check if answer asks for metrics
   if (answer.includes("métricas") || answer.includes("dados") || answer.includes("checklist")) {
     questions.push("Já tenho as métricas, vou enviar");
   }
-  
+
   // Mode-specific follow-ups
   switch (mode) {
     case "copy-site":
@@ -545,6 +557,6 @@ function generateFollowUpQuestions(mode: string | undefined, answer: string): st
       questions.push("Me dê mais detalhes");
       questions.push("Como implementar isso?");
   }
-  
+
   return questions.slice(0, 3);
 }
