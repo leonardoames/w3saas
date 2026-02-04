@@ -1,11 +1,16 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Copy, Loader2, FileText, ShoppingBag, Search, BarChart3, Megaphone, Video } from "lucide-react";
+import { Sparkles, Copy, Loader2, FileText, ShoppingBag, Search, BarChart3, Megaphone, Video, Plus, Mic, Send, X, Trash2 } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import DOMPurify from "dompurify";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -30,34 +35,26 @@ const MODES: Mode[] = [
 
 export default function IAW3() {
   const [prompt, setPrompt] = useState("");
-  const [output, setOutput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
-  const outputRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
 
-  // Sanitize HTML output for XSS protection
-  const sanitizedOutput = useMemo(() => {
-    if (!output) return '';
-    return DOMPurify.sanitize(output, {
-      ALLOWED_TAGS: [
-        'p', 'br', 'strong', 'em', 'ul', 'ol', 'li',
-        'h2', 'h3', 'h4', 'h5', 'h6',
-        'div', 'span', 'table', 'tr', 'td', 'th', 'tbody', 'thead'
-      ],
-      ALLOWED_ATTR: ['class'],
-      KEEP_CONTENT: true,
-      ALLOW_DATA_ATTR: false,
-    });
-  }, [output]);
-
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (outputRef.current && output) {
-      outputRef.current.scrollTop = outputRef.current.scrollHeight;
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatHistory]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+      inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 200) + "px";
     }
-  }, [output]);
+  }, [prompt]);
 
   const handleGenerate = async (customPrompt?: string) => {
     const messageToSend = customPrompt || prompt;
@@ -74,9 +71,11 @@ export default function IAW3() {
     setIsGenerating(true);
     setFollowUpQuestions([]);
 
-    // Add user message to history
+    // Add user message to history immediately
     const newUserMessage: ChatMessage = { role: "user", content: messageToSend };
-    const updatedHistory = [...chatHistory, newUserMessage].slice(-20); // Keep last 10 turns (20 messages)
+    const updatedHistory = [...chatHistory, newUserMessage];
+    setChatHistory(updatedHistory);
+    setPrompt("");
 
     try {
       const { data, error } = await supabase.functions.invoke("ia-w3", {
@@ -98,11 +97,12 @@ export default function IAW3() {
 
       const assistantMessage: ChatMessage = { role: "assistant", content: data.answerHtml };
       setChatHistory([...updatedHistory, assistantMessage].slice(-20));
-      setOutput(data.answerHtml);
       setFollowUpQuestions(data.followUpQuestions || []);
-      setPrompt("");
     } catch (error) {
       console.error("Error generating content:", error);
+      
+      // Remove the user message if there was an error
+      setChatHistory(chatHistory);
       
       let errorMessage = "Erro ao gerar conteúdo. Tente novamente.";
       if (error instanceof Error) {
@@ -125,8 +125,8 @@ export default function IAW3() {
     }
   };
 
-  const handleCopyHTML = () => {
-    navigator.clipboard.writeText(output);
+  const handleCopyMessage = (content: string) => {
+    navigator.clipboard.writeText(content.replace(/<[^>]*>/g, ""));
     toast({
       title: "Copiado!",
       description: "Conteúdo copiado para a área de transferência",
@@ -139,228 +139,279 @@ export default function IAW3() {
 
   const handleClearHistory = () => {
     setChatHistory([]);
-    setOutput("");
     setFollowUpQuestions([]);
     toast({
-      title: "Histórico limpo",
-      description: "A conversa foi reiniciada",
+      title: "Conversa limpa",
+      description: "O histórico foi reiniciado",
     });
   };
 
-  const getPlaceholder = () => {
-    switch (selectedMode) {
-      case "copy-site":
-        return "Descreva o produto: nome, benefícios, público-alvo, diferenciais... A IA vai gerar HTML premium de alta conversão.";
-      case "copy-marketplace":
-        return "Descreva o produto para criar anúncio otimizado para Mercado Livre, Shopee, etc. Foco em palavras-chave.";
-      case "seo":
-        return "Cole a URL ou descreva a página que quer otimizar para buscadores...";
-      case "diagnostico":
-        return "Descreva o problema ou cole suas métricas (faturamento, conversão, ROAS, etc.)...";
-      case "anuncios":
-        return "Descreva a campanha, objetivo, público e produto para criar copies de anúncios...";
-      case "roteiro-influencer":
-        return "Descreva o produto, objetivo da campanha e perfil do influenciador. A IA criará um roteiro de storytelling em múltiplos dias com Reels.";
-      default:
-        return "Ex: Preciso melhorar minha taxa de conversão, está em 1.2% e quero chegar em 2%...";
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleGenerate();
     }
   };
 
   const selectedModeData = MODES.find(m => m.id === selectedMode);
 
+  // Sanitize HTML for messages
+  const sanitizeHtml = (html: string) => {
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: [
+        'p', 'br', 'strong', 'em', 'ul', 'ol', 'li',
+        'h2', 'h3', 'h4', 'h5', 'h6',
+        'div', 'span', 'table', 'tr', 'td', 'th', 'tbody', 'thead'
+      ],
+      ALLOWED_ATTR: ['class'],
+      KEEP_CONTENT: true,
+      ALLOW_DATA_ATTR: false,
+    });
+  };
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">IA W3</h1>
-        <p className="mt-2 text-muted-foreground">
-          Assistente de performance para e-commerce: diagnóstico, copy, SEO e muito mais
-        </p>
-      </div>
-
-      {/* Mode Selector */}
-      <div className="space-y-3">
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-          {MODES.map((mode) => (
-            <Button
-              key={mode.id}
-              variant={selectedMode === mode.id ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedMode(selectedMode === mode.id ? null : mode.id)}
-              className="flex-col h-auto py-2 px-2 gap-1"
-              title={mode.description}
-            >
-              {mode.icon}
-              <span className="text-xs truncate w-full text-center">{mode.label}</span>
-            </Button>
-          ))}
-        </div>
-        <div className="flex items-center justify-between">
-          {selectedModeData ? (
-            <p className="text-sm text-muted-foreground">
-              <strong>{selectedModeData.label}:</strong> {selectedModeData.description}
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">Selecione um modo acima</p>
-          )}
-          {chatHistory.length > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClearHistory}
-              className="text-muted-foreground shrink-0"
-            >
-              Limpar conversa
-            </Button>
+    <div className="flex flex-col h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)]">
+      {/* Header with mode indicator and clear button */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-primary" />
+          <span className="font-semibold text-foreground">IA W3</span>
+          {selectedModeData && (
+            <span className="text-sm text-muted-foreground">
+              • {selectedModeData.label}
+            </span>
           )}
         </div>
+        {chatHistory.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClearHistory}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            Limpar
+          </Button>
+        )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Input */}
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {selectedModeData 
-                ? `Modo: ${selectedModeData.label}` 
-                : "O que você precisa?"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Textarea
-              placeholder={getPlaceholder()}
-              className="min-h-[200px] resize-none"
+      {/* Chat messages area */}
+      <div className="flex-1 overflow-y-auto px-4 py-6">
+        {chatHistory.length === 0 ? (
+          // Empty state - welcome screen
+          <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto text-center space-y-6">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <Sparkles className="h-8 w-8 text-primary" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-semibold text-foreground">
+                Como posso ajudar?
+              </h1>
+              <p className="text-muted-foreground">
+                Assistente de performance para e-commerce: diagnóstico, copy, SEO e muito mais
+              </p>
+            </div>
+            
+            {/* Mode suggestions */}
+            <div className="flex flex-wrap justify-center gap-2 pt-4">
+              {MODES.map((mode) => (
+                <Button
+                  key={mode.id}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedMode(mode.id)}
+                  className={cn(
+                    "gap-2",
+                    selectedMode === mode.id && "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
+                  )}
+                >
+                  {mode.icon}
+                  {mode.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          // Chat messages
+          <div className="max-w-3xl mx-auto space-y-6">
+            {chatHistory.map((message, idx) => (
+              <div
+                key={idx}
+                className={cn(
+                  "flex gap-4",
+                  message.role === "user" ? "justify-end" : "justify-start"
+                )}
+              >
+                {message.role === "assistant" && (
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                  </div>
+                )}
+                <div
+                  className={cn(
+                    "group relative max-w-[85%] rounded-2xl px-4 py-3",
+                    message.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/50"
+                  )}
+                >
+                  {message.role === "user" ? (
+                    <p className="whitespace-pre-wrap">{message.content}</p>
+                  ) : (
+                    <div 
+                      className="prose prose-sm max-w-none dark:prose-invert prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2 prose-ul:my-2 prose-li:my-0"
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(message.content) }}
+                    />
+                  )}
+                  
+                  {/* Copy button for assistant messages */}
+                  {message.role === "assistant" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute -right-10 top-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                      onClick={() => handleCopyMessage(message.content)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+            
+            {/* Loading indicator */}
+            {isGenerating && (
+              <div className="flex gap-4">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                </div>
+                <div className="bg-muted/50 rounded-2xl px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    <span className="text-muted-foreground text-sm">Pensando...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Follow-up suggestions */}
+            {followUpQuestions.length > 0 && !isGenerating && (
+              <div className="flex flex-wrap gap-2 pl-12">
+                {followUpQuestions.map((question, idx) => (
+                  <Button
+                    key={idx}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleFollowUp(question)}
+                    className="text-sm"
+                  >
+                    {question}
+                  </Button>
+                ))}
+              </div>
+            )}
+            
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+      </div>
+
+      {/* Input area - fixed at bottom */}
+      <div className="border-t border-border/50 bg-background px-4 py-4">
+        <div className="max-w-3xl mx-auto">
+          <div className="relative flex items-end gap-2 rounded-2xl bg-muted/50 border border-border/50 px-3 py-2">
+            {/* Plus menu for modes */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 shrink-0 rounded-full hover:bg-muted"
+                >
+                  <Plus className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                {MODES.map((mode) => (
+                  <DropdownMenuItem
+                    key={mode.id}
+                    onClick={() => setSelectedMode(selectedMode === mode.id ? null : mode.id)}
+                    className={cn(
+                      "gap-3 cursor-pointer",
+                      selectedMode === mode.id && "bg-primary/10"
+                    )}
+                  >
+                    <span className="text-primary">{mode.icon}</span>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{mode.label}</span>
+                      <span className="text-xs text-muted-foreground">{mode.description}</span>
+                    </div>
+                    {selectedMode === mode.id && (
+                      <X className="h-4 w-4 ml-auto text-muted-foreground" />
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Text input */}
+            <textarea
+              ref={inputRef}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && e.metaKey) {
-                  handleGenerate();
-                }
-              }}
-            />
-            <Button
-              onClick={() => handleGenerate()}
-              className="w-full"
-              size="lg"
+              onKeyDown={handleKeyDown}
+              placeholder={selectedModeData ? `${selectedModeData.label}: ${selectedModeData.description}` : "Pergunte alguma coisa..."}
+              className="flex-1 resize-none bg-transparent border-0 outline-none text-foreground placeholder:text-muted-foreground py-2 max-h-[200px] min-h-[24px]"
+              rows={1}
               disabled={isGenerating}
+            />
+
+            {/* Audio button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0 rounded-full hover:bg-muted text-muted-foreground"
+              disabled={isGenerating}
+              onClick={() => toast({ title: "Em breve", description: "Entrada de áudio em desenvolvimento" })}
             >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Gerando...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-5 w-5" />
-                  Gerar Conteúdo
-                </>
-              )}
+              <Mic className="h-5 w-5" />
             </Button>
 
-            <div className="rounded-lg p-4 bg-muted/50">
-              <p className="text-sm font-medium text-foreground">Dicas de uso:</p>
-              <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                <li>• Selecione um modo acima para respostas direcionadas</li>
-                <li>• <strong>Copy Site:</strong> gera HTML premium com alta conversão</li>
-                <li>• <strong>Influencer:</strong> cria roteiro de storytelling em dias</li>
-                <li>• Use ⌘+Enter para enviar rapidamente</li>
-              </ul>
+            {/* Send button */}
+            <Button
+              size="icon"
+              className={cn(
+                "h-9 w-9 shrink-0 rounded-full transition-colors",
+                prompt.trim() ? "bg-primary hover:bg-primary/90" : "bg-muted text-muted-foreground"
+              )}
+              disabled={isGenerating || !prompt.trim()}
+              onClick={() => handleGenerate()}
+            >
+              {isGenerating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+
+          {/* Selected mode indicator */}
+          {selectedModeData && (
+            <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+              <span>Modo:</span>
+              <span className="flex items-center gap-1 text-primary">
+                {selectedModeData.icon}
+                {selectedModeData.label}
+              </span>
+              <button
+                onClick={() => setSelectedMode(null)}
+                className="hover:text-foreground transition-colors"
+              >
+                <X className="h-3 w-3" />
+              </button>
             </div>
-
-            {/* Chat History Preview */}
-            {chatHistory.length > 0 && (
-              <div className="rounded-lg border border-border p-3">
-                <p className="text-xs font-medium text-muted-foreground mb-2">
-                  Histórico ({Math.ceil(chatHistory.length / 2)} turnos)
-                </p>
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {chatHistory.slice(-6).map((msg, idx) => (
-                    <p 
-                      key={idx} 
-                      className={`text-xs truncate ${
-                        msg.role === "user" ? "text-primary" : "text-muted-foreground"
-                      }`}
-                    >
-                      <span className="font-medium">
-                        {msg.role === "user" ? "Você: " : "IA: "}
-                      </span>
-                      {msg.content.replace(/<[^>]*>/g, "").slice(0, 80)}...
-                    </p>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Output */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle>Resultado</CardTitle>
-            {output && (
-              <Button variant="outline" size="sm" onClick={handleCopyHTML}>
-                <Copy className="mr-2 h-4 w-4" />
-                Copiar
-              </Button>
-            )}
-          </CardHeader>
-          <CardContent>
-            {isGenerating ? (
-              <div className="flex h-[400px] items-center justify-center">
-                <div className="text-center space-y-4">
-                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-                  <p className="text-muted-foreground">Processando sua solicitação...</p>
-                </div>
-              </div>
-            ) : output ? (
-              <div className="space-y-4">
-                <div 
-                  ref={outputRef}
-                  className="rounded-lg border border-border bg-muted/50 p-4 max-h-[350px] overflow-y-auto"
-                >
-                  <div 
-                    className="prose prose-sm max-w-none dark:prose-invert prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2 prose-ul:my-2 prose-li:my-0"
-                    dangerouslySetInnerHTML={{ __html: sanitizedOutput }}
-                  />
-                </div>
-                
-                {/* Follow-up Questions */}
-                {followUpQuestions.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {followUpQuestions.map((question, idx) => (
-                      <Button
-                        key={idx}
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => handleFollowUp(question)}
-                        disabled={isGenerating}
-                      >
-                        {question}
-                      </Button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Show HTML code only for copy-site mode */}
-                {selectedMode === "copy-site" && (
-                  <div className="rounded-lg bg-card border border-border p-4">
-                    <p className="mb-2 text-sm font-medium text-foreground">Código HTML:</p>
-                    <pre className="overflow-x-auto text-xs text-muted-foreground max-h-[150px]">
-                      <code>{output}</code>
-                    </pre>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex h-[400px] items-center justify-center text-muted-foreground">
-                <div className="text-center space-y-2">
-                  <Sparkles className="h-8 w-8 mx-auto opacity-50" />
-                  <p>O conteúdo gerado aparecerá aqui</p>
-                  <p className="text-xs">Selecione um modo e descreva sua necessidade</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          )}
+        </div>
       </div>
     </div>
   );
