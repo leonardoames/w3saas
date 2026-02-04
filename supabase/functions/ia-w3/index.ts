@@ -385,13 +385,13 @@ serve(async (req) => {
       );
     }
 
-    // ========== BUSCAR DOCUMENTOS DO CÉREBRO IA ==========
+    // ========== BUSCAR DOCUMENTOS DO CÉREBRO IA (COMPARTILHADO) ==========
     let knowledgeContext = "";
     try {
+      // Busca todos os documentos prontos (gerenciados por admins, compartilhados com todos)
       const { data: documents } = await supabase
         .from("ia_documents")
         .select("file_name, content_text")
-        .eq("user_id", userId)
         .eq("status", "ready")
         .limit(10);
 

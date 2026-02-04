@@ -64,11 +64,6 @@ const menuItems = [
     path: "/app/ia-w3",
   },
   {
-    title: "Cérebro IA",
-    icon: Brain,
-    path: "/app/ia-w3/cerebro",
-  },
-  {
     title: "Calendário Comercial",
     icon: CalendarDays,
     path: "/app/calendario",
@@ -82,6 +77,15 @@ const menuItems = [
     title: "Soluções da W3",
     icon: ShoppingBag,
     path: "/app/produtos",
+  },
+];
+
+// Admin-only menu items
+const adminMenuItems = [
+  {
+    title: "Cérebro IA",
+    icon: Brain,
+    path: "/app/ia-w3/cerebro",
   },
 ];
 
@@ -176,6 +180,16 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
               />
             ))}
             
+            {isAdmin && adminMenuItems.map((item) => (
+              <SidebarNavLink
+                key={item.path}
+                to={item.path}
+                onClick={handleNavClick}
+                icon={item.icon}
+                label={item.title}
+              />
+            ))}
+            
             {isAdmin && (
               <SidebarNavLink
                 to="/admin"
@@ -261,6 +275,33 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
                       <SidebarNavLink
                         to={item.path}
                         end={item.path === "/app"}
+                        icon={item.icon}
+                        label={item.title}
+                        isCollapsed
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="font-medium">
+                    {item.title}
+                  </TooltipContent>
+                </Tooltip>
+              )
+            ))}
+            
+            {isAdmin && adminMenuItems.map((item) => (
+              isExpanded ? (
+                <SidebarNavLink
+                  key={item.path}
+                  to={item.path}
+                  icon={item.icon}
+                  label={item.title}
+                />
+              ) : (
+                <Tooltip key={item.path}>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <SidebarNavLink
+                        to={item.path}
                         icon={item.icon}
                         label={item.title}
                         isCollapsed
