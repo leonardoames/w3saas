@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Brain, ArrowLeft, RefreshCw } from "lucide-react";
@@ -13,6 +13,7 @@ import { DocumentViewerDialog } from "@/components/ia-brain/DocumentViewerDialog
 interface Document {
   id: string;
   file_name: string;
+  file_path: string;
   file_type: string;
   file_size: number;
   status: string;
@@ -25,12 +26,13 @@ export default function IABrain() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [isReprocessing, setIsReprocessing] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
   const { toast } = useToast();
   const { user, isAdmin } = useAuth();
 
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -51,11 +53,26 @@ export default function IABrain() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, toast]);
 
   useEffect(() => {
     fetchDocuments();
-  }, [user]);
+  }, [fetchDocuments]);
+
+  // Auto-refresh while there are docs being processed
+  useEffect(() => {
+    if (!user) return;
+    const hasInProgress = documents.some(
+      (d) => d.status === "pending" || d.status === "processing",
+    );
+    if (!hasInProgress) return;
+
+    const interval = setInterval(() => {
+      fetchDocuments();
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [user, documents, fetchDocuments]);
 
   // Redirect non-admins (after hooks)
   if (!isAdmin) {
@@ -179,13 +196,44 @@ export default function IABrain() {
       await fetchDocuments();
     } catch (error) {
       console.error("Upload error:", error);
+
+      const message = error instanceof Error ? error.message : "Tente novamente";
       toast({
         title: "Erro no upload",
-        description: error instanceof Error ? error.message : "Tente novamente",
+        description: message,
         variant: "destructive",
       });
+
+      // Let the uploader UI mark this file as failed
+      throw new Error(message);
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleReprocessPending = async () => {
+    const docsToReprocess = documents.filter(
+      (d) => d.status === "pending" || d.status === "processing",
+    );
+
+    if (docsToReprocess.length === 0) return;
+
+    setIsReprocessing(true);
+    try {
+      docsToReprocess.forEach((doc) => {
+        supabase.functions
+          .invoke("process-ia-document", {
+            body: { filePath: doc.file_path },
+          })
+          .catch((err) => console.error("Reprocess error:", err));
+      });
+
+      toast({
+        title: "Reprocessamento iniciado",
+        description: `Iniciamos o processamento de ${docsToReprocess.length} documento(s).`,
+      });
+    } finally {
+      setIsReprocessing(false);
     }
   };
 
@@ -253,15 +301,30 @@ export default function IABrain() {
           </div>
         </div>
         
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={fetchDocuments}
-          className="gap-2"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Atualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          {documents.some((d) => d.status === "pending" || d.status === "processing") && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleReprocessPending}
+              disabled={isReprocessing}
+              className="gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Reprocessar pendentes
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchDocuments}
+            className="gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
