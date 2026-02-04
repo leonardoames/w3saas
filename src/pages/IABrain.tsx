@@ -62,13 +62,87 @@ export default function IABrain() {
     return <Navigate to="/app" replace />;
   }
 
+  // Sanitize filename for Supabase storage (remove emojis and special chars)
+  const sanitizeFileName = (name: string): string => {
+    // Remove emojis and special unicode characters, keep alphanumeric, spaces, dots, dashes, underscores
+    return name
+      .replace(/[\u{1F600}-\u{1F6FF}]/gu, "") // Emoticons
+      .replace(/[\u{1F300}-\u{1F5FF}]/gu, "") // Misc Symbols and Pictographs
+      .replace(/[\u{1F680}-\u{1F6FF}]/gu, "") // Transport and Map
+      .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, "") // Flags
+      .replace(/[\u{2600}-\u{26FF}]/gu, "") // Misc symbols
+      .replace(/[\u{2700}-\u{27BF}]/gu, "") // Dingbats
+      .replace(/[\u{FE00}-\u{FE0F}]/gu, "") // Variation Selectors
+      .replace(/[\u{1F900}-\u{1F9FF}]/gu, "") // Supplemental Symbols
+      .replace(/[\u{1FA00}-\u{1FA6F}]/gu, "") // Chess symbols
+      .replace(/[\u{1FA70}-\u{1FAFF}]/gu, "") // Symbols and Pictographs Extended-A
+      .replace(/[\u{231A}-\u{231B}]/gu, "") // Watch, Hourglass
+      .replace(/[\u{23E9}-\u{23F3}]/gu, "") // Media control symbols
+      .replace(/[\u{23F8}-\u{23FA}]/gu, "") // Media control symbols
+      .replace(/[\u{25AA}-\u{25AB}]/gu, "") // Geometric shapes
+      .replace(/[\u{25B6}]/gu, "") // Play button
+      .replace(/[\u{25C0}]/gu, "") // Reverse button
+      .replace(/[\u{25FB}-\u{25FE}]/gu, "") // Square symbols
+      .replace(/[\u{2614}-\u{2615}]/gu, "") // Umbrella, Hot beverage
+      .replace(/[\u{2648}-\u{2653}]/gu, "") // Zodiac signs
+      .replace(/[\u{267F}]/gu, "") // Wheelchair
+      .replace(/[\u{2693}]/gu, "") // Anchor
+      .replace(/[\u{26A1}]/gu, "") // High voltage
+      .replace(/[\u{26AA}-\u{26AB}]/gu, "") // Circles
+      .replace(/[\u{26BD}-\u{26BE}]/gu, "") // Soccer, Baseball
+      .replace(/[\u{26C4}-\u{26C5}]/gu, "") // Snowman, Sun
+      .replace(/[\u{26CE}]/gu, "") // Ophiuchus
+      .replace(/[\u{26D4}]/gu, "") // No entry
+      .replace(/[\u{26EA}]/gu, "") // Church
+      .replace(/[\u{26F2}-\u{26F3}]/gu, "") // Fountain, Golf
+      .replace(/[\u{26F5}]/gu, "") // Sailboat
+      .replace(/[\u{26FA}]/gu, "") // Tent
+      .replace(/[\u{26FD}]/gu, "") // Fuel pump
+      .replace(/[\u{2702}]/gu, "") // Scissors
+      .replace(/[\u{2705}]/gu, "") // Check mark
+      .replace(/[\u{2708}-\u{270D}]/gu, "") // Airplane to Writing hand
+      .replace(/[\u{270F}]/gu, "") // Pencil
+      .replace(/[\u{2712}]/gu, "") // Black nib
+      .replace(/[\u{2714}]/gu, "") // Check mark
+      .replace(/[\u{2716}]/gu, "") // X mark
+      .replace(/[\u{271D}]/gu, "") // Latin cross
+      .replace(/[\u{2721}]/gu, "") // Star of David
+      .replace(/[\u{2728}]/gu, "") // Sparkles
+      .replace(/[\u{2733}-\u{2734}]/gu, "") // Eight spoked asterisk
+      .replace(/[\u{2744}]/gu, "") // Snowflake
+      .replace(/[\u{2747}]/gu, "") // Sparkle
+      .replace(/[\u{274C}]/gu, "") // Cross mark
+      .replace(/[\u{274E}]/gu, "") // Cross mark
+      .replace(/[\u{2753}-\u{2755}]/gu, "") // Question marks
+      .replace(/[\u{2757}]/gu, "") // Exclamation mark
+      .replace(/[\u{2763}-\u{2764}]/gu, "") // Heart exclamation
+      .replace(/[\u{2795}-\u{2797}]/gu, "") // Plus, Minus, Division
+      .replace(/[\u{27A1}]/gu, "") // Right arrow
+      .replace(/[\u{27B0}]/gu, "") // Curly loop
+      .replace(/[\u{27BF}]/gu, "") // Double curly loop
+      .replace(/[\u{2934}-\u{2935}]/gu, "") // Arrows
+      .replace(/[\u{2B05}-\u{2B07}]/gu, "") // Arrows
+      .replace(/[\u{2B1B}-\u{2B1C}]/gu, "") // Squares
+      .replace(/[\u{2B50}]/gu, "") // Star
+      .replace(/[\u{2B55}]/gu, "") // Circle
+      .replace(/[\u{3030}]/gu, "") // Wavy dash
+      .replace(/[\u{303D}]/gu, "") // Part alternation mark
+      .replace(/[\u{3297}]/gu, "") // Circled ideograph congratulation
+      .replace(/[\u{3299}]/gu, "") // Circled ideograph secret
+      .replace(/[^\w\s.\-_()[\]]/g, "") // Remove remaining non-word chars except common ones
+      .replace(/\s+/g, "_") // Replace spaces with underscores
+      .replace(/_+/g, "_") // Remove duplicate underscores
+      .trim();
+  };
+
   const handleUpload = async (file: File) => {
     if (!user) return;
 
     setIsUploading(true);
     try {
       const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
-      const filePath = `${user.id}/${Date.now()}-${file.name}`;
+      const sanitizedName = sanitizeFileName(file.name);
+      const filePath = `${user.id}/${Date.now()}-${sanitizedName}`;
 
       // Upload file to storage
       const { error: uploadError } = await supabase.storage
