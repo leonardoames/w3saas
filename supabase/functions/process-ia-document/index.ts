@@ -83,10 +83,10 @@ serve(async (req) => {
     }
 
     // Update status to processing
-    await supabase
-      .from("ia_documents")
-      .update({ status: "processing" })
-      .eq("id", docRecord.id);
+    await updateIaDocument(supabase, docRecord.id, {
+      status: "processing",
+      error_message: null,
+    }, "set status=processing");
 
     try {
       // Download file from storage
@@ -117,7 +117,10 @@ serve(async (req) => {
         throw new Error(`Tipo de arquivo não suportado: ${fileType}`);
       }
 
-      // Limit text size
+       // Normalize text to be safe for storage
+       extractedText = normalizeExtractedText(extractedText);
+
+       // Limit text size
       const MAX_TEXT_SIZE = 500000; // ~500KB of text
       if (extractedText.length > MAX_TEXT_SIZE) {
         extractedText = extractedText.substring(0, MAX_TEXT_SIZE);
@@ -126,15 +129,12 @@ serve(async (req) => {
 
       console.log("Text extracted, length:", extractedText.length);
 
-      // Update document with extracted text
-      await supabase
-        .from("ia_documents")
-        .update({
-          content_text: extractedText,
-          status: "ready",
-          error_message: null,
-        })
-        .eq("id", docRecord.id);
+       // Update document with extracted text
+       await updateIaDocument(supabase, docRecord.id, {
+         content_text: extractedText,
+         status: "ready",
+         error_message: null,
+       }, "set status=ready + content_text");
 
       console.log("Document processed successfully:", docRecord.id);
 
@@ -146,16 +146,17 @@ serve(async (req) => {
     } catch (processingError) {
       console.error("Processing error:", processingError);
 
-      // Update document with error
-      await supabase
-        .from("ia_documents")
-        .update({
-          status: "error",
-          error_message: processingError instanceof Error 
-            ? processingError.message 
-            : "Erro ao processar documento",
-        })
-        .eq("id", docRecord.id);
+       // Update document with error (best-effort)
+       try {
+         await updateIaDocument(supabase, docRecord.id, {
+           status: "error",
+           error_message: processingError instanceof Error
+             ? processingError.message
+             : "Erro ao processar documento",
+         }, "set status=error + error_message");
+       } catch (persistError) {
+         console.error("Failed to persist error status:", persistError);
+       }
 
       return new Response(
         JSON.stringify({ 
@@ -175,6 +176,39 @@ serve(async (req) => {
     );
   }
 });
+
+async function updateIaDocument(
+  supabase: any,
+  id: string,
+  patch: Record<string, unknown>,
+  step: string,
+) {
+  const { data, error } = await supabase
+    .from("ia_documents")
+    .update(patch)
+    .eq("id", id)
+    .select("id")
+    .single();
+
+  if (error) {
+    console.error(`[${step}] DB update error:`, error);
+    throw new Error(`${step}: ${error.message}`);
+  }
+
+  if (!data?.id) {
+    throw new Error(`${step}: update did not affect any rows`);
+  }
+}
+
+function normalizeExtractedText(input: string): string {
+  // Postgres TEXT cannot store \u0000 and may reject other control chars.
+  // Keep it conservative: strip control chars and collapse whitespace.
+  return input
+    .replace(/\u0000/g, " ")
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 // Simple PDF text extraction
 async function extractPdfText(fileData: Blob): Promise<string> {
