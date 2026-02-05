@@ -497,8 +497,6 @@ export type Database = {
           is_w3_client: boolean
           last_login_at: string | null
           plan_type: string
-          stripe_customer_id: string | null
-          stripe_subscription_id: string | null
           updated_at: string
           user_id: string
         }
@@ -514,8 +512,6 @@ export type Database = {
           is_w3_client?: boolean
           last_login_at?: string | null
           plan_type?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -531,8 +527,6 @@ export type Database = {
           is_w3_client?: boolean
           last_login_at?: string | null
           plan_type?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -614,6 +608,33 @@ export type Database = {
           nome?: string
           notas?: string | null
           tipo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_payment_info: {
+        Row: {
+          created_at: string
+          id: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           updated_at?: string
           user_id?: string
         }
