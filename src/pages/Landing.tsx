@@ -92,7 +92,7 @@ export default function Landing() {
       </section>
 
       {/* CTA */}
-      <section className="border-t py-16 bg-[#ebebeb]">
+      <section className="border-t py-16 bg-[#242424]">
         <div className="container mx-auto px-4 text-center">
           <h3 className="text-2xl font-bold text-secondary-foreground">Pronto para escalar seu e-commerce?</h3>
           <p className="mt-2 text-muted-foreground">
