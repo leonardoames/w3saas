@@ -198,7 +198,7 @@ export function Sidebar({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-sidebar-foreground truncate">{getUserName()}</p>
-                  <p className="text-xs text-muted-foreground">{getPlanLabel()}</p>
+                  <p className="text-xs text-white">{getPlanLabel()}</p>
                 </div>
               </div> : <Tooltip>
                 <TooltipTrigger asChild>
