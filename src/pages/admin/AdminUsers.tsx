@@ -47,11 +47,13 @@ import {
   Shield,
   Trash2,
   UserPlus,
+  UsersRound,
   UserX,
   Users,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { BulkUserImportDialog } from "@/components/admin/BulkUserImportDialog";
 
 interface UserProfile {
   id: string;
@@ -119,6 +121,9 @@ export default function AdminUsers() {
   const [newUserName, setNewUserName] = useState("");
   const [newUserPlan, setNewUserPlan] = useState("free");
   const [addingUser, setAddingUser] = useState(false);
+
+  // Bulk import dialog
+  const [bulkImportDialog, setBulkImportDialog] = useState(false);
 
   useEffect(() => {
     checkAdmin();
@@ -497,10 +502,16 @@ export default function AdminUsers() {
               {isAdmin && <span className="ml-2 text-primary">• Admin Mode</span>}
             </p>
           </div>
-          <Button onClick={() => setAddUserDialog(true)} className="gap-2">
-            <UserPlus className="h-4 w-4" />
-            Adicionar Usuário
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setBulkImportDialog(true)} className="gap-2">
+              <UsersRound className="h-4 w-4" />
+              Importar em Massa
+            </Button>
+            <Button onClick={() => setAddUserDialog(true)} className="gap-2">
+              <UserPlus className="h-4 w-4" />
+              Adicionar Usuário
+            </Button>
+          </div>
         </div>
 
         <Card>
@@ -877,6 +888,13 @@ export default function AdminUsers() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Import Dialog */}
+      <BulkUserImportDialog
+        open={bulkImportDialog}
+        onOpenChange={setBulkImportDialog}
+        onSuccess={fetchUsers}
+      />
     </AdminLayout>
   );
 }
