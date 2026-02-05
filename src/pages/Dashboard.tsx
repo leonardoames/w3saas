@@ -694,7 +694,7 @@ export default function Dashboard() {
   return <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-10 space-y-8">
         {/* --- TAG DE AVISO SHOPEE --- */}
-        <Alert className="border-blue-200 text-blue-900 shadow-sm flex items-center justify-center bg-primary ml-[10px] mt-0">
+        <Alert className="border-blue-200 text-blue-900 shadow-sm flex items-center justify-center bg-primary ml-[10px] -mt-4">
           <Code className="h-4 w-4 mx-[240px] text-primary" />
           <AlertDescription className="ml-2 font-medium text-secondary-foreground">Conexão do Dashboard com a Shopee em Desenvolvimento </AlertDescription>
         </Alert>
