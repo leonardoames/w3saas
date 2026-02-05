@@ -12,6 +12,7 @@ import {
   Receipt,
   Wallet,
   Percent,
+  Construction, // Adicionado aqui
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -39,7 +40,6 @@ import { AIImportCard } from "@/components/dashboard/AIImportCard";
 import { PlatformBreakdownModal } from "@/components/dashboard/PlatformBreakdownModal";
 
 // --- Funções Auxiliares (Parser CSV) ---
-// (Mantido igual ao anterior, omitindo repetição para focar no Screenshot, mas incluído no código final)
 const parseGenericCSV = (text: string): any[] => {
   const lines = text.split("\n").filter((l) => l.trim());
   if (lines.length < 2) return [];
@@ -779,6 +779,14 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-10 space-y-8">
+        {/* --- TAG DE AVISO SHOPEE --- */}
+        <Alert className="bg-blue-50 border-blue-200 text-blue-900 shadow-sm flex items-center">
+          <Construction className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="ml-2 font-medium">
+            Conexão do Dashboard com a Shopee em Desenvolvimento 🚀
+          </AlertDescription>
+        </Alert>
+
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">Visão unificada de todas as plataformas</p>
