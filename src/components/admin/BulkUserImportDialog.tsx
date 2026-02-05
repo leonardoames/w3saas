@@ -137,55 +137,51 @@ export function BulkUserImportDialog({ open, onOpenChange, onSuccess }: BulkUser
 
     setImporting(true);
     setResults([]);
-    const importResults: ImportResult[] = [];
 
-    for (const user of users) {
-      try {
-        // Send password reset email as invitation
-        const { error: inviteError } = await supabase.auth.resetPasswordForEmail(user.email, {
-          redirectTo: `${window.location.origin}/auth`,
-        });
+    try {
+      // Call edge function to create users with default password
+      const { data, error } = await supabase.functions.invoke("create-bulk-users", {
+        body: {
+          users: users.map((u) => ({
+            email: u.email,
+            name: u.name,
+            plan: u.plan || defaultPlan,
+            is_mentorado: u.is_mentorado ?? defaultMentorado,
+            is_w3_client: u.is_w3_client ?? defaultW3Client,
+          })),
+          default_password: "appw3acesso",
+        },
+      });
 
-        if (inviteError) {
-          importResults.push({
-            email: user.email,
-            status: "error",
-            message: inviteError.message,
-          });
-        } else {
-          importResults.push({
-            email: user.email,
-            status: "success",
-            message: "Convite enviado com sucesso",
-          });
-        }
-      } catch (error: any) {
-        importResults.push({
-          email: user.email,
-          status: "error",
-          message: error.message || "Erro desconhecido",
-        });
+      if (error) {
+        throw error;
       }
 
-      // Small delay to avoid rate limiting
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    }
+      const importResults: ImportResult[] = data.results || [];
+      setResults(importResults);
+      setShowResults(true);
 
-    setResults(importResults);
-    setShowResults(true);
-    setImporting(false);
+      const successCount = importResults.filter((r: ImportResult) => r.status === "success").length;
+      const errorCount = importResults.filter((r: ImportResult) => r.status === "error").length;
 
-    const successCount = importResults.filter((r) => r.status === "success").length;
-    const errorCount = importResults.filter((r) => r.status === "error").length;
+      toast({
+        title: "Importação concluída",
+        description: `${successCount} usuários criados, ${errorCount} erros.`,
+        variant: errorCount > 0 ? "destructive" : "default",
+      });
 
-    toast({
-      title: "Importação concluída",
-      description: `${successCount} convites enviados, ${errorCount} erros.`,
-      variant: errorCount > 0 ? "destructive" : "default",
-    });
-
-    if (successCount > 0) {
-      onSuccess();
+      if (successCount > 0) {
+        onSuccess();
+      }
+    } catch (error: any) {
+      console.error("Bulk import error:", error);
+      toast({
+        title: "Erro na importação",
+        description: error.message || "Não foi possível criar os usuários.",
+        variant: "destructive",
+      });
+    } finally {
+      setImporting(false);
     }
   };
 
