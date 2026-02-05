@@ -63,14 +63,12 @@ serve(async (req) => {
           .maybeSingle();
 
         if (existingProfile) {
-          // Update existing profile with Stripe info
+          // Update existing profile with plan info (no Stripe IDs)
           const { error: updateError } = await supabaseClient
             .from("profiles")
             .update({
               plan_type: "paid",
               access_status: "active",
-              stripe_customer_id: customerId,
-              stripe_subscription_id: subscriptionId,
               access_expires_at: null, // Active subscription, no expiry
             })
             .eq("id", existingProfile.id);
@@ -79,6 +77,21 @@ serve(async (req) => {
             logStep("Error updating profile", { error: updateError });
           } else {
             logStep("Profile updated successfully", { profileId: existingProfile.id });
+          }
+
+          // Store Stripe info in separate secure table
+          const { error: paymentError } = await supabaseClient
+            .from("user_payment_info")
+            .upsert({
+              user_id: existingProfile.user_id,
+              stripe_customer_id: customerId,
+              stripe_subscription_id: subscriptionId,
+            }, { onConflict: "user_id" });
+
+          if (paymentError) {
+            logStep("Error storing payment info", { error: paymentError });
+          } else {
+            logStep("Payment info stored securely");
           }
         } else {
           // Create a temporary profile entry (user will complete signup later)
@@ -92,19 +105,33 @@ serve(async (req) => {
         const subscription = event.data.object as Stripe.Subscription;
         logStep("Subscription deleted", { subscriptionId: subscription.id });
 
-        const { error } = await supabaseClient
-          .from("profiles")
-          .update({
-            plan_type: "free",
-            access_status: "blocked",
-            stripe_subscription_id: null,
-          })
-          .eq("stripe_subscription_id", subscription.id);
+        // Find user by subscription ID in payment info table
+        const { data: paymentInfo } = await supabaseClient
+          .from("user_payment_info")
+          .select("user_id")
+          .eq("stripe_subscription_id", subscription.id)
+          .maybeSingle();
 
-        if (error) {
-          logStep("Error blocking access", { error });
-        } else {
-          logStep("Access blocked for subscription", { subscriptionId: subscription.id });
+        if (paymentInfo) {
+          const { error } = await supabaseClient
+            .from("profiles")
+            .update({
+              plan_type: "free",
+              access_status: "blocked",
+            })
+            .eq("user_id", paymentInfo.user_id);
+
+          // Clear subscription ID
+          await supabaseClient
+            .from("user_payment_info")
+            .update({ stripe_subscription_id: null })
+            .eq("user_id", paymentInfo.user_id);
+
+          if (error) {
+            logStep("Error blocking access", { error });
+          } else {
+            logStep("Access blocked for subscription", { subscriptionId: subscription.id });
+          }
         }
         break;
       }
@@ -116,13 +143,25 @@ serve(async (req) => {
           status: subscription.status 
         });
 
+        // Find user by subscription ID
+        const { data: paymentInfo } = await supabaseClient
+          .from("user_payment_info")
+          .select("user_id")
+          .eq("stripe_subscription_id", subscription.id)
+          .maybeSingle();
+
+        if (!paymentInfo) {
+          logStep("No payment info found for subscription", { subscriptionId: subscription.id });
+          break;
+        }
+
         if (subscription.status === "past_due" || subscription.status === "unpaid") {
           const { error } = await supabaseClient
             .from("profiles")
             .update({
               access_status: "suspended",
             })
-            .eq("stripe_subscription_id", subscription.id);
+            .eq("user_id", paymentInfo.user_id);
 
           if (error) {
             logStep("Error suspending access", { error });
@@ -136,7 +175,7 @@ serve(async (req) => {
               access_status: "active",
               plan_type: "paid",
             })
-            .eq("stripe_subscription_id", subscription.id);
+            .eq("user_id", paymentInfo.user_id);
 
           if (error) {
             logStep("Error reactivating access", { error });
@@ -151,17 +190,26 @@ serve(async (req) => {
         const invoice = event.data.object as Stripe.Invoice;
         logStep("Payment failed", { invoiceId: invoice.id, customerId: invoice.customer });
 
-        const { error } = await supabaseClient
-          .from("profiles")
-          .update({
-            access_status: "suspended",
-          })
-          .eq("stripe_customer_id", invoice.customer as string);
+        // Find user by customer ID
+        const { data: paymentInfo } = await supabaseClient
+          .from("user_payment_info")
+          .select("user_id")
+          .eq("stripe_customer_id", invoice.customer as string)
+          .maybeSingle();
 
-        if (error) {
-          logStep("Error suspending access", { error });
-        } else {
-          logStep("Access suspended due to failed payment");
+        if (paymentInfo) {
+          const { error } = await supabaseClient
+            .from("profiles")
+            .update({
+              access_status: "suspended",
+            })
+            .eq("user_id", paymentInfo.user_id);
+
+          if (error) {
+            logStep("Error suspending access", { error });
+          } else {
+            logStep("Access suspended due to failed payment");
+          }
         }
         break;
       }
