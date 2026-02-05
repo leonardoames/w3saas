@@ -4,20 +4,17 @@ import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { PlatformSelect } from "./PlatformSelect";
 import { PlatformType } from "@/lib/platformConfig";
-
 interface ImportFileCardProps {
   onUpload: (e: React.ChangeEvent<HTMLInputElement>, platform: PlatformType) => void;
 }
-
-export function ImportCSVCard({ onUpload }: ImportFileCardProps) {
+export function ImportCSVCard({
+  onUpload
+}: ImportFileCardProps) {
   const [platform, setPlatform] = useState<PlatformType>("outros");
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onUpload(e, platform);
   };
-
-  return (
-    <div className="bg-card border border-border rounded-lg p-5 md:p-6 shadow-sm">
+  return <div className="bg-card border border-border rounded-lg p-5 md:p-6 shadow-sm">
       <h3 className="text-sm font-medium text-foreground mb-4">Importar Métricas (CSV ou Excel)</h3>
       
       {/* Seletor de plataforma */}
@@ -34,17 +31,11 @@ export function ImportCSVCard({ onUpload }: ImportFileCardProps) {
           </div>
           <p className="text-sm font-medium text-foreground mb-2">Clique para selecionar arquivo CSV ou XLSX</p>
           <code className="text-xs bg-muted text-muted-foreground px-3 py-1.5 rounded block mt-2">
-            data,faturamento,sessoes,investimento,vendas_quantidade,vendas_valor
+            data,faturamento,sessoes,investimento,
+vendas_quantidade,vendas_valor
           </code>
         </Label>
-        <Input 
-          id="file-upload" 
-          type="file" 
-          accept=".csv,.xlsx,.xls" 
-          onChange={handleFileChange} 
-          className="hidden" 
-        />
+        <Input id="file-upload" type="file" accept=".csv,.xlsx,.xls" onChange={handleFileChange} className="hidden" />
       </div>
-    </div>
-  );
+    </div>;
 }
