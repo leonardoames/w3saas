@@ -192,7 +192,7 @@ export function Sidebar({
 
           {/* User info */}
           <div className={cn("border-t border-sidebar-border", isExpanded ? "p-4" : "p-2")}>
-            {isExpanded ? <div className="flex items-center gap-3 rounded-lg px-4 py-3 bg-[#242424]">
+            {isExpanded ? <div className="flex items-center gap-3 rounded-lg px-4 py-3 bg-[#242424]/95">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
                   <span className="text-sm font-semibold">{getUserInitials()}</span>
                 </div>
