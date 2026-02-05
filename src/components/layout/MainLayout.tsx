@@ -45,7 +45,7 @@ export function MainLayout({
   return <div className="flex min-h-screen bg-background">
       <Sidebar isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} isMobileOpen={isMobileMenuOpen} onMobileClose={() => setIsMobileMenuOpen(false)} />
       <main className={cn("flex-1 transition-all duration-300 w-full", !isMobile && (isSidebarCollapsed ? "ml-16" : "ml-64"))}>
-        {user && <div className="sticky top-0 z-30 border-b lg:px-8 text-neutral-900 px-[20px] py-[8px] border-white bg-[sidebar-primary-foreground] bg-neutral-900">
+        {user && <div className="sticky top-0 z-30 border-b lg:px-8 px-[20px] py-[8px] bg-white dark:bg-neutral-900 border-border">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 {isMobile && <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setIsMobileMenuOpen(true)}>
