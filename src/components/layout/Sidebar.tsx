@@ -197,7 +197,7 @@ export function Sidebar({
                   <span className="text-sm font-semibold">{getUserInitials()}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-sidebar-foreground truncate">{getUserName()}</p>
+                  <p className="text-sm font-medium text-white truncate">{getUserName()}</p>
                   <p className="text-xs text-white">{getPlanLabel()}</p>
                 </div>
               </div> : <Tooltip>
