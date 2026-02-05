@@ -696,7 +696,7 @@ export default function Dashboard() {
         {/* --- TAG DE AVISO SHOPEE --- */}
         <Alert className="border-blue-200 text-blue-900 shadow-sm flex items-center justify-center bg-primary ml-[10px] -mt-4">
           <Code className="h-4 w-4 mx-[240px] text-primary" />
-          <AlertDescription className="ml-2 font-medium text-secondary-foreground">Conexão do Dashboard com a Shopee em Desenvolvimento </AlertDescription>
+          <AlertDescription className="ml-2 font-medium text-white">Conexão do Dashboard com a Shopee em Desenvolvimento </AlertDescription>
         </Alert>
 
         <div>
