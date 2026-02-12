@@ -27,6 +27,7 @@ import IABrain from "./pages/IABrain";
 import Catalogo from "./pages/Catalogo";
 import Produtos from "./pages/Produtos";
 import CalendarioComercial from "./pages/CalendarioComercial";
+import Integracoes from "./pages/Integracoes";
 
 // Admin pages
 import AdminUsers from "./pages/admin/AdminUsers";
@@ -72,6 +73,7 @@ const App = () => (
                         <Route path="/catalogo" element={<Catalogo />} />
                         <Route path="/produtos" element={<Produtos />} />
                         <Route path="/calendario" element={<CalendarioComercial />} />
+                        <Route path="/integracoes" element={<Integracoes />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </MainLayout>
