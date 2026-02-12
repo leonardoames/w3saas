@@ -197,8 +197,8 @@ export default function Integracoes() {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-muted p-1.5">
-                      <img src={platformLogos[platform.id]} alt={platform.name} className="w-full h-full object-contain" />
+                    <div className="w-11 h-11 rounded-lg overflow-hidden flex items-center justify-center">
+                      <img src={platformLogos[platform.id]} alt={platform.name} className="w-11 h-11 object-contain" />
                     </div>
                     <div>
                       <CardTitle className="text-lg">{platform.name}</CardTitle>
