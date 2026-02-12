@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { Plug, Unplug, ExternalLink, Loader2 } from "lucide-react";
+import { Plug, Unplug, ExternalLink, Loader2, RefreshCw } from "lucide-react";
 
 import shopeeLogo from "@/assets/platforms/shopee.png";
 import nuvemshopLogo from "@/assets/platforms/nuvemshop.png";
@@ -87,9 +87,34 @@ export default function Integracoes() {
   const [connectDialog, setConnectDialog] = useState<PlatformInfo | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
 
+  const [syncing, setSyncing] = useState<string | null>(null);
+
   useEffect(() => {
     if (user) fetchIntegrations();
   }, [user]);
+
+  const syncPlatform = async (platformId: string) => {
+    setSyncing(platformId);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      
+      const res = await supabase.functions.invoke(`sync-${platformId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.error) {
+        toast({ title: "Erro na sincronização", description: res.error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Sincronização concluída!", description: res.data?.message || "Dados atualizados." });
+        fetchIntegrations();
+      }
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setSyncing(null);
+    }
+  };
 
   const fetchIntegrations = async () => {
     const { data, error } = await supabase
@@ -214,6 +239,15 @@ export default function Integracoes() {
                 <div className="flex items-center gap-2">
                   {connected ? (
                     <>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => syncPlatform(platform.id)}
+                        disabled={syncing === platform.id}
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-1 ${syncing === platform.id ? "animate-spin" : ""}`} />
+                        {syncing === platform.id ? "Sincronizando..." : "Sincronizar"}
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
