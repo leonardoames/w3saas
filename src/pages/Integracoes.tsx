@@ -8,7 +8,19 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { Plug, Unplug, ExternalLink, Loader2, ShoppingBag } from "lucide-react";
+import { Plug, Unplug, ExternalLink, Loader2 } from "lucide-react";
+
+import shopeeLogo from "@/assets/platforms/shopee.png";
+import nuvemshopLogo from "@/assets/platforms/nuvemshop.png";
+import mercadoLivreLogo from "@/assets/platforms/mercado-livre.png";
+import shopifyLogo from "@/assets/platforms/shopify.png";
+
+const platformLogos: Record<string, string> = {
+  nuvemshop: nuvemshopLogo,
+  shopee: shopeeLogo,
+  mercado_livre: mercadoLivreLogo,
+  shopify: shopifyLogo,
+};
 
 interface PlatformInfo {
   id: string;
@@ -185,8 +197,8 @@ export default function Integracoes() {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg ${platform.color} flex items-center justify-center`}>
-                      <ShoppingBag className="h-5 w-5 text-white" />
+                    <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-muted">
+                      <img src={platformLogos[platform.id]} alt={platform.name} className="w-10 h-10 object-contain" />
                     </div>
                     <div>
                       <CardTitle className="text-lg">{platform.name}</CardTitle>
