@@ -1,5 +1,5 @@
 import { SidebarNavLink } from "./SidebarNavLink";
-import { LayoutDashboard, GraduationCap, ListChecks, Calculator, GitCompare, Sparkles, Brain, Store, ShoppingBag, Users, CalendarDays, ChevronLeft, ChevronRight, X, Shield } from "lucide-react";
+import { LayoutDashboard, GraduationCap, ListChecks, Calculator, GitCompare, Sparkles, Brain, Store, ShoppingBag, Users, CalendarDays, ChevronLeft, ChevronRight, X, Shield, Plug } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,10 @@ const menuItems = [{
   title: "Catálogo de Marcas",
   icon: Store,
   path: "/app/catalogo"
+}, {
+  title: "Integrações",
+  icon: Plug,
+  path: "/app/integracoes"
 }, {
   title: "Soluções da W3",
   icon: ShoppingBag,
