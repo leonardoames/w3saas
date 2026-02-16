@@ -1,4 +1,4 @@
-import { TrendingUp, DollarSign, ShoppingCart, MousePointerClick, AlertCircle, CheckCircle2, Plus, Camera, Image as ImageIcon, Loader2, Receipt, Wallet, Percent, Code } from "lucide-react";
+import { TrendingUp, AlertCircle, CheckCircle2, Plus, Camera, Image as ImageIcon, Loader2, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -704,14 +704,51 @@ export default function Dashboard() {
           <p className="text-sm text-muted-foreground mt-1">Visão unificada de todas as plataformas</p>
         </div>
 
+        {/* BLOCO 4 — Período de Análise */}
+        <div className="bg-card border border-border rounded-lg p-4 shadow-sm">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <h3 className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Período de análise</h3>
+            <PeriodFilter selectedPeriod={selectedPeriod} onPeriodChange={handlePeriodChange} customRange={customRange} onCustomRangeChange={setCustomRange} />
+          </div>
+        </div>
+
+        {/* BLOCO 1 — Visão Executiva */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard title="Faturamento" value={faturamentoTotal.toLocaleString("pt-BR", {
-          style: "currency",
-          currency: "BRL"
-        })} subtitle="Total do período selecionado" icon={DollarSign} onClick={() => handleKPIClick("faturamento")} />
-          <KPICard title="ROAS Médio" value={roasMedio.toFixed(2)} subtitle="Média das plataformas de tráfego" icon={TrendingUp} onClick={() => handleKPIClick("roas")} />
-          <KPICard title="Vendas" value={vendasTotal.toLocaleString("pt-BR")} icon={ShoppingCart} onClick={() => handleKPIClick("vendas")} />
-          <KPICard title="Sessões" value={sessoesTotal.toLocaleString("pt-BR")} icon={MousePointerClick} onClick={() => handleKPIClick("sessoes")} />
+          <KPICard 
+            title="Faturamento" 
+            value={faturamentoTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} 
+            subtitle="Total do período" 
+            dominant
+            change={(() => {
+              const prevFat = previousPeriodMetrics.reduce((s, m) => s + Number(m.faturamento), 0);
+              return prevFat > 0 ? ((faturamentoTotal - prevFat) / prevFat) * 100 : undefined;
+            })()}
+            onClick={() => handleKPIClick("faturamento")} 
+          />
+          <KPICard 
+            title="ROAS Médio" 
+            value={roasMedio.toFixed(2)} 
+            subtitle="Plataformas de tráfego" 
+            onClick={() => handleKPIClick("roas")} 
+          />
+          <KPICard 
+            title="Vendas" 
+            value={vendasTotal.toLocaleString("pt-BR")} 
+            change={(() => {
+              const prevVendas = previousPeriodMetrics.reduce((s, m) => s + Number(m.vendas_quantidade), 0);
+              return prevVendas > 0 ? ((vendasTotal - prevVendas) / prevVendas) * 100 : undefined;
+            })()}
+            onClick={() => handleKPIClick("vendas")} 
+          />
+          <KPICard 
+            title="Sessões" 
+            value={sessoesTotal.toLocaleString("pt-BR")} 
+            change={(() => {
+              const prevSessoes = previousPeriodMetrics.reduce((s, m) => s + Number(m.sessoes), 0);
+              return prevSessoes > 0 ? ((sessoesTotal - prevSessoes) / prevSessoes) * 100 : undefined;
+            })()}
+            onClick={() => handleKPIClick("sessoes")} 
+          />
         </div>
 
         {roasMedio < 2 && roasMedio > 0 && <Alert variant="destructive" className="border-destructive/50">
@@ -723,28 +760,21 @@ export default function Dashboard() {
             <AlertDescription>Parabéns! Seu ticket médio aumentou em relação ao período anterior.</AlertDescription>
           </Alert>}
 
-        {/* Layout reorganizado: Gráfico à esquerda, Métricas + Filtros à direita */}
+        {/* BLOCO 2 — Evolução + BLOCO 3 — Métricas Secundárias */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Gráfico - ocupa 2/3 da largura no desktop */}
-          <div className="lg:col-span-2 bg-card border border-border/50 rounded-lg p-5 md:p-6 shadow-sm">
-            <h3 className="text-sm font-medium text-foreground mb-4">Evolução de Faturamento</h3>
-            <RevenueChart data={aggregatedData} />
+          <div className="lg:col-span-2 bg-card border border-border rounded-lg p-6 md:p-8 shadow-sm">
+            <h3 className="text-sm font-semibold text-foreground mb-1">Evolução de Faturamento</h3>
+            <p className="text-xs text-muted-foreground mb-4">Acompanhe a tendência no período selecionado</p>
+            <RevenueChart 
+              data={aggregatedData} 
+              previousTotal={previousPeriodMetrics.reduce((s, m) => s + Number(m.faturamento), 0)}
+            />
           </div>
 
-          {/* Coluna lateral - Filtros + Métricas secundárias */}
           <div className="space-y-4">
-            {/* Filtros de período */}
-            <div className="bg-card border border-border/50 rounded-lg p-4 shadow-sm">
-              <h3 className="text-xs font-medium text-muted-foreground/70 mb-3">Período de análise</h3>
-              <PeriodFilter selectedPeriod={selectedPeriod} onPeriodChange={handlePeriodChange} customRange={customRange} onCustomRangeChange={setCustomRange} />
-            </div>
-
-            {/* Métricas secundárias empilhadas */}
-            <div className="grid grid-cols-1 gap-4">
-              <MetricCard title="Ticket Médio" value={`R$ ${ticketMedio.toFixed(2)}`} icon={Receipt} />
-              <MetricCard title="Custo por Venda" value={`R$ ${custoMidiaPorVenda.toFixed(2)}`} icon={Wallet} />
-              <MetricCard title="Taxa de Conversão" value={`${taxaConversao.toFixed(2)}%`} icon={Percent} />
-            </div>
+            <MetricCard title="Ticket Médio" value={`R$ ${ticketMedio.toFixed(2)}`} />
+            <MetricCard title="Custo por Venda" value={`R$ ${custoMidiaPorVenda.toFixed(2)}`} />
+            <MetricCard title="Taxa de Conversão" value={`${taxaConversao.toFixed(2)}%`} />
           </div>
         </div>
 
@@ -759,11 +789,14 @@ export default function Dashboard() {
           </TabsList>
 
           <TabsContent value="historico" className="space-y-8">
-            <div className="bg-card border border-border/50 rounded-lg p-5 md:p-6 shadow-sm space-y-4">
+            <div className="bg-card border border-border rounded-lg p-6 md:p-8 shadow-sm space-y-5">
               <div className="flex items-center justify-between flex-wrap gap-4">
-                <h3 className="text-sm font-medium text-foreground">
-                  Detalhamento Diário ({filteredMetrics.length} registros)
-                </h3>
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Detalhamento Diário
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">{filteredMetrics.length} registros no período</p>
+                </div>
                 <Button onClick={() => {
                 setFormData({
                   data: format(new Date(), "yyyy-MM-dd"),
@@ -775,7 +808,7 @@ export default function Dashboard() {
                   vendas_valor: ""
                 });
                 setModalOpen(true);
-              }} size="sm">
+              }} size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
                   <Plus className="mr-2 h-4 w-4" />
                   Adicionar Manualmente
                 </Button>
