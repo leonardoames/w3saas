@@ -2,7 +2,7 @@ import { SidebarNavLink } from "./SidebarNavLink";
 import {
   LayoutDashboard, GraduationCap, ListChecks, Calculator, GitCompare,
   Sparkles, Brain, Store, ShoppingBag, Users, CalendarDays, ChevronLeft,
-  ChevronRight, X, Shield, Plug, ChevronDown,
+  ChevronRight, X, Shield, Plug, ChevronDown, BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,6 +31,7 @@ const menuGroups: MenuGroup[] = [
     icon: LayoutDashboard,
     items: [
       { title: "Dashboard", icon: LayoutDashboard, path: "/app" },
+      { title: "Acompanhamento Diário", icon: BarChart3, path: "/app/acompanhamento" },
       { title: "Plano de Ação", icon: ListChecks, path: "/app/plano-acao" },
       { title: "CRM de Influenciadores", icon: Users, path: "/app/crm-influenciadores" },
       { title: "Integrações", icon: Plug, path: "/app/integracoes" },

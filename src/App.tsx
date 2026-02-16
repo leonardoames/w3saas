@@ -17,6 +17,7 @@ import AcessoBloqueado from "./pages/AcessoBloqueado";
 
 // App pages
 import Dashboard from "./pages/Dashboard";
+import AcompanhamentoDiario from "./pages/AcompanhamentoDiario";
 import Aulas from "./pages/Aulas";
 import PlanoAcao from "./pages/PlanoAcao";
 import Calculadora from "./pages/Calculadora";
@@ -63,6 +64,7 @@ const App = () => (
                     <MainLayout>
                       <Routes>
                         <Route path="/" element={<Dashboard />} />
+                        <Route path="/acompanhamento" element={<AcompanhamentoDiario />} />
                         <Route path="/aulas" element={<Aulas />} />
                         <Route path="/plano-acao" element={<PlanoAcao />} />
                         <Route path="/calculadora" element={<Calculadora />} />

@@ -217,6 +217,42 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_results: {
+        Row: {
+          created_at: string | null
+          data: string
+          id: string
+          investimento: number | null
+          pedidos_pagos: number | null
+          receita_paga: number | null
+          sessoes: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data: string
+          id?: string
+          investimento?: number | null
+          pedidos_pagos?: number | null
+          receita_paga?: number | null
+          sessoes?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: string
+          id?: string
+          investimento?: number | null
+          pedidos_pagos?: number | null
+          receita_paga?: number | null
+          sessoes?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       ia_documents: {
         Row: {
           content_text: string | null
