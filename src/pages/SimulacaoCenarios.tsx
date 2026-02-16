@@ -9,6 +9,7 @@ import {
 } from "@/components/simulacao/ScenarioCard";
 import { ComparisonCard } from "@/components/simulacao/ComparisonCard";
 import { RevenueChart } from "@/components/simulacao/RevenueChart";
+import { GrowthProjectionChart } from "@/components/simulacao/GrowthProjectionChart";
 
 export default function SimulacaoCenarios() {
   const [currentScenario, setCurrentScenario] = useState<ScenarioInputs>(defaultInputs);
@@ -74,7 +75,7 @@ export default function SimulacaoCenarios() {
       </div>
 
       {/* Scenario Columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <ScenarioCard
           title="Cenário Atual"
           inputs={currentScenario}
@@ -121,6 +122,12 @@ export default function SimulacaoCenarios() {
         chartData={chartData}
         showCurrent={currentCalc.isValid}
         showNew={newCalc.isValid}
+      />
+
+      {/* Growth Projection */}
+      <GrowthProjectionChart
+        currentYearlyRevenue={currentCalc.isValid ? currentCalc.yearlyRevenue : null}
+        newYearlyRevenue={newCalc.isValid ? newCalc.yearlyRevenue : null}
       />
     </div>
   );
