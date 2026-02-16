@@ -20,16 +20,16 @@ export function SidebarNavLink({
       className={({ isActive }) =>
         cn(
           "relative flex items-center rounded-lg text-sidebar-foreground transition-all duration-200",
-          isCollapsed ? "justify-center p-3" : "gap-3 px-4 py-3",
+          isCollapsed ? "justify-center p-3" : "gap-3 px-4 py-2",
           isActive 
             ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold" 
             : "hover:bg-sidebar-accent"
         )
       }
     >
-      <Icon className="h-5 w-5 shrink-0" />
+      <Icon className="h-4 w-4 shrink-0" />
       {!isCollapsed && (
-        <span className="text-base whitespace-nowrap">{label}</span>
+        <span className="text-sm whitespace-nowrap">{label}</span>
       )}
     </RouterNavLink>
   );
