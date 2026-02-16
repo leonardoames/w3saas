@@ -1,151 +1,52 @@
 
 
-# Plano: Melhorias de UI/UX do Dashboard
+## Plano de Implementacao
 
-## Resumo do Feedback
-O feedback geral é positivo - a base do dashboard está sólida, ícones padronizados e menu lateral bem resolvido. As observações são ajustes pontuais de hierarquia visual e diagramação.
+### 1. Placeholders com menor destaque (global)
 
----
+Atualmente os placeholders usam `placeholder:text-muted-foreground` nos componentes `Input` e `Textarea`. O problema e que `--muted-foreground` tem contraste alto (quase preto no light, quase branco no dark).
 
-## Alterações Propostas
+**Solucao**: Adicionar opacidade ao placeholder nos dois componentes base:
+- `src/components/ui/input.tsx`: trocar `placeholder:text-muted-foreground` por `placeholder:text-muted-foreground/50`
+- `src/components/ui/textarea.tsx`: mesma alteracao
 
-### 1. Remover/Suavizar Divisórias Desnecessárias
-**Problema:** Algumas divisórias têm contraste além do necessário.
-**Solução:** Suavizar as bordas dos cards para um visual mais fluido.
+Isso aplica 50% de opacidade ao texto placeholder em todo o SaaS de forma centralizada.
 
-**Arquivos:** `KPICard.tsx`, `MetricCard.tsx`, `Dashboard.tsx`
+### 2. Layout lado a lado em tablet na Simulacao
 
----
+Atualmente o grid usa `grid-cols-1 lg:grid-cols-2`, fazendo com que em tablet (breakpoint `md`) os cards fiquem empilhados.
 
-### 2. Melhorar Contraste de Hierarquia (Título vs Resultado)
-**Problema:** Títulos dos cards têm mesmo peso visual que os valores.
-**Solução:** Usar um cinza mais claro para títulos, mantendo os valores em destaque.
+**Solucao**: Em `src/pages/SimulacaoCenarios.tsx`, trocar para `grid-cols-1 md:grid-cols-2` no container dos cenarios, ativando o layout lado a lado a partir de 768px.
 
-**Arquivos:** `KPICard.tsx`, `MetricCard.tsx`
+### 3. Novo grafico de crescimento projetado (10% ao ano)
 
----
+Adicionar um segundo grafico abaixo do existente mostrando a projecao de crescimento de 10% ao ano por 5 anos, baseado no faturamento anual do cenario atual e do novo cenario.
 
-### 3. Adicionar Ícones nos Cards de Métricas Secundárias
-**Problema:** Os cards de Ticket Médio, Custo por Venda e Taxa de Conversão não têm ícones.
-**Solução:** Adicionar ícones com fundo arredondado, similar aos KPI Cards principais.
+**Solucao**: Criar um novo componente `src/components/simulacao/GrowthProjectionChart.tsx` que:
+- Recebe o faturamento anual de cada cenario
+- Calcula projecao composta de 10% ao ano por 5 anos (Ano 1 a Ano 5)
+- Exibe um grafico de barras (BarChart do Recharts) com duas series (Atual e Novo) lado a lado
+- So aparece quando pelo menos um cenario estiver preenchido
 
-**Arquivo:** `MetricCard.tsx`
-
----
-
-### 4. Aumentar Tamanho dos Valores nas Métricas Secundárias
-**Problema:** Os valores dos cards secundários ficam pequenos.
-**Solução:** Igualar proporção com os KPI Cards principais.
-
-**Arquivo:** `MetricCard.tsx`
+Integrar o novo componente em `SimulacaoCenarios.tsx` abaixo do grafico existente.
 
 ---
 
-### 5. Mover Filtros para a Direita do Gráfico
-**Problema:** Filtros ocupam espaço vertical, exigindo scroll.
-**Solução:** Reorganizar layout com gráfico à esquerda e métricas/filtros à direita, tudo visível na mesma tela.
+### Detalhes tecnicos
 
-**Arquivo:** `Dashboard.tsx`
+**Arquivos modificados:**
+- `src/components/ui/input.tsx` - placeholder opacity
+- `src/components/ui/textarea.tsx` - placeholder opacity
+- `src/pages/SimulacaoCenarios.tsx` - breakpoint md + integracao do novo grafico
 
----
+**Arquivo criado:**
+- `src/components/simulacao/GrowthProjectionChart.tsx` - grafico de projecao com BarChart (Recharts), 5 anos, crescimento composto de 10%
 
-### 6. Texto Branco nos Botões de Período Ativos
-**Problema:** Cor da fonte não é branca nos botões selecionados.
-**Solução:** Garantir texto branco quando o botão está selecionado.
-
-**Arquivo:** `PeriodFilter.tsx`
-
----
-
-### 7. Ajustar Cor Laranja do Gráfico
-**Problema:** Laranja pastel não segue a paleta principal.
-**Solução:** Usar laranjas mais vivos da paleta: `#F47917` ou `#F55900` (já definidos como `--primary`).
-
-**Arquivo:** `RevenueChart.tsx`, `src/index.css`
-
----
-
-### 8. Suavizar Contraste do Campo de Email na Tela de Login
-**Problema:** Campo tem contraste muito forte.
-**Solução:** Usar tons de cinza mais suaves.
-
-**Arquivo:** Verificar tela de Auth (menor prioridade)
-
----
-
-## Detalhamento Técnico
-
-### KPICard.tsx - Melhorias
-
-```typescript
-// Antes: text-muted-foreground (muito escuro)
-// Depois: text-muted-foreground/70 (mais suave)
-
-// Ícone dentro de forma arredondada
-<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-  <Icon className="h-4 w-4 text-primary" />
-</div>
+**Logica de projecao:**
 ```
-
-### MetricCard.tsx - Adicionar Ícones e Melhorar Tamanho
-
-```typescript
-interface MetricCardProps {
-  title: string;
-  value: string;
-  icon: LucideIcon;      // Novo
-  iconColor?: string;     // Novo (opcional)
-}
-
-// Ícone em caixa arredondada
-// Título em cinza mais claro
-// Valor maior: text-2xl (era text-xl)
+ano1 = faturamentoAnual
+ano2 = ano1 * 1.10
+ano3 = ano2 * 1.10
+...
 ```
-
-### Dashboard.tsx - Reorganização do Layout
-
-```typescript
-// Atual:
-// KPI Cards (4 colunas)
-// Filtros (linha separada)
-// Métricas secundárias (3 colunas)
-// Gráfico (largura total)
-
-// Proposto:
-// KPI Cards (4 colunas)
-// Seção com:
-//   - Gráfico (2/3 ou 60% largura)
-//   - Coluna lateral (1/3 ou 40% largura):
-//     - Filtros
-//     - Métricas secundárias empilhadas
-```
-
-### PeriodFilter.tsx - Texto Branco
-
-```typescript
-// Garantir que botões selecionados tenham texto branco
-variant={selectedPeriod === period.value ? "default" : "outline"}
-// O variant="default" já usa primary-foreground (branco)
-// Verificar se está funcionando corretamente
-```
-
----
-
-## Ordem de Implementação
-
-1. **Hierarquia visual** - Ajustar cores dos títulos
-2. **MetricCard** - Adicionar ícones e aumentar valores
-3. **KPICard** - Ícone dentro de forma
-4. **Layout** - Reorganizar gráfico + filtros + métricas
-5. **Bordas** - Suavizar divisórias
-6. **Cor do gráfico** - Usar laranja mais vivo
-
----
-
-## Resultado Esperado
-- Interface mais limpa e fluida
-- Hierarquia visual clara (títulos < valores)
-- Todas as informações visíveis sem scroll excessivo
-- Consistência visual nos ícones
-- Cores mais vivas seguindo a paleta da marca
 
