@@ -23,10 +23,10 @@ export function PeriodFilter({
   const today = new Date();
 
   const periods = [
-    { label: "7 dias", value: "7d", getRange: () => ({ from: subDays(today, 7), to: today }) },
-    { label: "14 dias", value: "14d", getRange: () => ({ from: subDays(today, 14), to: today }) },
-    { label: "30 dias", value: "30d", getRange: () => ({ from: subDays(today, 30), to: today }) },
-    { label: "Este mês", value: "month", getRange: () => ({ from: startOfMonth(today), to: today }) },
+    { label: "7D", value: "7d", getRange: () => ({ from: subDays(today, 7), to: today }) },
+    { label: "14D", value: "14d", getRange: () => ({ from: subDays(today, 14), to: today }) },
+    { label: "30D", value: "30d", getRange: () => ({ from: subDays(today, 30), to: today }) },
+    { label: "Mês", value: "month", getRange: () => ({ from: startOfMonth(today), to: today }) },
   ];
 
   const handlePeriodClick = (period: typeof periods[0]) => {
@@ -42,16 +42,18 @@ export function PeriodFilter({
   };
 
   return (
-    <div className="flex items-center justify-end gap-2 flex-wrap">
+    <div className="flex items-center gap-1.5 flex-wrap">
       {periods.map((period) => (
         <Button
           key={period.value}
-          variant={selectedPeriod === period.value ? "default" : "outline"}
+          variant="ghost"
           size="sm"
           onClick={() => handlePeriodClick(period)}
           className={cn(
-            "text-xs",
-            selectedPeriod === period.value && "text-primary-foreground"
+            "text-xs font-medium h-8 px-3 rounded-md border transition-all",
+            selectedPeriod === period.value 
+              ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground" 
+              : "border-border text-muted-foreground hover:bg-secondary/20 hover:text-foreground hover:border-secondary"
           )}
         >
           {period.label}
@@ -61,25 +63,26 @@ export function PeriodFilter({
       <Popover>
         <PopoverTrigger asChild>
           <Button
-            variant={selectedPeriod === "custom" ? "default" : "outline"}
+            variant="ghost"
             size="sm"
             className={cn(
-              "text-xs gap-1",
-              selectedPeriod === "custom" && "text-primary-foreground",
-              !customRange && selectedPeriod !== "custom" && "text-muted-foreground"
+              "text-xs font-medium h-8 px-3 rounded-md border gap-1.5 transition-all",
+              selectedPeriod === "custom" 
+                ? "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground" 
+                : "border-border text-muted-foreground hover:bg-secondary/20 hover:text-foreground hover:border-secondary"
             )}
           >
             <CalendarIcon className="h-3 w-3" />
             {customRange?.from ? (
               customRange.to ? (
                 <>
-                  {format(customRange.from, "dd/MM", { locale: ptBR })} - {format(customRange.to, "dd/MM", { locale: ptBR })}
+                  {format(customRange.from, "dd/MM", { locale: ptBR })} – {format(customRange.to, "dd/MM", { locale: ptBR })}
                 </>
               ) : (
                 format(customRange.from, "dd/MM", { locale: ptBR })
               )
             ) : (
-              "Personalizado"
+              "Custom"
             )}
           </Button>
         </PopoverTrigger>
