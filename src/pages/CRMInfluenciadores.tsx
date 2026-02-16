@@ -542,11 +542,11 @@ const CRMInfluenciadores = () => {
       </div>
 
       {/* Kanban Board */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 flex-1 overflow-hidden min-h-0">
+      <div className="flex gap-3 flex-1 overflow-x-auto min-h-0 pb-2">
         {STAGES.map((stage) => (
           <div
             key={stage.id}
-            className="flex flex-col min-h-0 overflow-hidden"
+            className="flex flex-col min-h-0 overflow-hidden min-w-[200px] w-[200px] lg:flex-1 shrink-0"
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, stage.id)}
           >
