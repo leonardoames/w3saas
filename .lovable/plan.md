@@ -1,100 +1,62 @@
 
 
-## Plano de Implementacao
+## Reorganizar hierarquia visual do Sidebar
 
-### 1. Kanban com rolagem lateral (CRM de Influenciadores)
+O problema atual e que as secoes (titulos dos grupos) e os subitens tem estilos muito parecidos -- mesma cor, tamanho e peso de fonte -- dificultando a distincao visual entre o que e secao e o que e link navegavel.
 
-Atualmente o board usa `grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6` que forca as 6 colunas a "quebrarem" em linhas no mobile/tablet.
+### Mudancas planejadas
 
-**Solucao**: Trocar o grid por um container `flex` com `overflow-x-auto` e largura minima fixa por coluna (~200px). As colunas nunca quebram -- o usuario rola lateralmente para ver todas.
+**1. Titulos das secoes (CollapsibleTrigger) -- mais discretos e com cara de "label"**
+- Texto em `text-xs` e `uppercase` com `tracking-wider` para parecer um label de secao
+- Cor `text-muted-foreground/70` (mais apagado que os links)
+- Remover o fundo no hover (trocar por apenas `hover:text-sidebar-foreground`)
+- Manter o icone do grupo menor (`h-3.5 w-3.5`) e mais apagado
+- Adicionar `mt-4` entre grupos para separar visualmente as secoes (exceto o primeiro)
 
-**Arquivo**: `src/pages/CRMInfluenciadores.tsx` (linha 545)
-- Trocar `grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6` por `flex gap-3 overflow-x-auto`
-- Cada coluna recebe `min-w-[200px] w-[200px] lg:flex-1` para ter largura fixa em telas menores e expandir no desktop
+**2. Links dos subitens (SidebarNavLink) -- mais destacados e com indentacao clara**
+- Aumentar indentacao de `ml-4` para `ml-6` e adicionar uma borda esquerda sutil (`border-l border-border/50`) no container dos subitens
+- Reduzir o padding vertical dos links de `py-3` para `py-2` e fonte de `text-base` para `text-sm`
+- Icones dos subitens ficam com `h-4 w-4` (menores que atualmente)
 
----
+**3. Separacao visual entre grupos**
+- Adicionar um `Separator` (ou `border-t`) sutil entre cada grupo
 
-### 2. Sidebar reorganizada com menus sanfona (accordion)
+### Resultado visual esperado
 
-Atualmente o sidebar renderiza uma lista plana de links. A nova estrutura agrupa os itens em seções colapsaveis usando o Collapsible do Radix (ja instalado).
+```text
+MEU E-COMMERCE            <-- label pequeno, uppercase, cor apagada
+  | Dashboard             <-- link identado, borda lateral, destaque
+  | Plano de Acao
+  | CRM Influenciadores
+  | Integracoes
 
-**Nova organizacao dos menus:**
+SIMULACOES
+  | Calculadora
+  | Simulacao de Cenarios
 
-| Grupo | Itens |
-|---|---|
-| **Meu E-commerce** | Dashboard, Plano de Acao, CRM de Influenciadores, Integracoes |
-| **Simulacoes** | Calculadora, Simulacao de Cenarios |
-| **Educacao** | Aulas da Mentoria, Calendario Comercial |
-| **IA W3** | IA W3 (link direto, sem submenu) |
-| **Mais sobre W3** | Solucoes da W3, Catalogo de Marcas |
+EDUCACAO
+  ...
+```
 
-**Comportamento:**
-- Cada grupo tem um titulo clicavel que abre/fecha (sanfona)
-- O grupo que contem a rota ativa fica aberto por padrao
-- Quando o sidebar esta colapsado (icones only), os grupos nao aparecem -- apenas os icones dos itens com tooltips (comportamento atual)
-- No mobile (drawer), os grupos funcionam normalmente como sanfona
+### Arquivos modificados
 
-**Arquivo**: `src/components/layout/Sidebar.tsx`
-- Substituir o array `menuItems` plano por uma estrutura `menuGroups` com `title`, `icon` e `items[]`
-- Usar `Collapsible`, `CollapsibleTrigger` e `CollapsibleContent` do Radix para cada grupo
-- Usar `useLocation` para detectar qual grupo deve iniciar aberto
-- Manter `SidebarNavLink` para cada item individual
-- Admin items (Cerebro IA, Admin) continuam aparecendo separados no final
+- `src/components/layout/Sidebar.tsx` -- estilos do `SidebarGroup` (trigger + container dos itens)
+- `src/components/layout/SidebarNavLink.tsx` -- ajuste de tamanho de fonte, padding e icone dos subitens
 
 ### Detalhes tecnicos
 
-**Arquivos modificados:**
-- `src/pages/CRMInfluenciadores.tsx` -- kanban flex + overflow-x-auto
-- `src/components/layout/Sidebar.tsx` -- reestruturacao com grupos colapsaveis
+**Sidebar.tsx - CollapsibleTrigger (linha 97):**
+- De: `text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent`
+- Para: `text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 hover:text-sidebar-foreground`
 
-**Dependencias usadas (ja instaladas):**
-- `@radix-ui/react-collapsible` via `src/components/ui/collapsible.tsx`
+**Sidebar.tsx - Container dos subitens (linha 103):**
+- De: `ml-4 space-y-0.5 py-1`
+- Para: `ml-6 space-y-0.5 py-1 border-l border-border/40 pl-0`
 
-**Estrutura de dados dos grupos:**
-```typescript
-const menuGroups = [
-  {
-    title: "Meu E-commerce",
-    icon: LayoutDashboard,
-    items: [
-      { title: "Dashboard", icon: LayoutDashboard, path: "/app" },
-      { title: "Plano de Acao", icon: ListChecks, path: "/app/plano-acao" },
-      { title: "CRM de Influenciadores", icon: Users, path: "/app/crm-influenciadores" },
-      { title: "Integracoes", icon: Plug, path: "/app/integracoes" },
-    ],
-  },
-  {
-    title: "Simulacoes",
-    icon: Calculator,
-    items: [
-      { title: "Calculadora", icon: Calculator, path: "/app/calculadora" },
-      { title: "Simulacao de Cenarios", icon: GitCompare, path: "/app/simulacao" },
-    ],
-  },
-  {
-    title: "Educacao",
-    icon: GraduationCap,
-    items: [
-      { title: "Aulas da Mentoria", icon: GraduationCap, path: "/app/aulas" },
-      { title: "Calendario Comercial", icon: CalendarDays, path: "/app/calendario" },
-    ],
-  },
-];
+**Sidebar.tsx - Espacamento entre grupos:**
+- Adicionar `first:mt-0 mt-4` em cada grupo ou usar `space-y-4` no container pai
 
-// IA W3 - link direto (sem submenu)
-const standaloneItems = [
-  { title: "IA W3", icon: Sparkles, path: "/app/ia-w3" },
-];
-
-const moreAboutW3 = {
-  title: "Mais sobre W3",
-  icon: ShoppingBag,
-  items: [
-    { title: "Solucoes da W3", icon: ShoppingBag, path: "/app/produtos" },
-    { title: "Catalogo de Marcas", icon: Store, path: "/app/catalogo" },
-  ],
-};
-```
-
-**Logica de auto-abertura**: Cada grupo verifica se `location.pathname` corresponde a algum dos seus items para definir o estado inicial `open`.
-
+**SidebarNavLink.tsx:**
+- Texto de `text-base` para `text-sm`
+- Padding de `py-3` para `py-2`
+- Icone de `h-5 w-5` para `h-4 w-4`
