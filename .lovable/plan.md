@@ -2,51 +2,99 @@
 
 ## Plano de Implementacao
 
-### 1. Placeholders com menor destaque (global)
+### 1. Kanban com rolagem lateral (CRM de Influenciadores)
 
-Atualmente os placeholders usam `placeholder:text-muted-foreground` nos componentes `Input` e `Textarea`. O problema e que `--muted-foreground` tem contraste alto (quase preto no light, quase branco no dark).
+Atualmente o board usa `grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6` que forca as 6 colunas a "quebrarem" em linhas no mobile/tablet.
 
-**Solucao**: Adicionar opacidade ao placeholder nos dois componentes base:
-- `src/components/ui/input.tsx`: trocar `placeholder:text-muted-foreground` por `placeholder:text-muted-foreground/50`
-- `src/components/ui/textarea.tsx`: mesma alteracao
+**Solucao**: Trocar o grid por um container `flex` com `overflow-x-auto` e largura minima fixa por coluna (~200px). As colunas nunca quebram -- o usuario rola lateralmente para ver todas.
 
-Isso aplica 50% de opacidade ao texto placeholder em todo o SaaS de forma centralizada.
-
-### 2. Layout lado a lado em tablet na Simulacao
-
-Atualmente o grid usa `grid-cols-1 lg:grid-cols-2`, fazendo com que em tablet (breakpoint `md`) os cards fiquem empilhados.
-
-**Solucao**: Em `src/pages/SimulacaoCenarios.tsx`, trocar para `grid-cols-1 md:grid-cols-2` no container dos cenarios, ativando o layout lado a lado a partir de 768px.
-
-### 3. Novo grafico de crescimento projetado (10% ao ano)
-
-Adicionar um segundo grafico abaixo do existente mostrando a projecao de crescimento de 10% ao ano por 5 anos, baseado no faturamento anual do cenario atual e do novo cenario.
-
-**Solucao**: Criar um novo componente `src/components/simulacao/GrowthProjectionChart.tsx` que:
-- Recebe o faturamento anual de cada cenario
-- Calcula projecao composta de 10% ao ano por 5 anos (Ano 1 a Ano 5)
-- Exibe um grafico de barras (BarChart do Recharts) com duas series (Atual e Novo) lado a lado
-- So aparece quando pelo menos um cenario estiver preenchido
-
-Integrar o novo componente em `SimulacaoCenarios.tsx` abaixo do grafico existente.
+**Arquivo**: `src/pages/CRMInfluenciadores.tsx` (linha 545)
+- Trocar `grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6` por `flex gap-3 overflow-x-auto`
+- Cada coluna recebe `min-w-[200px] w-[200px] lg:flex-1` para ter largura fixa em telas menores e expandir no desktop
 
 ---
+
+### 2. Sidebar reorganizada com menus sanfona (accordion)
+
+Atualmente o sidebar renderiza uma lista plana de links. A nova estrutura agrupa os itens em seções colapsaveis usando o Collapsible do Radix (ja instalado).
+
+**Nova organizacao dos menus:**
+
+| Grupo | Itens |
+|---|---|
+| **Meu E-commerce** | Dashboard, Plano de Acao, CRM de Influenciadores, Integracoes |
+| **Simulacoes** | Calculadora, Simulacao de Cenarios |
+| **Educacao** | Aulas da Mentoria, Calendario Comercial |
+| **IA W3** | IA W3 (link direto, sem submenu) |
+| **Mais sobre W3** | Solucoes da W3, Catalogo de Marcas |
+
+**Comportamento:**
+- Cada grupo tem um titulo clicavel que abre/fecha (sanfona)
+- O grupo que contem a rota ativa fica aberto por padrao
+- Quando o sidebar esta colapsado (icones only), os grupos nao aparecem -- apenas os icones dos itens com tooltips (comportamento atual)
+- No mobile (drawer), os grupos funcionam normalmente como sanfona
+
+**Arquivo**: `src/components/layout/Sidebar.tsx`
+- Substituir o array `menuItems` plano por uma estrutura `menuGroups` com `title`, `icon` e `items[]`
+- Usar `Collapsible`, `CollapsibleTrigger` e `CollapsibleContent` do Radix para cada grupo
+- Usar `useLocation` para detectar qual grupo deve iniciar aberto
+- Manter `SidebarNavLink` para cada item individual
+- Admin items (Cerebro IA, Admin) continuam aparecendo separados no final
 
 ### Detalhes tecnicos
 
 **Arquivos modificados:**
-- `src/components/ui/input.tsx` - placeholder opacity
-- `src/components/ui/textarea.tsx` - placeholder opacity
-- `src/pages/SimulacaoCenarios.tsx` - breakpoint md + integracao do novo grafico
+- `src/pages/CRMInfluenciadores.tsx` -- kanban flex + overflow-x-auto
+- `src/components/layout/Sidebar.tsx` -- reestruturacao com grupos colapsaveis
 
-**Arquivo criado:**
-- `src/components/simulacao/GrowthProjectionChart.tsx` - grafico de projecao com BarChart (Recharts), 5 anos, crescimento composto de 10%
+**Dependencias usadas (ja instaladas):**
+- `@radix-ui/react-collapsible` via `src/components/ui/collapsible.tsx`
 
-**Logica de projecao:**
+**Estrutura de dados dos grupos:**
+```typescript
+const menuGroups = [
+  {
+    title: "Meu E-commerce",
+    icon: LayoutDashboard,
+    items: [
+      { title: "Dashboard", icon: LayoutDashboard, path: "/app" },
+      { title: "Plano de Acao", icon: ListChecks, path: "/app/plano-acao" },
+      { title: "CRM de Influenciadores", icon: Users, path: "/app/crm-influenciadores" },
+      { title: "Integracoes", icon: Plug, path: "/app/integracoes" },
+    ],
+  },
+  {
+    title: "Simulacoes",
+    icon: Calculator,
+    items: [
+      { title: "Calculadora", icon: Calculator, path: "/app/calculadora" },
+      { title: "Simulacao de Cenarios", icon: GitCompare, path: "/app/simulacao" },
+    ],
+  },
+  {
+    title: "Educacao",
+    icon: GraduationCap,
+    items: [
+      { title: "Aulas da Mentoria", icon: GraduationCap, path: "/app/aulas" },
+      { title: "Calendario Comercial", icon: CalendarDays, path: "/app/calendario" },
+    ],
+  },
+];
+
+// IA W3 - link direto (sem submenu)
+const standaloneItems = [
+  { title: "IA W3", icon: Sparkles, path: "/app/ia-w3" },
+];
+
+const moreAboutW3 = {
+  title: "Mais sobre W3",
+  icon: ShoppingBag,
+  items: [
+    { title: "Solucoes da W3", icon: ShoppingBag, path: "/app/produtos" },
+    { title: "Catalogo de Marcas", icon: Store, path: "/app/catalogo" },
+  ],
+};
 ```
-ano1 = faturamentoAnual
-ano2 = ano1 * 1.10
-ano3 = ano2 * 1.10
-...
-```
+
+**Logica de auto-abertura**: Cada grupo verifica se `location.pathname` corresponde a algum dos seus items para definir o estado inicial `open`.
 
