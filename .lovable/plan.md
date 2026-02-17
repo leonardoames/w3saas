@@ -1,169 +1,169 @@
 
 
-## Plano: Acompanhamento Diario + Reestruturacao do Dashboard
+## Plano: Precificadora, Produtos Salvos, Cenarios Salvos, Meta de Faturamento
 
 ### Visao Geral
 
-Criar uma nova pagina "Acompanhamento Diario" como hub central de entrada de dados, com nova tabela simplificada (sem dimensao de plataforma), e fazer o Dashboard consumir esses mesmos dados.
+Quatro grandes mudancas:
+1. Renomear "Calculadora" para "Precificadora de E-commerce" e remover margem desejada
+2. Salvar produtos precificados no banco de dados
+3. Salvar cenarios simulados no banco de dados com historico acessivel
+4. Campo de meta de faturamento no perfil do usuario, refletido no Dashboard
 
 ---
 
-### 1. Nova Tabela no Banco de Dados
+### 1. Renomear Calculadora para Precificadora de E-commerce
 
-Criar tabela `daily_results` com esquema simplificado:
+**Arquivos modificados:**
+- `src/components/layout/Sidebar.tsx` -- mudar titulo de "Calculadora" para "Precificadora" e icone para `Tag` (ou manter `Calculator`)
+- `src/pages/Calculadora.tsx` -- mudar titulo h1 e descricao, remover campo "Margem Desejada" e toda logica de comparacao com margem desejada (funcao `getMarginColor` e textos "Acima da meta" / "Meta: X%")
 
-```sql
-CREATE TABLE public.daily_results (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  data date NOT NULL,
-  investimento numeric DEFAULT 0,
-  sessoes integer DEFAULT 0,
-  pedidos_pagos integer DEFAULT 0,
-  receita_paga numeric DEFAULT 0,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  UNIQUE (user_id, data)
-);
+**Remocao da margem desejada:**
+- Remover campo `desiredMargin` do estado `inputs`
+- Remover o bloco JSX do input "Margem Desejada" (linhas 163-179)
+- Simplificar `getMarginColor()` -- margem positiva = verde, margem negativa = vermelho, sem comparacao com meta
+- Remover texto condicional "Acima da meta" / "Meta: X%" no bloco de resultados
 
-ALTER TABLE public.daily_results ENABLE ROW LEVEL SECURITY;
+---
+
+### 2. Salvar Produtos Precificados (Banco de Dados)
+
+**Nova tabela `saved_products`:**
+
+```text
+id          uuid PK default gen_random_uuid()
+user_id     uuid NOT NULL
+name        text NOT NULL
+sku         text (opcional)
+selling_price        numeric
+product_cost         numeric
+media_cost_pct       numeric
+fixed_costs_pct      numeric
+taxes_pct            numeric
+gateway_fee_pct      numeric
+platform_fee_pct     numeric
+extra_fees_pct       numeric
+created_at  timestamptz default now()
+updated_at  timestamptz default now()
 ```
 
-**Politicas RLS:**
-- SELECT: usuario ve apenas seus proprios registros (`auth.uid() = user_id`), admin ve todos
-- INSERT: usuario insere apenas com seu proprio `user_id`
-- UPDATE: usuario atualiza apenas seus registros, admin atualiza qualquer um
-- DELETE: usuario deleta apenas seus registros, admin deleta qualquer um
+**RLS:** usuario so ve/edita/deleta seus proprios produtos.
 
-**Trigger** para atualizar `updated_at` automaticamente.
+**Mudancas na UI (Calculadora.tsx):**
+- Adicionar botao "Salvar Produto" no topo ou ao lado dos resultados
+- Modal/dialog para digitar nome do produto e SKU (opcional) antes de salvar
+- Botao "Meus Produtos" que abre um dialog/drawer com tabela listando produtos salvos (nome, SKU, preco de venda, lucro, margem)
+- Ao clicar em um produto salvo, preenche os campos da precificadora com os valores daquele produto
+- Botao de excluir produto salvo
 
-Campos calculados (computados no frontend, nao armazenados):
-- ROAS = receita_paga / investimento
-- Custo de Midia (%) = investimento / receita_paga * 100
-- CPA = investimento / pedidos_pagos
-- Taxa Conversao (%) = pedidos_pagos / sessoes * 100
-- Ticket Medio = receita_paga / pedidos_pagos
-- CPS = investimento / sessoes
+**Novos componentes:**
+- `src/components/precificadora/SaveProductDialog.tsx` -- modal para nomear e salvar
+- `src/components/precificadora/SavedProductsList.tsx` -- lista/tabela de produtos salvos
 
 ---
 
-### 2. Nova Pagina: Acompanhamento Diario
+### 3. Salvar Cenarios Simulados (Banco de Dados)
 
-**Arquivo:** `src/pages/AcompanhamentoDiario.tsx`
+**Nova tabela `saved_scenarios`:**
 
-**Layout da pagina:**
+```text
+id               uuid PK default gen_random_uuid()
+user_id          uuid NOT NULL
+name             text NOT NULL
+current_visits   numeric
+current_rate     numeric
+current_ticket   numeric
+new_visits       numeric
+new_rate         numeric
+new_ticket       numeric
+created_at       timestamptz default now()
+updated_at       timestamptz default now()
+```
 
-A) **Barra de filtros** (topo):
-- Filtro de periodo (7D, 14D, 30D, Mes, Personalizado) -- reutiliza `PeriodFilter`
-- Input de busca por data
+**RLS:** usuario so ve/edita/deleta seus proprios cenarios.
 
-B) **Botoes de acao:**
-- "Adicionar manualmente" -- abre modal
-- "Importar planilha" -- input de arquivo CSV/XLSX
+**Mudancas na UI (SimulacaoCenarios.tsx):**
+- Botao "Salvar Cenario" no header -- abre dialog para nomear o cenario
+- Salva os valores de ambos os cenarios (atual + novo) no banco
+- Botao "Historico de Cenarios" no header -- navega para sub-rota `/app/simulacao/historico`
 
-C) **Tabela principal** (componente novo `DailyResultsTable`):
+**Nova pagina: Historico de Cenarios**
+- Rota: `/app/simulacao/historico`
+- Tabela com colunas: Nome, Data de criacao, Visitas (atual/novo), Taxa Conv. (atual/novo), Ticket (atual/novo), Acoes
+- Ao clicar em "Carregar", preenche os campos da simulacao
+- Botao de excluir cenario
+- Botao "Voltar para Simulacao" no topo
 
-| Data | Valor Investido (R$) | Sessoes | Pedidos pagos | Receita paga (R$) | ROAS | Custo de Midia (%) | CPA (R$) | TX CONV. (%) | Ticket Medio (R$) | CPS (R$) | Acoes |
-|------|---------------------|---------|---------------|-------------------|------|---------------------|----------|--------------|-------------------|----------|-------|
+**Novos arquivos:**
+- `src/pages/SimulacaoHistorico.tsx` -- pagina do historico
+- `src/components/simulacao/SaveScenarioDialog.tsx` -- modal para nomear cenario
 
-Regras:
-- Ordenado por data decrescente
-- Header fixo (sticky)
-- Zebra rows (alternancia de cor)
-- Numeros formatados pt-BR (R$, %)
-- ROAS baixo (<2) em vermelho, alto (>5) em verde
-- Paginacao com 15 itens por pagina
-
-D) **Modal de edicao/adicao** (componente novo `DailyResultModal`):
-- Campos: Data, Investimento (R$), Sessoes, Pedidos Pagos, Receita Paga (R$)
-- Ao salvar: upsert por (user_id, data)
-- Preview dos campos calculados em tempo real no modal
-
-E) **Importacao CSV:**
-- Aceita CSV com colunas: Data, Valor Investido, Sessoes, Pedidos pagos, Receita paga
-- Aceita formatos pt-BR (dd/mm/yyyy, virgula como decimal)
-- Preview da tabela antes de confirmar importacao
-- Upsert por (user_id + data)
-- Exibe contagem de criados vs atualizados
-
----
-
-### 3. Dashboard Simplificado
-
-**Arquivo:** `src/pages/Dashboard.tsx`
-
-Mudancas:
-- Remover toda a logica de importacao (tabs "Importar Dados", cards de import, screenshot, AI, bulk entry)
-- Remover `parseGenericCSV`, `ScreenshotImportCard`, `consolidateMetrics` e estados relacionados
-- Substituir leitura de `metrics_diarias` por `daily_results`
-- Adicionar card CTA: "Gerencie seus dados no Acompanhamento Diario" com botoes "Ir para Acompanhamento Diario" e "Importar planilha"
-
-KPIs recalculados a partir de `daily_results`:
-- Faturamento = sum(receita_paga)
-- Investimento = sum(investimento)
-- Vendas = sum(pedidos_pagos)
-- Sessoes = sum(sessoes)
-- ROAS medio = sum(receita_paga) / sum(investimento)
-- Ticket medio = sum(receita_paga) / sum(pedidos_pagos)
-- Custo por venda = sum(investimento) / sum(pedidos_pagos)
-- Taxa de conversao = sum(pedidos_pagos) / sum(sessoes) * 100
-
-Grafico "Evolucao de Faturamento" plota `receita_paga` por data.
+**Roteamento (App.tsx):**
+- Adicionar rota `/simulacao/historico` apontando para `SimulacaoHistorico`
 
 ---
 
-### 4. Roteamento e Navegacao
+### 4. Meta de Faturamento no Perfil
 
-**`src/App.tsx`:**
-- Adicionar rota `/app/acompanhamento` para o novo componente
+**Mudanca no banco:**
+- Adicionar coluna `revenue_goal` (numeric, nullable, default null) na tabela `profiles`
 
-**`src/components/layout/Sidebar.tsx`:**
-- Adicionar "Acompanhamento Diario" no grupo "Meu E-commerce" com icone `BarChart3`, posicionado apos "Dashboard"
+**Mudancas na UI:**
+
+A) **Sidebar ou secao "Meu E-commerce":**
+- Na Dashboard, adicionar um card/secao para definir meta de faturamento mensal
+- Input com valor em R$, salva no perfil do usuario via update na tabela `profiles`
+
+B) **Dashboard -- refletir a meta:**
+- No KPI "Faturamento", mostrar uma barra de progresso ou texto indicando % da meta atingida
+- Exemplo: "R$ 45.000 de R$ 100.000 (45%)" abaixo do valor de faturamento
+- Se meta nao definida, mostrar link "Definir meta de faturamento"
+
+**Novos componentes:**
+- `src/components/dashboard/RevenueGoalCard.tsx` -- card para definir/editar meta
+- Ou integrar diretamente no KPICard de faturamento com um indicador de progresso
 
 ---
 
-### 5. Permissoes / Admin
-
-- RLS garante que usuarios normais so veem seus proprios dados
-- Admin pode ver dados de qualquer usuario (politica RLS com `is_admin_user`)
-- No futuro, admin pode selecionar usuario para visualizar (nao implementado nesta fase inicial, mas a RLS ja permite)
-
----
-
-### Arquivos criados/modificados
+### Resumo de Arquivos
 
 | Arquivo | Acao |
 |---------|------|
-| Migration SQL | Criar tabela `daily_results` + RLS + trigger |
-| `src/pages/AcompanhamentoDiario.tsx` | **Novo** -- pagina principal |
-| `src/components/acompanhamento/DailyResultsTable.tsx` | **Novo** -- tabela com todas as colunas |
-| `src/components/acompanhamento/DailyResultModal.tsx` | **Novo** -- modal adicionar/editar |
-| `src/components/acompanhamento/ImportPreviewDialog.tsx` | **Novo** -- preview antes de importar CSV |
-| `src/pages/Dashboard.tsx` | Modificado -- ler de `daily_results`, remover imports, adicionar CTA |
-| `src/App.tsx` | Modificado -- adicionar rota |
-| `src/components/layout/Sidebar.tsx` | Modificado -- adicionar item no menu |
+| Migration SQL | Criar `saved_products`, `saved_scenarios`, adicionar `revenue_goal` em `profiles` |
+| `src/pages/Calculadora.tsx` | Renomear, remover margem desejada, adicionar salvar/carregar produtos |
+| `src/components/precificadora/SaveProductDialog.tsx` | **Novo** |
+| `src/components/precificadora/SavedProductsList.tsx` | **Novo** |
+| `src/pages/SimulacaoCenarios.tsx` | Adicionar salvar cenario e botao historico |
+| `src/pages/SimulacaoHistorico.tsx` | **Novo** -- tabela de cenarios salvos |
+| `src/components/simulacao/SaveScenarioDialog.tsx` | **Novo** |
+| `src/components/layout/Sidebar.tsx` | Renomear "Calculadora" para "Precificadora" |
+| `src/App.tsx` | Adicionar rota `/simulacao/historico` |
+| `src/pages/Dashboard.tsx` | Mostrar progresso da meta de faturamento |
+| `src/components/dashboard/RevenueGoalCard.tsx` | **Novo** -- card para definir meta |
 
-### Detalhes tecnicos
+### Detalhes Tecnicos
 
-**Tabela `daily_results` vs `metrics_diarias`:**
-A tabela `metrics_diarias` existente permanece intacta (para nao quebrar dados historicos). A nova `daily_results` e a fonte de verdade para o novo fluxo. Os dados antigos de `metrics_diarias` nao sao migrados automaticamente nesta fase.
+**Precificadora -- remocao da margem desejada:**
+- O campo `desiredMargin` sai do estado e do JSX
+- A funcao `getMarginColor` passa a usar apenas `results.margin > 0` (verde) vs `<= 0` (vermelho)
+- O texto "Acima da meta" e "Meta: X%" e removido dos resultados
 
-**Componente `DailyResultsTable`:**
-- 11 colunas de dados + 1 de acoes
-- Scroll horizontal em telas menores
-- Header sticky com `position: sticky; top: 0`
-- Zebra rows com `even:bg-muted/20`
-- ROAS com badges coloridos (vermelho < 2, verde > 5)
+**Produtos salvos -- fluxo:**
+1. Usuario preenche precificadora normalmente
+2. Clica "Salvar Produto" -> dialog pede nome (obrigatorio) e SKU (opcional)
+3. Salva todos os inputs no banco (preco, custo, percentuais)
+4. Na lista "Meus Produtos", ao clicar "Carregar", preenche os campos
+5. Pode editar e salvar novamente (update)
 
-**Componente `DailyResultModal`:**
-- 4 campos editaveis: investimento, sessoes, pedidos_pagos, receita_paga
-- 1 campo data (date picker)
-- Secao inferior com preview dos 6 campos calculados em tempo real
-- Upsert no Supabase com `onConflict: "user_id, data"`
+**Cenarios salvos -- fluxo:**
+1. Usuario preenche ambos os cenarios
+2. Clica "Salvar Cenario" -> dialog pede nome
+3. Salva os 6 valores (3 do atual + 3 do novo) no banco
+4. Historico acessivel via botao ou sub-rota `/app/simulacao/historico`
+5. Tabela mostra todos os cenarios salvos, com opcao de carregar ou excluir
 
-**Import CSV com preview:**
-- Parse do arquivo usando funcoes existentes de `metricsImport.ts` adaptadas
-- Dialog de preview mostrando tabela com dados parseados
-- Botao "Confirmar importacao" que faz upsert em batch
-- Contagem de linhas novas vs atualizadas (comparando com dados existentes)
+**Meta de faturamento:**
+- Salva na coluna `revenue_goal` do `profiles`
+- Dashboard le o valor e compara com `sum(receita_paga)` do periodo selecionado
+- Exibe barra de progresso no card de faturamento
 
