@@ -11,6 +11,7 @@ import { KPICard } from "@/components/dashboard/KPICard";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { PeriodFilter } from "@/components/dashboard/PeriodFilter";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
+import { RevenueGoalCard } from "@/components/dashboard/RevenueGoalCard";
 
 interface DailyRow {
   data: string;
@@ -151,6 +152,9 @@ export default function Dashboard() {
             />
           </div>
         </div>
+
+        {/* Revenue Goal */}
+        <RevenueGoalCard currentRevenue={faturamento} userId={user.id} />
 
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
