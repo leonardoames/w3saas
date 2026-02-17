@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Copy, RotateCcw } from "lucide-react";
+import { Copy, RotateCcw, Save, History } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,10 +12,22 @@ import {
   formatPercent,
 } from "@/components/simulacao/ScenarioCard";
 import { RevenueComparisonCard } from "@/components/simulacao/RevenueComparisonCard";
+import { SaveScenarioDialog } from "@/components/simulacao/SaveScenarioDialog";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function SimulacaoCenarios() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [currentScenario, setCurrentScenario] = useState<ScenarioInputs>(defaultInputs);
   const [newScenario, setNewScenario] = useState<ScenarioInputs>(defaultInputs);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+
+  // Load from navigation state if coming from history
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.currentScenario) setCurrentScenario(state.currentScenario);
+    if (state?.newScenario) setNewScenario(state.newScenario);
+  }, [location.state]);
 
   const currentCalc = useMemo(() => calculateRevenue(currentScenario), [currentScenario]);
   const newCalc = useMemo(() => calculateRevenue(newScenario), [newScenario]);
@@ -58,11 +70,23 @@ export default function SimulacaoCenarios() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Simulação de Cenários</h1>
-        <p className="text-muted-foreground mt-2">
-          Compare seu cenário atual com um novo cenário e visualize o impacto no faturamento ao longo do tempo.
-        </p>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Simulação de Cenários</h1>
+          <p className="text-muted-foreground mt-2">
+            Compare seu cenário atual com um novo cenário e visualize o impacto no faturamento ao longo do tempo.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate("/app/simulacao/historico")}>
+            <History className="h-4 w-4 mr-1" />
+            Histórico
+          </Button>
+          <Button size="sm" onClick={() => setSaveDialogOpen(true)} disabled={!currentCalc.isValid && !newCalc.isValid}>
+            <Save className="h-4 w-4 mr-1" />
+            Salvar Cenário
+          </Button>
+        </div>
       </div>
 
       {/* Unified Scenarios Card */}
@@ -128,6 +152,13 @@ export default function SimulacaoCenarios() {
         showCurrent={currentCalc.isValid}
         showNew={newCalc.isValid}
         comparison={comparison}
+      />
+
+      <SaveScenarioDialog
+        open={saveDialogOpen}
+        onOpenChange={setSaveDialogOpen}
+        currentScenario={currentScenario}
+        newScenario={newScenario}
       />
     </div>
   );

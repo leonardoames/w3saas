@@ -41,7 +41,7 @@ const menuGroups: MenuGroup[] = [
     title: "Simulações",
     icon: Calculator,
     items: [
-      { title: "Calculadora", icon: Calculator, path: "/app/calculadora" },
+      { title: "Precificadora", icon: Calculator, path: "/app/calculadora" },
       { title: "Simulação de Cenários", icon: GitCompare, path: "/app/simulacao" },
     ],
   },

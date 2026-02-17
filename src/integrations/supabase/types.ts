@@ -533,6 +533,7 @@ export type Database = {
           is_w3_client: boolean
           last_login_at: string | null
           plan_type: string
+          revenue_goal: number | null
           updated_at: string
           user_id: string
         }
@@ -548,6 +549,7 @@ export type Database = {
           is_w3_client?: boolean
           last_login_at?: string | null
           plan_type?: string
+          revenue_goal?: number | null
           updated_at?: string
           user_id: string
         }
@@ -563,7 +565,101 @@ export type Database = {
           is_w3_client?: boolean
           last_login_at?: string | null
           plan_type?: string
+          revenue_goal?: number | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      saved_products: {
+        Row: {
+          created_at: string | null
+          extra_fees_pct: number | null
+          fixed_costs_pct: number | null
+          gateway_fee_pct: number | null
+          id: string
+          media_cost_pct: number | null
+          name: string
+          platform_fee_pct: number | null
+          product_cost: number | null
+          selling_price: number | null
+          sku: string | null
+          taxes_pct: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          extra_fees_pct?: number | null
+          fixed_costs_pct?: number | null
+          gateway_fee_pct?: number | null
+          id?: string
+          media_cost_pct?: number | null
+          name: string
+          platform_fee_pct?: number | null
+          product_cost?: number | null
+          selling_price?: number | null
+          sku?: string | null
+          taxes_pct?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          extra_fees_pct?: number | null
+          fixed_costs_pct?: number | null
+          gateway_fee_pct?: number | null
+          id?: string
+          media_cost_pct?: number | null
+          name?: string
+          platform_fee_pct?: number | null
+          product_cost?: number | null
+          selling_price?: number | null
+          sku?: string | null
+          taxes_pct?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      saved_scenarios: {
+        Row: {
+          created_at: string | null
+          current_rate: number | null
+          current_ticket: number | null
+          current_visits: number | null
+          id: string
+          name: string
+          new_rate: number | null
+          new_ticket: number | null
+          new_visits: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_rate?: number | null
+          current_ticket?: number | null
+          current_visits?: number | null
+          id?: string
+          name: string
+          new_rate?: number | null
+          new_ticket?: number | null
+          new_visits?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_rate?: number | null
+          current_ticket?: number | null
+          current_visits?: number | null
+          id?: string
+          name?: string
+          new_rate?: number | null
+          new_ticket?: number | null
+          new_visits?: number | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
