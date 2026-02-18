@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
       if (dataParts.length !== 3) continue;
       const dateKey = `${dataParts[2]}-${dataParts[1]}-${dataParts[0]}`;
 
-      const totalPedido = parseFloat(pedido.totalPedido || pedido.total_pedido || "0");
+      const totalPedido = parseFloat(pedido.valor || pedido.totalPedido || pedido.total_pedido || "0");
 
       if (!dailyMap[dateKey]) {
         dailyMap[dateKey] = { faturamento: 0, vendas_quantidade: 0, vendas_valor: 0 };
