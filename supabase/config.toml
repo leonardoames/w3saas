@@ -32,3 +32,9 @@ verify_jwt = false
 
 [functions.sync-olist_tiny]
 verify_jwt = false
+
+[functions.sync-nuvemshop]
+verify_jwt = false
+
+[functions.nuvemshop-webhooks]
+verify_jwt = false
