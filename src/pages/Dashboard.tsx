@@ -41,23 +41,58 @@ export default function Dashboard() {
   const loadData = useCallback(async () => {
     if (!user) return;
     const last90 = subDays(new Date(), 90);
-    const { data, error } = await supabase
-      .from("daily_results" as any)
-      .select("*")
-      .eq("user_id", user.id)
-      .gte("data", format(last90, "yyyy-MM-dd"))
-      .order("data", { ascending: true });
-    if (!error && data) {
-      setAllData(
-        (data as any[]).map((d) => ({
-          data: d.data,
-          investimento: Number(d.investimento) || 0,
-          sessoes: Number(d.sessoes) || 0,
-          pedidos_pagos: Number(d.pedidos_pagos) || 0,
-          receita_paga: Number(d.receita_paga) || 0,
-        }))
-      );
+    const last90Str = format(last90, "yyyy-MM-dd");
+
+    // Fetch both data sources in parallel
+    const [dailyRes, metricsRes] = await Promise.all([
+      supabase
+        .from("daily_results" as any)
+        .select("*")
+        .eq("user_id", user.id)
+        .gte("data", last90Str)
+        .order("data", { ascending: true }),
+      supabase
+        .from("metrics_diarias")
+        .select("*")
+        .eq("user_id", user.id)
+        .gte("data", last90Str)
+        .order("data", { ascending: true }),
+    ]);
+
+    // Build a map by date, merging both sources
+    const dateMap: Record<string, DailyRow> = {};
+
+    // Add daily_results data
+    if (!dailyRes.error && dailyRes.data) {
+      for (const d of dailyRes.data as any[]) {
+        const key = d.data;
+        if (!dateMap[key]) {
+          dateMap[key] = { data: key, investimento: 0, sessoes: 0, pedidos_pagos: 0, receita_paga: 0 };
+        }
+        dateMap[key].investimento += Number(d.investimento) || 0;
+        dateMap[key].sessoes += Number(d.sessoes) || 0;
+        dateMap[key].pedidos_pagos += Number(d.pedidos_pagos) || 0;
+        dateMap[key].receita_paga += Number(d.receita_paga) || 0;
+      }
     }
+
+    // Add metrics_diarias data (from integrations like Olist Tiny, Shopify, etc.)
+    if (!metricsRes.error && metricsRes.data) {
+      for (const d of metricsRes.data as any[]) {
+        const key = d.data;
+        if (!dateMap[key]) {
+          dateMap[key] = { data: key, investimento: 0, sessoes: 0, pedidos_pagos: 0, receita_paga: 0 };
+        }
+        dateMap[key].investimento += Number(d.investimento_trafego) || 0;
+        dateMap[key].sessoes += Number(d.sessoes) || 0;
+        dateMap[key].pedidos_pagos += Number(d.vendas_quantidade) || 0;
+        dateMap[key].receita_paga += Number(d.faturamento) || 0;
+      }
+    }
+
+    // Convert map to sorted array
+    const merged = Object.values(dateMap).sort((a, b) => a.data.localeCompare(b.data));
+    setAllData(merged);
   }, [user]);
 
   useEffect(() => {
