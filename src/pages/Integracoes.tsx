@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { Plug, Unplug, ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { Plug, Unplug, ExternalLink, Loader2, RefreshCw, Copy, CheckCheck } from "lucide-react";
 
 import shopeeLogo from "@/assets/platforms/shopee.png";
 import nuvemshopLogo from "@/assets/platforms/nuvemshop.png";
@@ -91,6 +91,14 @@ const platforms: PlatformInfo[] = [
   },
 ];
 
+// Webhook base URL for LGPD
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const webhookUrls = {
+  store_redact: `${SUPABASE_URL}/functions/v1/nuvemshop-webhooks?type=store_redact`,
+  customers_redact: `${SUPABASE_URL}/functions/v1/nuvemshop-webhooks?type=customers_redact`,
+  customers_data_request: `${SUPABASE_URL}/functions/v1/nuvemshop-webhooks?type=customers_data_request`,
+};
+
 export default function Integracoes() {
   const { user } = useAuth();
   const [integrations, setIntegrations] = useState<Record<string, any>>({});
@@ -98,6 +106,7 @@ export default function Integracoes() {
   const [saving, setSaving] = useState(false);
   const [connectDialog, setConnectDialog] = useState<PlatformInfo | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const [syncing, setSyncing] = useState<string | null>(null);
 
@@ -292,6 +301,33 @@ export default function Integracoes() {
                     </Button>
                   )}
                 </div>
+                {/* LGPD Webhook URLs for Nuvemshop */}
+                {platform.id === "nuvemshop" && connected && (
+                  <div className="mt-3 p-3 rounded-lg border bg-muted/50 space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">URLs Webhooks LGPD (cole no painel Nuvemshop)</p>
+                    {Object.entries(webhookUrls).map(([key, url]) => (
+                      <div key={key} className="flex items-center gap-2">
+                        <Input
+                          readOnly
+                          value={url}
+                          className="text-xs h-8 font-mono bg-background"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0"
+                          onClick={() => {
+                            navigator.clipboard.writeText(url);
+                            setCopiedField(key);
+                            setTimeout(() => setCopiedField(null), 2000);
+                          }}
+                        >
+                          {copiedField === key ? <CheckCheck className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
