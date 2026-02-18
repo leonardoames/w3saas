@@ -14,12 +14,14 @@ import shopeeLogo from "@/assets/platforms/shopee.png";
 import nuvemshopLogo from "@/assets/platforms/nuvemshop.png";
 import mercadoLivreLogo from "@/assets/platforms/mercado-livre.png";
 import shopifyLogo from "@/assets/platforms/shopify.png";
+import olistTinyLogo from "@/assets/platforms/olist-tiny.png";
 
 const platformLogos: Record<string, string> = {
   nuvemshop: nuvemshopLogo,
   shopee: shopeeLogo,
   mercado_livre: mercadoLivreLogo,
   shopify: shopifyLogo,
+  olist_tiny: olistTinyLogo,
 };
 
 interface PlatformInfo {
@@ -76,6 +78,16 @@ const platforms: PlatformInfo[] = [
       { key: "store_url", label: "URL da Loja", placeholder: "sualoja.myshopify.com" },
     ],
     docsUrl: "https://shopify.dev/docs/api",
+  },
+  {
+    id: "olist_tiny",
+    name: "Olist Tiny (ERP)",
+    description: "Conecte ao Tiny ERP para importar pedidos, faturamento e dados de vendas automaticamente.",
+    color: "bg-indigo-600",
+    fields: [
+      { key: "api_token", label: "Token da API", placeholder: "Cole seu token da API do Tiny aqui", type: "password" },
+    ],
+    docsUrl: "https://tiny.com.br/api-docs",
   },
 ];
 
