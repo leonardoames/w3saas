@@ -1,54 +1,64 @@
 
 
-# Fluxo OAuth da Shopify - Plano de Implementacao
+# Shopify OAuth por Usuario - Cada usuario fornece suas proprias credenciais
 
-Como seu app ja esta criado (custom/unlisted), ele suporta OAuth normalmente. O fluxo vai permitir que seus usuarios cliquem em "Conectar", sejam redirecionados para a Shopify para autorizar, e o sistema obtenha o Access Token automaticamente.
+## Problema
 
----
+Apps criados no Shopify Partners como "Custom" so podem ser instalados em lojas do mesmo grupo/organizacao. Para permitir que qualquer loja se conecte, precisamos do fluxo OAuth -- mas com cada usuario fornecendo seu proprio **Client ID** e **Client Secret** (do app que ele criou no Shopify Partners).
 
 ## Como vai funcionar
 
 1. O usuario clica em **"Conectar Shopify"** na pagina de Integracoes
-2. E redirecionado para a tela de autorizacao da Shopify (precisa digitar o dominio da loja)
-3. Apos autorizar, a Shopify redireciona de volta para o app com um **code** temporario
-4. Uma Edge Function troca esse code pelo **Access Token** permanente e salva no banco
-5. A integracao fica ativa e pronta para sincronizar
-
----
-
-## Requisitos
-
-Voce vai precisar fornecer 2 secrets do seu app Shopify (encontrados em **Shopify Partners > Apps > seu app > Client credentials**):
-
-- **SHOPIFY_CLIENT_ID** (API Key)
-- **SHOPIFY_CLIENT_SECRET** (API Secret Key)
-
----
+2. Um dialog pede 3 campos: **Client ID**, **Client Secret** e **Dominio da loja** (ex: `minha-loja.myshopify.com`)
+3. Esses dados sao salvos temporariamente e o usuario e redirecionado para a tela de autorizacao da Shopify
+4. Apos autorizar, a Shopify redireciona de volta para o app com um `code`
+5. Uma Edge Function troca o `code` pelo **Access Token** permanente usando o Client ID/Secret do usuario
+6. O Access Token e salvo nas credenciais da integracao e a conexao fica ativa
 
 ## Mudancas tecnicas
 
 ### 1. Nova Edge Function: `shopify-oauth`
-Vai lidar com duas operacoes:
-- **`authorize`** (GET): Gera a URL de autorizacao da Shopify com os escopos necessarios (`read_orders`) e redireciona o usuario
-- **`callback`** (GET): Recebe o `code` da Shopify, troca pelo Access Token via POST para `https://{shop}/admin/oauth/access_token`, e salva as credenciais na tabela `user_integrations`
 
-### 2. Nova rota: `/app/integracoes/shopify/callback`
-Pagina simples que captura os query params (`code`, `shop`, `state`) retornados pela Shopify e chama a Edge Function para completar a troca de tokens. Apos sucesso, redireciona para `/app/integracoes`.
+Duas rotas:
 
-### 3. Atualizacao: `Integracoes.tsx`
-- O botao "Conectar" da Shopify vai iniciar o fluxo OAuth em vez de abrir o dialog de credenciais manuais
-- O usuario digita o dominio da loja (ex: `minha-loja.myshopify.com`) em um pequeno dialog, e e redirecionado
-- Botoes "Editar" e "Sincronizar" continuam funcionando normalmente apos conectado
+- **`/shopify-oauth?action=authorize`** (POST): Recebe `client_id`, `client_secret`, `shop_domain` e `user_id`. Salva client_id e client_secret nas credenciais do usuario (tabela `user_integrations`), gera um `state` com nonce + user_id, e retorna a URL de redirecionamento da Shopify com escopos `read_orders`.
 
-### 4. Atualizacao: `App.tsx`
-- Adicionar a rota `/app/integracoes/shopify/callback` para a pagina de callback
+- **`/shopify-oauth?action=callback`** (POST): Recebe `code`, `shop`, `state`. Extrai o `user_id` do state, busca as credenciais (client_id/client_secret) salvas na integracao do usuario, troca o code pelo access_token via POST para `https://{shop}/admin/oauth/access_token`, e salva o token permanente.
 
-### 5. Secrets necessarios
-- `SHOPIFY_CLIENT_ID`
-- `SHOPIFY_CLIENT_SECRET`
+### 2. Nova pagina: `ShopifyCallback.tsx`
 
-### 6. Seguranca
-- O parametro `state` sera usado com um nonce armazenado temporariamente para prevenir ataques CSRF
-- O `state` contera o `user_id` codificado para associar o token ao usuario correto
-- A Edge Function de callback usara o service role para salvar as credenciais com seguranca
+Pagina em `/app/integracoes/shopify/callback` que:
+- Captura os query params `code`, `shop` e `state` da URL
+- Chama a Edge Function com `action=callback`
+- Mostra um spinner durante o processamento
+- Redireciona para `/app/integracoes` com toast de sucesso/erro
+
+### 3. Atualizacao: `App.tsx`
+
+Adicionar rota `/app/integracoes/shopify/callback` apontando para `ShopifyCallback`.
+
+### 4. Atualizacao: `Integracoes.tsx`
+
+- Alterar os campos da Shopify de `access_token` + `store_url` para `client_id` + `client_secret` + `shop_domain`
+- O botao "Conectar" da Shopify vai:
+  1. Salvar client_id/client_secret via Edge Function
+  2. Redirecionar o usuario para a URL de autorizacao da Shopify
+- Apos conectado, os botoes "Sincronizar" e "Desconectar" continuam funcionando normalmente
+
+### 5. Atualizacao: `sync-shopify/index.ts`
+
+Sem mudancas -- a funcao ja le `access_token` e `store_url` das credenciais salvas, que serao preenchidas automaticamente pelo fluxo OAuth.
+
+### 6. Redirect URI
+
+A URL de callback configurada no Shopify Partners deve ser:
+```
+https://w3saas.lovable.app/app/integracoes/shopify/callback
+```
+
+### 7. Seguranca
+
+- O `state` contem um nonce + `user_id` codificado em base64 para prevenir CSRF
+- Client ID e Client Secret ficam armazenados por usuario na tabela `user_integrations` (campo `credentials` JSONB)
+- A Edge Function usa service role para salvar o token permanente
 
