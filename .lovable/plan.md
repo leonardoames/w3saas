@@ -1,169 +1,54 @@
 
 
-## Plano: Precificadora, Produtos Salvos, Cenarios Salvos, Meta de Faturamento
+# Fluxo OAuth da Shopify - Plano de Implementacao
 
-### Visao Geral
-
-Quatro grandes mudancas:
-1. Renomear "Calculadora" para "Precificadora de E-commerce" e remover margem desejada
-2. Salvar produtos precificados no banco de dados
-3. Salvar cenarios simulados no banco de dados com historico acessivel
-4. Campo de meta de faturamento no perfil do usuario, refletido no Dashboard
+Como seu app ja esta criado (custom/unlisted), ele suporta OAuth normalmente. O fluxo vai permitir que seus usuarios cliquem em "Conectar", sejam redirecionados para a Shopify para autorizar, e o sistema obtenha o Access Token automaticamente.
 
 ---
 
-### 1. Renomear Calculadora para Precificadora de E-commerce
+## Como vai funcionar
 
-**Arquivos modificados:**
-- `src/components/layout/Sidebar.tsx` -- mudar titulo de "Calculadora" para "Precificadora" e icone para `Tag` (ou manter `Calculator`)
-- `src/pages/Calculadora.tsx` -- mudar titulo h1 e descricao, remover campo "Margem Desejada" e toda logica de comparacao com margem desejada (funcao `getMarginColor` e textos "Acima da meta" / "Meta: X%")
-
-**Remocao da margem desejada:**
-- Remover campo `desiredMargin` do estado `inputs`
-- Remover o bloco JSX do input "Margem Desejada" (linhas 163-179)
-- Simplificar `getMarginColor()` -- margem positiva = verde, margem negativa = vermelho, sem comparacao com meta
-- Remover texto condicional "Acima da meta" / "Meta: X%" no bloco de resultados
+1. O usuario clica em **"Conectar Shopify"** na pagina de Integracoes
+2. E redirecionado para a tela de autorizacao da Shopify (precisa digitar o dominio da loja)
+3. Apos autorizar, a Shopify redireciona de volta para o app com um **code** temporario
+4. Uma Edge Function troca esse code pelo **Access Token** permanente e salva no banco
+5. A integracao fica ativa e pronta para sincronizar
 
 ---
 
-### 2. Salvar Produtos Precificados (Banco de Dados)
+## Requisitos
 
-**Nova tabela `saved_products`:**
+Voce vai precisar fornecer 2 secrets do seu app Shopify (encontrados em **Shopify Partners > Apps > seu app > Client credentials**):
 
-```text
-id          uuid PK default gen_random_uuid()
-user_id     uuid NOT NULL
-name        text NOT NULL
-sku         text (opcional)
-selling_price        numeric
-product_cost         numeric
-media_cost_pct       numeric
-fixed_costs_pct      numeric
-taxes_pct            numeric
-gateway_fee_pct      numeric
-platform_fee_pct     numeric
-extra_fees_pct       numeric
-created_at  timestamptz default now()
-updated_at  timestamptz default now()
-```
-
-**RLS:** usuario so ve/edita/deleta seus proprios produtos.
-
-**Mudancas na UI (Calculadora.tsx):**
-- Adicionar botao "Salvar Produto" no topo ou ao lado dos resultados
-- Modal/dialog para digitar nome do produto e SKU (opcional) antes de salvar
-- Botao "Meus Produtos" que abre um dialog/drawer com tabela listando produtos salvos (nome, SKU, preco de venda, lucro, margem)
-- Ao clicar em um produto salvo, preenche os campos da precificadora com os valores daquele produto
-- Botao de excluir produto salvo
-
-**Novos componentes:**
-- `src/components/precificadora/SaveProductDialog.tsx` -- modal para nomear e salvar
-- `src/components/precificadora/SavedProductsList.tsx` -- lista/tabela de produtos salvos
+- **SHOPIFY_CLIENT_ID** (API Key)
+- **SHOPIFY_CLIENT_SECRET** (API Secret Key)
 
 ---
 
-### 3. Salvar Cenarios Simulados (Banco de Dados)
+## Mudancas tecnicas
 
-**Nova tabela `saved_scenarios`:**
+### 1. Nova Edge Function: `shopify-oauth`
+Vai lidar com duas operacoes:
+- **`authorize`** (GET): Gera a URL de autorizacao da Shopify com os escopos necessarios (`read_orders`) e redireciona o usuario
+- **`callback`** (GET): Recebe o `code` da Shopify, troca pelo Access Token via POST para `https://{shop}/admin/oauth/access_token`, e salva as credenciais na tabela `user_integrations`
 
-```text
-id               uuid PK default gen_random_uuid()
-user_id          uuid NOT NULL
-name             text NOT NULL
-current_visits   numeric
-current_rate     numeric
-current_ticket   numeric
-new_visits       numeric
-new_rate         numeric
-new_ticket       numeric
-created_at       timestamptz default now()
-updated_at       timestamptz default now()
-```
+### 2. Nova rota: `/app/integracoes/shopify/callback`
+Pagina simples que captura os query params (`code`, `shop`, `state`) retornados pela Shopify e chama a Edge Function para completar a troca de tokens. Apos sucesso, redireciona para `/app/integracoes`.
 
-**RLS:** usuario so ve/edita/deleta seus proprios cenarios.
+### 3. Atualizacao: `Integracoes.tsx`
+- O botao "Conectar" da Shopify vai iniciar o fluxo OAuth em vez de abrir o dialog de credenciais manuais
+- O usuario digita o dominio da loja (ex: `minha-loja.myshopify.com`) em um pequeno dialog, e e redirecionado
+- Botoes "Editar" e "Sincronizar" continuam funcionando normalmente apos conectado
 
-**Mudancas na UI (SimulacaoCenarios.tsx):**
-- Botao "Salvar Cenario" no header -- abre dialog para nomear o cenario
-- Salva os valores de ambos os cenarios (atual + novo) no banco
-- Botao "Historico de Cenarios" no header -- navega para sub-rota `/app/simulacao/historico`
+### 4. Atualizacao: `App.tsx`
+- Adicionar a rota `/app/integracoes/shopify/callback` para a pagina de callback
 
-**Nova pagina: Historico de Cenarios**
-- Rota: `/app/simulacao/historico`
-- Tabela com colunas: Nome, Data de criacao, Visitas (atual/novo), Taxa Conv. (atual/novo), Ticket (atual/novo), Acoes
-- Ao clicar em "Carregar", preenche os campos da simulacao
-- Botao de excluir cenario
-- Botao "Voltar para Simulacao" no topo
+### 5. Secrets necessarios
+- `SHOPIFY_CLIENT_ID`
+- `SHOPIFY_CLIENT_SECRET`
 
-**Novos arquivos:**
-- `src/pages/SimulacaoHistorico.tsx` -- pagina do historico
-- `src/components/simulacao/SaveScenarioDialog.tsx` -- modal para nomear cenario
-
-**Roteamento (App.tsx):**
-- Adicionar rota `/simulacao/historico` apontando para `SimulacaoHistorico`
-
----
-
-### 4. Meta de Faturamento no Perfil
-
-**Mudanca no banco:**
-- Adicionar coluna `revenue_goal` (numeric, nullable, default null) na tabela `profiles`
-
-**Mudancas na UI:**
-
-A) **Sidebar ou secao "Meu E-commerce":**
-- Na Dashboard, adicionar um card/secao para definir meta de faturamento mensal
-- Input com valor em R$, salva no perfil do usuario via update na tabela `profiles`
-
-B) **Dashboard -- refletir a meta:**
-- No KPI "Faturamento", mostrar uma barra de progresso ou texto indicando % da meta atingida
-- Exemplo: "R$ 45.000 de R$ 100.000 (45%)" abaixo do valor de faturamento
-- Se meta nao definida, mostrar link "Definir meta de faturamento"
-
-**Novos componentes:**
-- `src/components/dashboard/RevenueGoalCard.tsx` -- card para definir/editar meta
-- Ou integrar diretamente no KPICard de faturamento com um indicador de progresso
-
----
-
-### Resumo de Arquivos
-
-| Arquivo | Acao |
-|---------|------|
-| Migration SQL | Criar `saved_products`, `saved_scenarios`, adicionar `revenue_goal` em `profiles` |
-| `src/pages/Calculadora.tsx` | Renomear, remover margem desejada, adicionar salvar/carregar produtos |
-| `src/components/precificadora/SaveProductDialog.tsx` | **Novo** |
-| `src/components/precificadora/SavedProductsList.tsx` | **Novo** |
-| `src/pages/SimulacaoCenarios.tsx` | Adicionar salvar cenario e botao historico |
-| `src/pages/SimulacaoHistorico.tsx` | **Novo** -- tabela de cenarios salvos |
-| `src/components/simulacao/SaveScenarioDialog.tsx` | **Novo** |
-| `src/components/layout/Sidebar.tsx` | Renomear "Calculadora" para "Precificadora" |
-| `src/App.tsx` | Adicionar rota `/simulacao/historico` |
-| `src/pages/Dashboard.tsx` | Mostrar progresso da meta de faturamento |
-| `src/components/dashboard/RevenueGoalCard.tsx` | **Novo** -- card para definir meta |
-
-### Detalhes Tecnicos
-
-**Precificadora -- remocao da margem desejada:**
-- O campo `desiredMargin` sai do estado e do JSX
-- A funcao `getMarginColor` passa a usar apenas `results.margin > 0` (verde) vs `<= 0` (vermelho)
-- O texto "Acima da meta" e "Meta: X%" e removido dos resultados
-
-**Produtos salvos -- fluxo:**
-1. Usuario preenche precificadora normalmente
-2. Clica "Salvar Produto" -> dialog pede nome (obrigatorio) e SKU (opcional)
-3. Salva todos os inputs no banco (preco, custo, percentuais)
-4. Na lista "Meus Produtos", ao clicar "Carregar", preenche os campos
-5. Pode editar e salvar novamente (update)
-
-**Cenarios salvos -- fluxo:**
-1. Usuario preenche ambos os cenarios
-2. Clica "Salvar Cenario" -> dialog pede nome
-3. Salva os 6 valores (3 do atual + 3 do novo) no banco
-4. Historico acessivel via botao ou sub-rota `/app/simulacao/historico`
-5. Tabela mostra todos os cenarios salvos, com opcao de carregar ou excluir
-
-**Meta de faturamento:**
-- Salva na coluna `revenue_goal` do `profiles`
-- Dashboard le o valor e compara com `sum(receita_paga)` do periodo selecionado
-- Exibe barra de progresso no card de faturamento
+### 6. Seguranca
+- O parametro `state` sera usado com um nonce armazenado temporariamente para prevenir ataques CSRF
+- O `state` contera o `user_id` codificado para associar o token ao usuario correto
+- A Edge Function de callback usara o service role para salvar as credenciais com seguranca
 
