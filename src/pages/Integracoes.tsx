@@ -31,6 +31,7 @@ interface PlatformInfo {
   color: string;
   fields: { key: string; label: string; placeholder: string; type?: string }[];
   docsUrl?: string;
+  oauth?: boolean;
 }
 
 const platforms: PlatformInfo[] = [
@@ -71,13 +72,15 @@ const platforms: PlatformInfo[] = [
   {
     id: "shopify",
     name: "Shopify",
-    description: "Integre sua loja Shopify para sincronizar pedidos e métricas de vendas.",
+    description: "Integre sua loja Shopify via OAuth. Crie um app no Shopify Partners e forneça as credenciais.",
     color: "bg-green-600",
     fields: [
-      { key: "access_token", label: "Access Token", placeholder: "Seu Admin API access token" },
-      { key: "store_url", label: "URL da Loja", placeholder: "sualoja.myshopify.com" },
+      { key: "client_id", label: "Client ID", placeholder: "Client ID do app no Shopify Partners" },
+      { key: "client_secret", label: "Client Secret", placeholder: "Client Secret do app", type: "password" },
+      { key: "shop_domain", label: "Domínio da Loja", placeholder: "sualoja.myshopify.com" },
     ],
     docsUrl: "https://shopify.dev/docs/api",
+    oauth: true,
   },
   {
     id: "olist_tiny",
@@ -154,6 +157,35 @@ export default function Integracoes() {
   const handleConnect = async () => {
     if (!connectDialog || !user) return;
     setSaving(true);
+
+    // If this platform uses OAuth (Shopify), redirect to authorization
+    if (connectDialog.oauth) {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+
+        const res = await supabase.functions.invoke("shopify-oauth?action=authorize", {
+          headers: { Authorization: `Bearer ${token}` },
+          body: {
+            client_id: formData.client_id,
+            client_secret: formData.client_secret,
+            shop_domain: formData.shop_domain,
+          },
+        });
+
+        if (res.error) {
+          toast({ title: "Erro", description: res.error.message, variant: "destructive" });
+        } else if (res.data?.auth_url) {
+          // Redirect user to Shopify authorization
+          window.location.href = res.data.auth_url;
+          return; // don't close dialog or reset state
+        }
+      } catch (err: any) {
+        toast({ title: "Erro", description: err.message, variant: "destructive" });
+      }
+      setSaving(false);
+      return;
+    }
 
     const existing = integrations[connectDialog.id];
     
