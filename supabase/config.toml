@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.nuvemshop-webhooks]
 verify_jwt = false
+
+[functions.shopify-oauth]
+verify_jwt = false
