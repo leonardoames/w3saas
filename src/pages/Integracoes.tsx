@@ -79,7 +79,7 @@ const platforms: PlatformInfo[] = [
       { key: "client_secret", label: "Client Secret", placeholder: "Client Secret do app", type: "password" },
       { key: "shop_domain", label: "Domínio da Loja", placeholder: "sualoja.myshopify.com" },
     ],
-    docsUrl: "https://shopify.dev/docs/api",
+    docsUrl: "https://integra-o-w3-app-142364288732.us-west1.run.app/",
     oauth: true,
   },
   {
