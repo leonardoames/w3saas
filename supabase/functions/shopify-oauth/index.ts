@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const REDIRECT_URI = "https://w3saas.lovable.app/app/integracoes/shopify/callback";
+const REDIRECT_URI = "https://app.leonardoames.com.br/app/integracoes/shopify/callback";
 const SCOPES = "read_orders";
 
 Deno.serve(async (req) => {
