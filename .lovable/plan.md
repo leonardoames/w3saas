@@ -1,49 +1,24 @@
 
 
-# Corrigir Redirect URI do Shopify OAuth
+# Adicionar link de guia na integração Shopify
 
-## Problema
+## Mudança
 
-O erro `invalid_request: The redirect_uri is not whitelisted` significa que a URL de callback enviada ao Shopify nao esta cadastrada nas configuracoes do app no Shopify Partners.
+Trocar o `docsUrl` da plataforma Shopify no arquivo `src/pages/Integracoes.tsx` de `https://shopify.dev/docs/api` para `https://integra-o-w3-app-142364288732.us-west1.run.app/`, que é o guia personalizado de integração.
 
-## Causa raiz
+## Arquivo
 
-A Edge Function `shopify-oauth` esta usando a URL fixa:
-```
-https://w3saas.lovable.app/app/integracoes/shopify/callback
-```
+**`src/pages/Integracoes.tsx`** — linha 80, alterar:
 
-Porem o dominio primario do projeto e `app.leonardoames.com.br`, e o Shopify pode estar esperando esse dominio ou vice-versa.
-
-## Solucao
-
-### Passo 1 - Configuracao no Shopify Partners (feito por voce)
-
-No painel do Shopify Partners, nas configuracoes do seu app, adicione **ambas** as URLs na lista de "Allowed redirection URL(s)":
-
-```
-https://w3saas.lovable.app/app/integracoes/shopify/callback
-https://app.leonardoames.com.br/app/integracoes/shopify/callback
-```
-
-### Passo 2 - Atualizar a Edge Function para usar o dominio correto
-
-Vou atualizar a Edge Function `shopify-oauth/index.ts` para usar `app.leonardoames.com.br` como redirect URI, ja que este e o dominio primario do projeto.
-
-**Arquivo:** `supabase/functions/shopify-oauth/index.ts`
-
-Alterar a linha:
 ```typescript
-const REDIRECT_URI = "https://w3saas.lovable.app/app/integracoes/shopify/callback";
+docsUrl: "https://shopify.dev/docs/api",
 ```
+
 Para:
+
 ```typescript
-const REDIRECT_URI = "https://app.leonardoames.com.br/app/integracoes/shopify/callback";
+docsUrl: "https://integra-o-w3-app-142364288732.us-west1.run.app/",
 ```
 
-### Resumo
-
-- Uma unica linha de codigo precisa mudar na Edge Function
-- Voce precisa garantir que a URL correta esteja cadastrada no Shopify Partners
-- Recomendo cadastrar ambos os dominios no Shopify Partners para evitar problemas futuros
+O botão "Docs" existente no card da Shopify passará a apontar para o guia personalizado. Posso também renomear o texto do botão de "Docs" para "Guia" se preferir.
 
