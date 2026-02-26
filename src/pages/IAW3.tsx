@@ -233,7 +233,7 @@ export default function IAW3() {
           </div>
         ) : (
           // Chat messages
-          <div className="max-w-3xl mx-auto space-y-6">
+          <div className="max-w-5xl mx-auto space-y-6">
             {chatHistory.map((message, idx) => (
               <div
                 key={idx}
@@ -318,7 +318,7 @@ export default function IAW3() {
 
       {/* Input area - fixed at bottom */}
       <div className="border-t border-border/50 bg-background px-4 py-4">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <div className="relative flex items-end gap-2 rounded-2xl bg-muted/50 border border-border/50 px-3 py-2">
             {/* Plus menu for modes */}
             <DropdownMenu>

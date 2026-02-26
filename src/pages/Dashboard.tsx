@@ -12,6 +12,8 @@ import { MetricCard } from "@/components/dashboard/MetricCard";
 import { PeriodFilter } from "@/components/dashboard/PeriodFilter";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { RevenueGoalCard } from "@/components/dashboard/RevenueGoalCard";
+import { PlatformSelect } from "@/components/dashboard/PlatformSelect";
+import { PlatformType } from "@/lib/platformConfig";
 
 interface DailyRow {
   data: string;
@@ -26,10 +28,12 @@ export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [allData, setAllData] = useState<DailyRow[]>([]);
+  const [allMetricsRaw, setAllMetricsRaw] = useState<any[]>([]);
 
   const [selectedPeriod, setSelectedPeriod] = useState("7d");
   const [dateRange, setDateRange] = useState({ from: subDays(new Date(), 7), to: new Date() });
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformType>("todos");
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -43,7 +47,6 @@ export default function Dashboard() {
     const last90 = subDays(new Date(), 90);
     const last90Str = format(last90, "yyyy-MM-dd");
 
-    // Fetch both data sources in parallel
     const [dailyRes, metricsRes] = await Promise.all([
       supabase
         .from("daily_results" as any)
@@ -59,38 +62,32 @@ export default function Dashboard() {
         .order("data", { ascending: true }),
     ]);
 
-    // Build a map by date, merging both sources
+    const dailyData = (!dailyRes.error && dailyRes.data) ? dailyRes.data as any[] : [];
+    const metricsData = (!metricsRes.error && metricsRes.data) ? metricsRes.data as any[] : [];
+    
+    setAllMetricsRaw(metricsData);
+
+    // Build merged data (used when platform = "todos")
     const dateMap: Record<string, DailyRow> = {};
 
-    // Add daily_results data
-    if (!dailyRes.error && dailyRes.data) {
-      for (const d of dailyRes.data as any[]) {
-        const key = d.data;
-        if (!dateMap[key]) {
-          dateMap[key] = { data: key, investimento: 0, sessoes: 0, pedidos_pagos: 0, receita_paga: 0 };
-        }
-        dateMap[key].investimento += Number(d.investimento) || 0;
-        dateMap[key].sessoes += Number(d.sessoes) || 0;
-        dateMap[key].pedidos_pagos += Number(d.pedidos_pagos) || 0;
-        dateMap[key].receita_paga += Number(d.receita_paga) || 0;
-      }
+    for (const d of dailyData) {
+      const key = d.data;
+      if (!dateMap[key]) dateMap[key] = { data: key, investimento: 0, sessoes: 0, pedidos_pagos: 0, receita_paga: 0 };
+      dateMap[key].investimento += Number(d.investimento) || 0;
+      dateMap[key].sessoes += Number(d.sessoes) || 0;
+      dateMap[key].pedidos_pagos += Number(d.pedidos_pagos) || 0;
+      dateMap[key].receita_paga += Number(d.receita_paga) || 0;
     }
 
-    // Add metrics_diarias data (from integrations like Olist Tiny, Shopify, etc.)
-    if (!metricsRes.error && metricsRes.data) {
-      for (const d of metricsRes.data as any[]) {
-        const key = d.data;
-        if (!dateMap[key]) {
-          dateMap[key] = { data: key, investimento: 0, sessoes: 0, pedidos_pagos: 0, receita_paga: 0 };
-        }
-        dateMap[key].investimento += Number(d.investimento_trafego) || 0;
-        dateMap[key].sessoes += Number(d.sessoes) || 0;
-        dateMap[key].pedidos_pagos += Number(d.vendas_quantidade) || 0;
-        dateMap[key].receita_paga += Number(d.faturamento) || 0;
-      }
+    for (const d of metricsData) {
+      const key = d.data;
+      if (!dateMap[key]) dateMap[key] = { data: key, investimento: 0, sessoes: 0, pedidos_pagos: 0, receita_paga: 0 };
+      dateMap[key].investimento += Number(d.investimento_trafego) || 0;
+      dateMap[key].sessoes += Number(d.sessoes) || 0;
+      dateMap[key].pedidos_pagos += Number(d.vendas_quantidade) || 0;
+      dateMap[key].receita_paga += Number(d.faturamento) || 0;
     }
 
-    // Convert map to sorted array
     const merged = Object.values(dateMap).sort((a, b) => a.data.localeCompare(b.data));
     setAllData(merged);
   }, [user]);
@@ -104,24 +101,40 @@ export default function Dashboard() {
     setDateRange({ from: start, to: end });
   };
 
+  // When a specific platform is selected, rebuild data from metricsRaw only
+  const effectiveData = useMemo(() => {
+    if (selectedPlatform === "todos") return allData;
+    const dateMap: Record<string, DailyRow> = {};
+    for (const d of allMetricsRaw) {
+      if (d.platform !== selectedPlatform) continue;
+      const key = d.data;
+      if (!dateMap[key]) dateMap[key] = { data: key, investimento: 0, sessoes: 0, pedidos_pagos: 0, receita_paga: 0 };
+      dateMap[key].investimento += Number(d.investimento_trafego) || 0;
+      dateMap[key].sessoes += Number(d.sessoes) || 0;
+      dateMap[key].pedidos_pagos += Number(d.vendas_quantidade) || 0;
+      dateMap[key].receita_paga += Number(d.faturamento) || 0;
+    }
+    return Object.values(dateMap).sort((a, b) => a.data.localeCompare(b.data));
+  }, [allData, allMetricsRaw, selectedPlatform]);
+
   const filtered = useMemo(
     () =>
-      allData.filter((m) => {
+      effectiveData.filter((m) => {
         const date = parseISO(m.data);
         return isValid(date) && isWithinInterval(date, { start: dateRange.from, end: dateRange.to });
       }),
-    [allData, dateRange]
+    [effectiveData, dateRange]
   );
 
   const prevFiltered = useMemo(() => {
     const len = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24));
     const prevEnd = subDays(dateRange.from, 1);
     const prevStart = subDays(prevEnd, len);
-    return allData.filter((m) => {
+    return effectiveData.filter((m) => {
       const date = parseISO(m.data);
       return isValid(date) && isWithinInterval(date, { start: prevStart, end: prevEnd });
     });
-  }, [allData, dateRange]);
+  }, [effectiveData, dateRange]);
 
   // KPIs
   const faturamento = filtered.reduce((s, m) => s + m.receita_paga, 0);
@@ -179,12 +192,19 @@ export default function Dashboard() {
         <div className="bg-card border border-border rounded-lg p-4 shadow-sm">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <h3 className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Período de análise</h3>
-            <PeriodFilter
-              selectedPeriod={selectedPeriod}
-              onPeriodChange={handlePeriodChange}
-              customRange={customRange}
-              onCustomRangeChange={setCustomRange}
-            />
+            <div className="flex items-center gap-3 flex-wrap">
+              <PlatformSelect 
+                value={selectedPlatform} 
+                onValueChange={setSelectedPlatform} 
+                className="w-[180px] h-8 text-xs"
+              />
+              <PeriodFilter
+                selectedPeriod={selectedPeriod}
+                onPeriodChange={handlePeriodChange}
+                customRange={customRange}
+                onCustomRangeChange={setCustomRange}
+              />
+            </div>
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-export type PlatformType = 'shopee' | 'amazon' | 'mercado_livre' | 'shein' | 'shopify' | 'nuvemshop' | 'tray' | 'loja_integrada' | 'olist_tiny' | 'outros';
+export type PlatformType = 'todos' | 'shopee' | 'amazon' | 'mercado_livre' | 'shein' | 'shopify' | 'nuvemshop' | 'tray' | 'loja_integrada' | 'olist_tiny' | 'outros';
 
 export interface PlatformConfig {
   id: PlatformType;
@@ -7,6 +7,7 @@ export interface PlatformConfig {
 }
 
 export const PLATFORMS_LIST: PlatformConfig[] = [
+  { id: 'todos', label: 'Todos os canais', color: 'bg-primary' },
   { id: 'shopee', label: 'Shopee', color: 'bg-orange-500' },
   { id: 'amazon', label: 'Amazon', color: 'bg-slate-700' },
   { id: 'mercado_livre', label: 'Mercado Livre', color: 'bg-yellow-500' },

@@ -451,6 +451,42 @@ export type Database = {
           },
         ]
       }
+      mentoria_products: {
+        Row: {
+          created_at: string
+          description: string | null
+          details_url: string | null
+          display_order: number
+          id: string
+          image_url: string | null
+          title: string
+          updated_at: string
+          whatsapp_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          details_url?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          title: string
+          updated_at?: string
+          whatsapp_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          details_url?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          title?: string
+          updated_at?: string
+          whatsapp_url?: string | null
+        }
+        Relationships: []
+      }
       metrics_diarias: {
         Row: {
           created_at: string
