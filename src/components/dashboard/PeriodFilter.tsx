@@ -23,6 +23,8 @@ export function PeriodFilter({
   const today = new Date();
 
   const periods = [
+    { label: "Hoje", value: "today", getRange: () => ({ from: today, to: today }) },
+    { label: "Ontem", value: "yesterday", getRange: () => ({ from: subDays(today, 1), to: subDays(today, 1) }) },
     { label: "7D", value: "7d", getRange: () => ({ from: subDays(today, 7), to: today }) },
     { label: "14D", value: "14d", getRange: () => ({ from: subDays(today, 14), to: today }) },
     { label: "30D", value: "30d", getRange: () => ({ from: subDays(today, 30), to: today }) },
