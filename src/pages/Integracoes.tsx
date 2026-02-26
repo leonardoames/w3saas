@@ -15,6 +15,8 @@ import nuvemshopLogo from "@/assets/platforms/nuvemshop.png";
 import mercadoLivreLogo from "@/assets/platforms/mercado-livre.png";
 import shopifyLogo from "@/assets/platforms/shopify.png";
 import olistTinyLogo from "@/assets/platforms/olist-tiny.png";
+import trayLogo from "@/assets/platforms/tray.png";
+import lojaIntegradaLogo from "@/assets/platforms/loja-integrada.png";
 
 const platformLogos: Record<string, string> = {
   nuvemshop: nuvemshopLogo,
@@ -22,6 +24,8 @@ const platformLogos: Record<string, string> = {
   mercado_livre: mercadoLivreLogo,
   shopify: shopifyLogo,
   olist_tiny: olistTinyLogo,
+  tray: trayLogo,
+  loja_integrada: lojaIntegradaLogo,
 };
 
 interface PlatformInfo {
@@ -91,6 +95,27 @@ const platforms: PlatformInfo[] = [
       { key: "api_token", label: "Token da API", placeholder: "Cole seu token da API do Tiny aqui", type: "password" },
     ],
     docsUrl: "https://tiny.com.br/api-docs",
+  },
+  {
+    id: "tray",
+    name: "Tray",
+    description: "Conecte sua loja Tray para importar pedidos, produtos e métricas de vendas automaticamente.",
+    color: "bg-emerald-600",
+    fields: [
+      { key: "api_key", label: "Chave da API", placeholder: "Cole sua chave da API da Tray aqui", type: "password" },
+      { key: "api_address", label: "Endereço da API", placeholder: "https://sualoja.commercesuite.com.br" },
+    ],
+    docsUrl: "https://developers.tray.com.br/",
+  },
+  {
+    id: "loja_integrada",
+    name: "Loja Integrada",
+    description: "Integre com a Loja Integrada para acompanhar vendas, pedidos e performance da sua loja.",
+    color: "bg-purple-600",
+    fields: [
+      { key: "api_key", label: "Chave da API", placeholder: "Cole sua chave da API aqui", type: "password" },
+    ],
+    docsUrl: "https://lojaintegrada.docs.apiary.io/",
   },
 ];
 
