@@ -5,7 +5,6 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { 
   ArrowLeft, 
-  ClipboardList,
   Settings, 
   Store,
   Users 
@@ -18,7 +17,6 @@ interface AdminLayoutProps {
 const adminLinks = [
   { href: "/admin", label: "Usuários", icon: Users },
   { href: "/admin/modulos", label: "Módulos", icon: Settings },
-  { href: "/admin/plano-acao", label: "Plano de Ação", icon: ClipboardList },
   { href: "/admin/marcas", label: "Marcas", icon: Store },
 ];
 

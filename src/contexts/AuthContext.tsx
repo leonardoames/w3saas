@@ -13,6 +13,7 @@ interface Profile {
   plan_type: "free" | "paid" | "manual";
   access_expires_at: string | null;
   last_login_at: string | null;
+  must_change_password: boolean;
 }
 
 interface AuthContextType {

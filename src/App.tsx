@@ -35,7 +35,6 @@ import ShopifyCallback from "./pages/ShopifyCallback";
 // Admin pages
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminModules from "./pages/admin/AdminModules";
-import AdminPlanoAcao from "./pages/admin/AdminPlanoAcao";
 import AdminBrands from "./pages/admin/AdminBrands";
 
 import NotFound from "./pages/NotFound";
@@ -101,14 +100,6 @@ const App = () => (
                 element={
                   <ProtectedRoute requireAdmin>
                     <AdminModules />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/plano-acao"
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <AdminPlanoAcao />
                   </ProtectedRoute>
                 }
               />
