@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import type { ProductInputs } from "@/pages/Calculadora";
+import type { ProductInputs, Channel } from "@/pages/Calculadora";
 
 interface Results {
   sellingPrice: number;
@@ -9,8 +9,11 @@ interface Results {
   values: Record<string, number>;
   custoVendaTotal: number;
   custoTotal: number;
-  margemRS: number;
+  lucroLiquido: number;
   margemPct: number;
+  shopeeTarifa: number;
+  shopeeComissaoPct: number;
+  shopeeComissaoRS: number;
 }
 
 const costLabels: Record<string, string> = {
@@ -22,11 +25,12 @@ const costLabels: Record<string, string> = {
   extraFees: "Taxas Extras",
 };
 
-export function generatePricingPDF(inputs: ProductInputs, results: Results) {
+export function generatePricingPDF(inputs: ProductInputs, results: Results, channel: Channel = "site") {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const now = new Date();
   const dateStr = now.toLocaleDateString("pt-BR") + " " + now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   const productName = inputs.title?.trim() || "Sem título";
+  const channelLabel = channel === "shopee" ? "SHOPEE" : "SITE";
 
   const pageW = doc.internal.pageSize.getWidth();
   let y = 20;
@@ -40,7 +44,7 @@ export function generatePricingPDF(inputs: ProductInputs, results: Results) {
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(120, 120, 120);
-  doc.text(`Mentoria AMES / W3 — ${dateStr}`, 14, y);
+  doc.text(`Canal: ${channelLabel} — Mentoria AMES / W3 — ${dateStr}`, 14, y);
   y += 10;
 
   // Product info
@@ -63,11 +67,18 @@ export function generatePricingPDF(inputs: ProductInputs, results: Results) {
   doc.text("Custos Percentuais", 14, y);
   y += 2;
 
-  const tableBody = Object.keys(costLabels).map((key) => [
+  const tableBody: string[][] = Object.keys(costLabels).map((key) => [
     costLabels[key],
     `${results.pcts[key].toFixed(1)}%`,
     `R$ ${results.values[key].toFixed(2)}`,
   ]);
+
+  if (channel === "shopee") {
+    tableBody.push(
+      ["Tarifa Fixa Shopee", "—", `R$ ${results.shopeeTarifa.toFixed(2)}`],
+      ["Comissão Shopee", `${results.shopeeComissaoPct}%`, `R$ ${results.shopeeComissaoRS.toFixed(2)}`],
+    );
+  }
 
   autoTable(doc, {
     startY: y,
@@ -97,15 +108,15 @@ export function generatePricingPDF(inputs: ProductInputs, results: Results) {
   const resultLines = [
     ["Custo Venda Total", `R$ ${results.custoVendaTotal.toFixed(2)}`],
     ["Custo Total", `R$ ${results.custoTotal.toFixed(2)}`],
-    ["Margem (R$)", `R$ ${results.margemRS.toFixed(2)}`],
+    ["Lucro Líquido (R$)", `R$ ${results.lucroLiquido.toFixed(2)}`],
     ["Margem (%)", `${results.margemPct.toFixed(1)}%`],
   ];
 
   resultLines.forEach(([label, val], i) => {
-    const isMargem = i >= 2;
-    if (isMargem) {
+    const isHighlight = i >= 2;
+    if (isHighlight) {
       doc.setFont("helvetica", "bold");
-      if (results.margemRS < 0) doc.setTextColor(220, 50, 50);
+      if (results.lucroLiquido < 0) doc.setTextColor(220, 50, 50);
       else doc.setTextColor(30, 160, 100);
     } else {
       doc.setFont("helvetica", "normal");
