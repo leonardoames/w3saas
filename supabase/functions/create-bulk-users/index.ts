@@ -1,10 +1,9 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 interface UserToCreate {
@@ -20,36 +19,41 @@ interface CreateUsersRequest {
   default_password: string;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    
-    // Verify the caller is an admin
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    if (!authHeader?.startsWith("Bearer ")) {
       throw new Error("No authorization header");
     }
 
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
-    const anonClient = createClient(
-      supabaseUrl,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
 
-    // Check if user is admin
-    const { data: { user } } = await anonClient.auth.getUser();
-    if (!user) {
+    // Verify caller using getClaims
+    const anonClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+
+    if (claimsError || !claimsData?.claims) {
+      console.error("Claims error:", claimsError);
       throw new Error("Not authenticated");
     }
 
+    const userId = claimsData.claims.sub as string;
+
+    // Check if user is admin
     const { data: isAdmin } = await supabaseClient.rpc("is_admin_user", {
-      check_user_id: user.id,
+      check_user_id: userId,
     });
 
     if (!isAdmin) {
@@ -70,11 +74,10 @@ serve(async (req) => {
 
     for (const userData of users) {
       try {
-        // Create user with admin API
         const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
           email: userData.email,
           password: default_password,
-          email_confirm: true, // Auto-confirm email
+          email_confirm: true,
           user_metadata: {
             full_name: userData.name || "",
           },
@@ -90,7 +93,6 @@ serve(async (req) => {
         }
 
         if (newUser?.user) {
-          // Update the profile with additional data
           const { error: profileError } = await supabaseClient
             .from("profiles")
             .update({
@@ -109,6 +111,7 @@ serve(async (req) => {
           results.push({
             email: userData.email,
             status: "success",
+            userId: newUser.user.id,
             message: "Usuário criado com sucesso",
           });
         }
