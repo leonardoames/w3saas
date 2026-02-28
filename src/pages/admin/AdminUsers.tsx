@@ -478,7 +478,7 @@ export default function AdminUsers() {
                           {user.last_login_at ? format(new Date(user.last_login_at), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "-"}
                         </TableCell>
                         <TableCell className="relative">
-                          <DropdownMenu>
+                          <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
                                 <MoreHorizontal className="h-4 w-4" />
@@ -489,69 +489,69 @@ export default function AdminUsers() {
                               <DropdownMenuLabel>Ações</DropdownMenuLabel>
                               <DropdownMenuSeparator />
 
-                              <DropdownMenuItem onClick={() => { setEditNameDialog({ open: true, user }); setEditedName(user.full_name || ""); }}>
+                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setEditNameDialog({ open: true, user }); setEditedName(user.full_name || ""); }}>
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Editar nome
                               </DropdownMenuItem>
 
                               {user.access_status === "suspended" ? (
-                                <DropdownMenuItem onClick={() => setSuspendDialog({ open: true, user, action: "active" })}>
+                                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setSuspendDialog({ open: true, user, action: "active" }); }}>
                                   <Check className="mr-2 h-4 w-4" />
                                   Liberar acesso
                                 </DropdownMenuItem>
                               ) : (
-                                <DropdownMenuItem onClick={() => setSuspendDialog({ open: true, user, action: "suspended" })}>
+                                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setSuspendDialog({ open: true, user, action: "suspended" }); }}>
                                   <UserX className="mr-2 h-4 w-4" />
                                   Suspender acesso
                                 </DropdownMenuItem>
                               )}
 
-                              <DropdownMenuItem onClick={() => { setResetPasswordDialog({ open: true, user }); setTempPassword(""); }}>
+                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setResetPasswordDialog({ open: true, user }); setTempPassword(""); }}>
                                 <Key className="mr-2 h-4 w-4" />
                                 Resetar senha
                               </DropdownMenuItem>
 
                               <DropdownMenuSeparator />
 
-                              <DropdownMenuItem onClick={() => { setPlanDialog({ open: true, user }); setSelectedPlan(user.plan_type); }}>
+                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setPlanDialog({ open: true, user }); setSelectedPlan(user.plan_type); }}>
                                 <CreditCard className="mr-2 h-4 w-4" />
                                 Alterar plano
                               </DropdownMenuItem>
 
-                              <DropdownMenuItem onClick={() => { setExpirationDialog({ open: true, user }); setExpirationDate(user.access_expires_at?.split("T")[0] || ""); }}>
+                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setExpirationDialog({ open: true, user }); setExpirationDate(user.access_expires_at?.split("T")[0] || ""); }}>
                                 <Calendar className="mr-2 h-4 w-4" />
                                 Definir expiração
                               </DropdownMenuItem>
 
                               <DropdownMenuSeparator />
 
-                              <DropdownMenuItem onClick={() => setPlanoUser(user)}>
+                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setPlanoUser(user); }}>
                                 <ClipboardList className="mr-2 h-4 w-4" />
                                 Plano de Ação
                               </DropdownMenuItem>
 
                               <DropdownMenuSeparator />
 
-                              <DropdownMenuItem onClick={() => updateUserRole(user.user_id, !user.isAdmin)}>
+                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); updateUserRole(user.user_id, !user.isAdmin); }}>
                                 <Shield className="mr-2 h-4 w-4" />
                                 {user.isAdmin ? "Remover admin" : "Tornar admin"}
                               </DropdownMenuItem>
 
                               <DropdownMenuSeparator />
 
-                              <DropdownMenuItem onClick={() => updateUserFlag(user.user_id, "is_mentorado", !user.is_mentorado)}>
+                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); updateUserFlag(user.user_id, "is_mentorado", !user.is_mentorado); }}>
                                 <Crown className="mr-2 h-4 w-4" />
                                 {user.is_mentorado ? "Desmarcar Mentorado" : "Marcar como Mentorado"}
                               </DropdownMenuItem>
 
-                              <DropdownMenuItem onClick={() => updateUserFlag(user.user_id, "is_w3_client", !user.is_w3_client)}>
+                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); updateUserFlag(user.user_id, "is_w3_client", !user.is_w3_client); }}>
                                 <Users className="mr-2 h-4 w-4" />
                                 {user.is_w3_client ? "Desmarcar Cliente W3" : "Marcar como Cliente W3"}
                               </DropdownMenuItem>
 
                               <DropdownMenuSeparator />
 
-                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteDialog({ open: true, user })}>
+                              <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => { e.preventDefault(); setDeleteDialog({ open: true, user }); }}>
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Remover usuário
                               </DropdownMenuItem>
