@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Calendar,
   Check,
@@ -120,6 +121,10 @@ export default function AdminUsers() {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserName, setNewUserName] = useState("");
   const [newUserPlan, setNewUserPlan] = useState("free");
+  const [newUserPassword, setNewUserPassword] = useState("appw3acesso");
+  const [newUserIsAdmin, setNewUserIsAdmin] = useState(false);
+  const [newUserMentorado, setNewUserMentorado] = useState(false);
+  const [newUserW3Client, setNewUserW3Client] = useState(false);
   const [addingUser, setAddingUser] = useState(false);
 
   const [bulkImportDialog, setBulkImportDialog] = useState(false);
@@ -331,19 +336,61 @@ export default function AdminUsers() {
       toast({ title: "Email obrigatório", description: "Informe o email do novo usuário.", variant: "destructive" });
       return;
     }
+    if (!newUserPassword || newUserPassword.length < 6) {
+      toast({ title: "Senha inválida", description: "A senha temporária deve ter pelo menos 6 caracteres.", variant: "destructive" });
+      return;
+    }
     setAddingUser(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(newUserEmail.trim(), {
-        redirectTo: `${window.location.origin}/auth`,
+      const { data, error } = await supabase.functions.invoke("create-bulk-users", {
+        body: {
+          users: [{
+            email: newUserEmail.trim(),
+            name: newUserName.trim() || undefined,
+            plan: newUserPlan,
+            is_mentorado: newUserMentorado,
+            is_w3_client: newUserW3Client,
+          }],
+          default_password: newUserPassword,
+        },
       });
+
       if (error) throw error;
-      toast({ title: "Convite enviado", description: `Um email foi enviado para ${newUserEmail} com instruções para criar a senha.` });
+      
+      const result = data?.results?.[0];
+      if (result?.status === "error") {
+        throw new Error(result.message);
+      }
+
+      // If admin checkbox is checked, assign admin role
+      if (newUserIsAdmin && result?.status === "success") {
+        // We need the user_id — fetch it from profiles by email
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("email", newUserEmail.trim())
+          .single();
+        
+        if (profile?.user_id) {
+          await supabase.rpc("admin_update_role", {
+            target_user_id: profile.user_id,
+            make_admin: true,
+          });
+        }
+      }
+
+      await fetchUsers();
+      toast({ title: "Usuário criado", description: `Conta criada com sucesso para ${newUserEmail}. Senha temporária: ${newUserPassword}` });
       setAddUserDialog(false);
       setNewUserEmail("");
       setNewUserName("");
       setNewUserPlan("free");
+      setNewUserPassword("appw3acesso");
+      setNewUserIsAdmin(false);
+      setNewUserMentorado(false);
+      setNewUserW3Client(false);
     } catch (error: any) {
-      toast({ title: "Erro ao enviar convite", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao criar usuário", description: error.message, variant: "destructive" });
     } finally {
       setAddingUser(false);
     }
@@ -638,11 +685,18 @@ export default function AdminUsers() {
       </Dialog>
 
       {/* Dialog Adicionar Usuário */}
-      <Dialog open={addUserDialog} onOpenChange={setAddUserDialog}>
+      <Dialog open={addUserDialog} onOpenChange={(open) => {
+        setAddUserDialog(open);
+        if (!open) {
+          setNewUserEmail(""); setNewUserName(""); setNewUserPlan("free");
+          setNewUserPassword("appw3acesso"); setNewUserIsAdmin(false);
+          setNewUserMentorado(false); setNewUserW3Client(false);
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Adicionar Novo Usuário</DialogTitle>
-            <DialogDescription>Um email será enviado para o usuário com instruções para criar a senha.</DialogDescription>
+            <DialogDescription>O usuário será criado com acesso imediato usando a senha temporária definida.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -652,6 +706,11 @@ export default function AdminUsers() {
             <div className="space-y-2">
               <Label htmlFor="newName">Nome (opcional)</Label>
               <Input id="newName" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} placeholder="Nome do usuário" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">Senha temporária</Label>
+              <Input id="newPassword" type="text" value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+              <p className="text-sm text-muted-foreground">Padrão: appw3acesso</p>
             </div>
             <div className="space-y-2">
               <Label>Plano inicial</Label>
@@ -664,11 +723,27 @@ export default function AdminUsers() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox id="newUserAdmin" checked={newUserIsAdmin} onCheckedChange={(v) => setNewUserIsAdmin(v === true)} />
+                <Label htmlFor="newUserAdmin" className="flex items-center gap-1.5 cursor-pointer">
+                  <Shield className="h-4 w-4 text-primary" /> Tornar Admin
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox id="newUserMentorado" checked={newUserMentorado} onCheckedChange={(v) => setNewUserMentorado(v === true)} />
+                <Label htmlFor="newUserMentorado" className="cursor-pointer">Mentorado</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox id="newUserW3Client" checked={newUserW3Client} onCheckedChange={(v) => setNewUserW3Client(v === true)} />
+                <Label htmlFor="newUserW3Client" className="cursor-pointer">Cliente W3</Label>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddUserDialog(false)}>Cancelar</Button>
-            <Button onClick={sendInvite} disabled={addingUser || !newUserEmail.trim()}>
-              {addingUser ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando...</> : "Enviar Convite"}
+            <Button onClick={sendInvite} disabled={addingUser || !newUserEmail.trim() || newUserPassword.length < 6}>
+              {addingUser ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Criando...</> : "Criar Usuário"}
             </Button>
           </DialogFooter>
         </DialogContent>
