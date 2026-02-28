@@ -487,30 +487,6 @@ export type Database = {
         }
         Relationships: []
       }
-      miro_embeds: {
-        Row: {
-          created_at: string
-          embed_src: string
-          id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          embed_src: string
-          id?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          embed_src?: string
-          id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       metrics_diarias: {
         Row: {
           created_at: string
@@ -550,6 +526,30 @@ export type Database = {
           user_id?: string
           vendas_quantidade?: number | null
           vendas_valor?: number | null
+        }
+        Relationships: []
+      }
+      miro_embeds: {
+        Row: {
+          created_at: string
+          embed_src: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          embed_src: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          embed_src?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
