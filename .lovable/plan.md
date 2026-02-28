@@ -1,23 +1,33 @@
 
 
-# Upload de imagem nos Produtos da Mentoria
+## Problemas Identificados
 
-## Mudancas
+1. **Criar usuário não funciona**: O `sendInvite` usa `resetPasswordForEmail` que apenas envia email de reset -- não cria conta. Deveria usar a edge function `create-bulk-users` (que já existe e funciona) para criar 1 usuário.
+2. **Sem campo de senha temporária**: O dialog não tem input para definir senha temporária.
+3. **Sem opção de role admin**: Não existe checkbox/toggle para definir o novo usuário como admin.
+4. **Sem opções de Mentorado/Cliente W3**: Faltam no dialog de criação individual.
 
-### 1. Criar bucket de storage para imagens de produtos
-- Migration SQL para criar bucket `product-images` (publico) com limite de 5MB
-- Policies de storage: admins podem fazer upload/delete, todos podem visualizar
+## Plano de Implementação
 
-### 2. Atualizar ProductFormDialog para upload de arquivo
-- Substituir o campo "URL da Imagem" (input de texto) por um input de arquivo (`type="file"`)
-- Ao selecionar arquivo, fazer upload para `product-images/{timestamp}_{filename}` no storage
-- Mostrar preview da imagem atual (se editando) e da nova imagem selecionada
-- Manter o `image_url` no banco apontando para a URL publica do storage
+### 1. Atualizar o dialog "Adicionar Novo Usuário"
 
-### 3. Nenhuma mudanca necessaria nos botoes
-- Os botoes "Saiba Mais" e "Falar com Especialista" ja sao renderizados condicionalmente (so aparecem se o respectivo URL existir). Esse comportamento ja esta correto.
+Adicionar ao dialog (em `AdminUsers.tsx`):
+- Campo **senha temporária** (obrigatório, min 6 chars, default `appw3acesso`)
+- Checkbox **Tornar Admin**
+- Checkbox **Mentorado**
+- Checkbox **Cliente W3**
 
-## Arquivos afetados
-- **Nova migration SQL** — bucket `product-images` + RLS policies
-- **`src/components/produtos/ProductFormDialog.tsx`** — trocar input URL por file upload com preview
+### 2. Reescrever a função `sendInvite`
+
+Substituir `resetPasswordForEmail` por chamada à edge function `create-bulk-users` com array de 1 usuário, passando email, nome, plano, flags mentorado/w3_client e a senha temporária definida.
+
+Após criação com sucesso, se o checkbox admin estiver marcado, chamar `admin_update_role` via RPC para atribuir a role.
+
+### 3. Adicionar estados para os novos campos
+
+Novos states: `newUserPassword` (default `"appw3acesso"`), `newUserIsAdmin`, `newUserMentorado`, `newUserW3Client`.
+
+---
+
+Nenhuma migration necessária -- toda a infraestrutura backend (edge function, RPCs) já existe.
 
