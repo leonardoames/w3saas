@@ -41,3 +41,9 @@ verify_jwt = false
 
 [functions.shopify-oauth]
 verify_jwt = false
+
+[functions.create-bulk-users]
+verify_jwt = false
+
+[functions.admin-reset-password]
+verify_jwt = false
