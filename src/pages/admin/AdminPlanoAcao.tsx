@@ -4,15 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Loader2, 
-  Plus, 
-  Search, 
+import {
+  Loader2,
+  Plus,
+  Search,
   AlertCircle,
   ArrowLeft,
+  Trash2,
 } from "lucide-react";
 import { useTasks, SECTIONS, Task } from "@/hooks/useTasks";
 import { ProgressCard } from "@/components/plano-acao/ProgressCard";
@@ -136,13 +138,16 @@ export default function AdminPlanoAcao() {
   );
 }
 
+const MIRO_PREFIX = "https://miro.com/app/live-embed/";
+const SRC_REGEX = /src="([^"]+)"/;
+
 // Component for viewing/editing a user's plan
 function UserPlanView({ user, onBack }: { user: UserProfile; onBack: () => void }) {
-  const { 
-    tasks, 
-    loading, 
-    progress, 
-    completedCount, 
+  const {
+    tasks,
+    loading,
+    progress,
+    completedCount,
     totalCount,
     updateTaskStatus,
     updateTaskDueDate,
@@ -155,6 +160,69 @@ function UserPlanView({ user, onBack }: { user: UserProfile; onBack: () => void 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
+
+  // Miro embed state
+  const [embedSrc, setEmbedSrc] = useState<string>("");
+  const [inputValue, setInputValue] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchEmbed = async () => {
+      const { data } = await supabase
+        .from("miro_embeds")
+        .select("embed_src")
+        .eq("user_id", user.user_id)
+        .maybeSingle();
+      if (data?.embed_src) {
+        setEmbedSrc(data.embed_src);
+        setInputValue(data.embed_src);
+      }
+    };
+    fetchEmbed();
+  }, [user.user_id]);
+
+  const handleSaveEmbed = async () => {
+    const srcMatch = SRC_REGEX.exec(inputValue);
+    const extracted = srcMatch ? srcMatch[1] : inputValue.trim();
+
+    if (!extracted.startsWith(MIRO_PREFIX)) {
+      toast({
+        title: "URL inválida",
+        description: "O src deve começar com https://miro.com/app/live-embed/",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSaving(true);
+    const { error } = await supabase
+      .from("miro_embeds")
+      .upsert({ user_id: user.user_id, embed_src: extracted }, { onConflict: "user_id" });
+    setSaving(false);
+
+    if (error) {
+      toast({ title: "Erro ao salvar embed", variant: "destructive" });
+    } else {
+      setEmbedSrc(extracted);
+      toast({ title: "Embed salvo com sucesso!" });
+    }
+  };
+
+  const handleRemoveEmbed = async () => {
+    const { error } = await supabase
+      .from("miro_embeds")
+      .delete()
+      .eq("user_id", user.user_id);
+
+    if (error) {
+      toast({ title: "Erro ao remover embed", variant: "destructive" });
+    } else {
+      setEmbedSrc("");
+      setInputValue("");
+      toast({ title: "Embed removido" });
+    }
+  };
 
   // Separate tasks by type
   const amesTasks = useMemo(() => 
@@ -224,9 +292,10 @@ function UserPlanView({ user, onBack }: { user: UserProfile; onBack: () => void 
       />
 
       <Tabs defaultValue="ames" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 h-auto">
+        <TabsList className="grid w-full grid-cols-3 h-auto">
           <TabsTrigger value="ames" className="text-xs sm:text-sm py-2">Plano AMES</TabsTrigger>
           <TabsTrigger value="custom" className="text-xs sm:text-sm py-2">Personalizado</TabsTrigger>
+          <TabsTrigger value="mapa-mental" className="text-xs sm:text-sm py-2">Mapa Mental</TabsTrigger>
         </TabsList>
 
         <TabsContent value="ames" className="mt-6">
@@ -306,6 +375,50 @@ function UserPlanView({ user, onBack }: { user: UserProfile; onBack: () => void 
               />
             </Accordion>
           )}
+        </TabsContent>
+        <TabsContent value="mapa-mental" className="mt-6">
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">
+                Cole o iframe HTML do Miro ou a URL direta do embed:
+              </p>
+              <Textarea
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder='<iframe src="https://miro.com/app/live-embed/..." />'
+                rows={4}
+                className="font-mono text-xs"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button onClick={handleSaveEmbed} disabled={saving || !inputValue.trim()}>
+                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Salvar embed
+              </Button>
+              {embedSrc && (
+                <Button variant="destructive" onClick={handleRemoveEmbed}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Remover
+                </Button>
+              )}
+            </div>
+
+            {embedSrc && embedSrc.startsWith(MIRO_PREFIX) && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Preview:</p>
+                <div className="w-full rounded-lg overflow-hidden border">
+                  <iframe
+                    src={embedSrc}
+                    className="w-full"
+                    style={{ height: "500px" }}
+                    allow="fullscreen; clipboard-read; clipboard-write"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
 
