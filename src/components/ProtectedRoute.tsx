@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
-  const { user, isAdmin, isLoading, hasAccess, accessDeniedReason } = useAuth();
+  const { user, isAdmin, isLoading, hasAccess, accessDeniedReason, profile } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -25,6 +25,11 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
   // Not logged in - redirect to landing/checkout
   if (!user) {
     return <Navigate to="/" replace />;
+  }
+
+  // Force password change redirect
+  if (profile?.must_change_password) {
+    return <Navigate to="/auth" replace />;
   }
 
   // Admin route check

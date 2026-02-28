@@ -7,30 +7,53 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Lock } from "lucide-react";
 
 export default function Auth() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   
   const [loginData, setLoginData] = useState({ email: "", password: "" });
 
   useEffect(() => {
-    // Verificar se o usuário já está logado
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        navigate("/");
+        // Check must_change_password flag
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("must_change_password")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        
+        if (profile?.must_change_password) {
+          setMustChangePassword(true);
+        } else {
+          navigate("/");
+        }
       }
     };
     checkUser();
 
-    // Listener para mudanças de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_IN" && session) {
-        navigate("/");
+        // Check flag before redirecting
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("must_change_password")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        
+        if (profile?.must_change_password) {
+          setMustChangePassword(true);
+        } else {
+          navigate("/");
+        }
       }
     });
 
@@ -43,12 +66,26 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: loginData.email,
         password: loginData.password,
       });
 
       if (error) throw error;
+
+      // Check must_change_password
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("must_change_password")
+          .eq("user_id", data.user.id)
+          .maybeSingle();
+        
+        if (profile?.must_change_password) {
+          setMustChangePassword(true);
+          return;
+        }
+      }
 
       toast({
         title: "Login realizado!",
@@ -65,6 +102,105 @@ export default function Auth() {
       setLoading(false);
     }
   };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (newPassword !== confirmPassword) {
+      setError("As senhas não coincidem");
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError("A senha deve ter pelo menos 6 caracteres");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateErr) throw updateErr;
+
+      // Clear the flag
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from("profiles")
+          .update({ must_change_password: false })
+          .eq("user_id", user.id);
+      }
+
+      toast({
+        title: "Senha atualizada!",
+        description: "Sua nova senha foi definida com sucesso.",
+      });
+
+      setMustChangePassword(false);
+      navigate("/");
+    } catch (error: any) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (mustChangePassword) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <div className="flex justify-center mb-2">
+              <Lock className="h-10 w-10 text-primary" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-center">Criar Nova Senha</CardTitle>
+            <CardDescription className="text-center">
+              Sua senha temporária foi utilizada. Por segurança, defina uma nova senha para continuar.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">Nova senha</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  minLength={6}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirmar nova senha</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  minLength={6}
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Salvando..." : "Definir Nova Senha"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">

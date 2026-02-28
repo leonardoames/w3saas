@@ -592,6 +592,7 @@ export type Database = {
           is_mentorado: boolean
           is_w3_client: boolean
           last_login_at: string | null
+          must_change_password: boolean
           plan_type: string
           revenue_goal: number | null
           updated_at: string
@@ -608,6 +609,7 @@ export type Database = {
           is_mentorado?: boolean
           is_w3_client?: boolean
           last_login_at?: string | null
+          must_change_password?: boolean
           plan_type?: string
           revenue_goal?: number | null
           updated_at?: string
@@ -624,6 +626,7 @@ export type Database = {
           is_mentorado?: boolean
           is_w3_client?: boolean
           last_login_at?: string | null
+          must_change_password?: boolean
           plan_type?: string
           revenue_goal?: number | null
           updated_at?: string
