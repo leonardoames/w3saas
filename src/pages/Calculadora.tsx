@@ -12,7 +12,6 @@ import { generatePricingPDF } from "@/lib/pricingPdf";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { motion, AnimatePresence } from "motion/react";
-import { useBlocker } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 export type Channel = "site" | "shopee";
@@ -124,17 +123,6 @@ export default function Calculadora() {
 
   const hasUnsavedChanges = JSON.stringify(inputs) !== JSON.stringify(savedInputs);
 
-  // Block navigation with unsaved changes
-  const blocker = useBlocker(({ currentLocation, nextLocation }) => {
-    return hasUnsavedChanges && currentLocation.pathname !== nextLocation.pathname;
-  });
-
-  useEffect(() => {
-    if (blocker.state === "blocked") {
-      setUnsavedDialogOpen(true);
-    }
-  }, [blocker.state]);
-
   // Browser beforeunload
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -200,12 +188,10 @@ export default function Calculadora() {
 
   const handleDiscardAndLeave = () => {
     setUnsavedDialogOpen(false);
-    if (blocker.state === "blocked") blocker.proceed();
   };
 
   const handleCancelLeave = () => {
     setUnsavedDialogOpen(false);
-    if (blocker.state === "blocked") blocker.reset();
   };
 
   const handleEnterKey = (e: React.KeyboardEvent, idx: number) => {
@@ -515,8 +501,6 @@ export default function Calculadora() {
           onSaved={() => {
             setEditingProductId(null);
             setSavedInputs({ ...inputs });
-            // If blocker was waiting, proceed
-            if (blocker.state === "blocked") blocker.proceed();
           }}
         />
 
