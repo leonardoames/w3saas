@@ -25,6 +25,16 @@ const costLabels: Record<string, string> = {
   extraFees: "Taxas Extras",
 };
 
+const shopeeLabels: Record<string, string> = {
+  mediaCost: "Shopee Ads",
+};
+
+// Keys visible per channel — must match Calculadora.tsx
+const visibleKeysPerChannel: Record<string, string[]> = {
+  site: ["mediaCost", "fixedCosts", "taxes", "gatewayFee", "platformFee", "extraFees"],
+  shopee: ["mediaCost", "fixedCosts", "taxes", "extraFees"],
+};
+
 export function generatePricingPDF(inputs: ProductInputs, results: Results, channel: Channel = "site") {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const now = new Date();
@@ -67,11 +77,17 @@ export function generatePricingPDF(inputs: ProductInputs, results: Results, chan
   doc.text("Custos Percentuais", 14, y);
   y += 2;
 
-  const tableBody: string[][] = Object.keys(costLabels).map((key) => [
-    costLabels[key],
-    `${results.pcts[key].toFixed(1)}%`,
-    `R$ ${results.values[key].toFixed(2)}`,
-  ]);
+  const visibleKeys = visibleKeysPerChannel[channel] || visibleKeysPerChannel.site;
+  const tableBody: string[][] = Object.keys(costLabels)
+    .filter((key) => visibleKeys.includes(key))
+    .map((key) => {
+      const label = channel === "shopee" && shopeeLabels[key] ? shopeeLabels[key] : costLabels[key];
+      return [
+        label,
+        `${results.pcts[key].toFixed(1)}%`,
+        `R$ ${results.values[key].toFixed(2)}`,
+      ];
+    });
 
   if (channel === "shopee") {
     tableBody.push(
