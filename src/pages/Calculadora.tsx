@@ -52,10 +52,17 @@ function getShopeeComissaoPct(preco: number): number {
   return preco <= 79.99 ? 20 : 14;
 }
 
+// Keys visible per channel — hidden fields are excluded from calculation
+const visibleKeysPerChannel: Record<Channel, (keyof ProductInputs)[]> = {
+  site: ["mediaCost", "fixedCosts", "taxes", "gatewayFee", "platformFee", "extraFees"],
+  shopee: ["mediaCost", "fixedCosts", "taxes", "extraFees"],
+};
+
 export function useCalculatorResults(inputs: ProductInputs, channel: Channel) {
   return useMemo(() => {
     const sellingPrice = parseFloat(inputs.sellingPrice || "0");
     const productCost = parseFloat(inputs.productCost || "0");
+    const visibleKeys = visibleKeysPerChannel[channel];
     const pcts = {
       mediaCost: parseFloat(inputs.mediaCost || "0"),
       fixedCosts: parseFloat(inputs.fixedCosts || "0"),
@@ -73,7 +80,10 @@ export function useCalculatorResults(inputs: ProductInputs, channel: Channel) {
       extraFees: (sellingPrice * pcts.extraFees) / 100,
     };
 
-    const pctCostSum = Object.values(values).reduce((a, b) => a + b, 0);
+    // Only sum visible fields for active channel
+    const pctCostSum = Object.entries(values)
+      .filter(([k]) => visibleKeys.includes(k as keyof ProductInputs))
+      .reduce((a, [, v]) => a + v, 0);
 
     const shopeeTarifa = channel === "shopee" ? getShopeeTarifa(sellingPrice) : 0;
     const shopeeComissaoPct = channel === "shopee" ? getShopeeComissaoPct(sellingPrice) : 0;
@@ -93,13 +103,13 @@ export function useCalculatorResults(inputs: ProductInputs, channel: Channel) {
   }, [inputs, channel]);
 }
 
-const costRows: { key: keyof ReturnType<typeof useCalculatorResults>["pcts"]; label: string; inputKey: keyof ProductInputs; tooltip: string }[] = [
-  { key: "mediaCost", label: "Custo de Mídia", inputKey: "mediaCost", tooltip: "Percentual do faturamento investido em anúncios (Meta Ads, Google Ads, etc.)" },
-  { key: "fixedCosts", label: "Custos Fixos", inputKey: "fixedCosts", tooltip: "Aluguel, salários, internet, ferramentas — divididos pelo faturamento mensal" },
-  { key: "taxes", label: "Impostos", inputKey: "taxes", tooltip: "Alíquota de impostos sobre a venda (Simples Nacional, Lucro Presumido, etc.)" },
-  { key: "gatewayFee", label: "Taxa Gateway", inputKey: "gatewayFee", tooltip: "Taxa cobrada pelo meio de pagamento (Mercado Pago, PagSeguro, Stripe, etc.)" },
-  { key: "platformFee", label: "Taxa Plataforma", inputKey: "platformFee", tooltip: "Percentual cobrado pela plataforma de e-commerce (Shopify, Nuvemshop, etc.)" },
-  { key: "extraFees", label: "Taxas Extras", inputKey: "extraFees", tooltip: "Outras taxas como antifraude, frete grátis subsidiado, etc." },
+const allCostRows: { key: keyof ReturnType<typeof useCalculatorResults>["pcts"]; label: string; shopeeLabel?: string; inputKey: keyof ProductInputs; tooltip: string; channels: Channel[] }[] = [
+  { key: "mediaCost", label: "Custo de Mídia", shopeeLabel: "Shopee Ads", inputKey: "mediaCost", tooltip: "Percentual do faturamento investido em anúncios (Meta Ads, Google Ads, etc.)", channels: ["site", "shopee"] },
+  { key: "fixedCosts", label: "Custos Fixos", inputKey: "fixedCosts", tooltip: "Aluguel, salários, internet, ferramentas — divididos pelo faturamento mensal", channels: ["site", "shopee"] },
+  { key: "taxes", label: "Impostos", inputKey: "taxes", tooltip: "Alíquota de impostos sobre a venda (Simples Nacional, Lucro Presumido, etc.)", channels: ["site", "shopee"] },
+  { key: "gatewayFee", label: "Taxa Gateway", inputKey: "gatewayFee", tooltip: "Taxa cobrada pelo meio de pagamento (Mercado Pago, PagSeguro, Stripe, etc.)", channels: ["site"] },
+  { key: "platformFee", label: "Taxa Plataforma", inputKey: "platformFee", tooltip: "Percentual cobrado pela plataforma de e-commerce (Shopify, Nuvemshop, etc.)", channels: ["site"] },
+  { key: "extraFees", label: "Taxas Extras", inputKey: "extraFees", tooltip: "Outras taxas como antifraude, frete grátis subsidiado, etc.", channels: ["site", "shopee"] },
 ];
 
 const disabledChannels = [
@@ -147,7 +157,10 @@ export default function Calculadora() {
       toast.info("Disponível em breve");
       return;
     }
-    setChannel(val as Channel);
+    if (val !== channel) {
+      setChannel(val as Channel);
+      toast.info("Alguns custos foram ocultados para este canal.", { duration: 3000 });
+    }
   };
 
   const handleLoadProduct = (product: any) => {
@@ -202,19 +215,25 @@ export default function Calculadora() {
     }
   };
 
-  // Find the max cost key for highlighting
+  // Filter cost rows by active channel
+  const costRows = useMemo(() => allCostRows.filter((r) => r.channels.includes(channel)), [channel]);
+
+  // Find the max cost key for highlighting (only visible fields)
+  const visibleKeys = visibleKeysPerChannel[channel];
   const maxCostKey = useMemo(() => {
     let maxKey = "";
     let maxVal = -1;
-    Object.entries(results.values).forEach(([k, v]) => {
-      if (v > maxVal) { maxVal = v; maxKey = k; }
-    });
+    Object.entries(results.values)
+      .filter(([k]) => visibleKeys.includes(k as keyof ProductInputs))
+      .forEach(([k, v]) => {
+        if (v > maxVal) { maxVal = v; maxKey = k; }
+      });
     if (channel === "shopee") {
       if (results.shopeeComissaoRS > maxVal) { maxKey = "shopeeComissao"; maxVal = results.shopeeComissaoRS; }
       if (results.shopeeTarifa > maxVal) { maxKey = "shopeeTarifa"; }
     }
     return maxVal > 0 ? maxKey : "";
-  }, [results, channel]);
+  }, [results, channel, visibleKeys]);
 
   const isNegative = results.margemPct < 0;
 
@@ -364,7 +383,7 @@ export default function Calculadora() {
                       }`}
                     >
                       <div className="flex items-center gap-1">
-                        <Label className="text-xs truncate">{row.label}</Label>
+                        <Label className="text-xs truncate">{channel === "shopee" && row.shopeeLabel ? row.shopeeLabel : row.label}</Label>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Info className="h-3 w-3 text-muted-foreground/50 shrink-0 cursor-help" />
