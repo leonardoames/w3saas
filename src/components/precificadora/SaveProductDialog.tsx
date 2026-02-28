@@ -16,7 +16,7 @@ interface SaveProductDialogProps {
 }
 
 export function SaveProductDialog({ open, onOpenChange, inputs, editingProductId, onSaved }: SaveProductDialogProps) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState(inputs.title || "");
   const [sku, setSku] = useState("");
   const [saving, setSaving] = useState(false);
 

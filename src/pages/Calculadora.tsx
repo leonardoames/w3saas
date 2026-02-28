@@ -2,55 +2,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { useMemo, useState, useEffect, useCallback } from "react";
-import { Separator } from "@/components/ui/separator";
-import { Save, FolderOpen } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Save, FolderOpen, FileDown, AlertTriangle, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SaveProductDialog } from "@/components/precificadora/SaveProductDialog";
 import { SavedProductsList } from "@/components/precificadora/SavedProductsList";
-
-interface PercentageInputProps {
-  id: string;
-  label: string;
-  value: string;
-  sellingPrice: number;
-  onChange: (value: string) => void;
-}
-
-function PercentageInput({ id, label, value, sellingPrice, onChange }: PercentageInputProps) {
-  const calculatedValue = useMemo(() => {
-    const percentage = parseFloat(value || "0");
-    return (sellingPrice * percentage) / 100;
-  }, [value, sellingPrice]);
-
-  return (
-    <div className="flex items-center gap-4">
-      <Label htmlFor={id} className="text-sm w-1/3 shrink-0">{label}</Label>
-      <div className="flex flex-1 items-center gap-3">
-        <div className="relative flex-1">
-          <Input id={id} type="number" placeholder="0" value={value} onChange={(e) => onChange(e.target.value)} className="pr-8" />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
-        </div>
-        <span className="text-sm text-muted-foreground min-w-[80px] text-right">= R$ {calculatedValue.toFixed(2)}</span>
-      </div>
-    </div>
-  );
-}
-
-function CurrencyInput({ id, label, value, onChange, placeholder = "0.00" }: { id: string; label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
-  return (
-    <div className="flex items-center gap-4">
-      <Label htmlFor={id} className="text-sm w-1/3 shrink-0">{label}</Label>
-      <div className="relative flex-1">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
-        <Input id={id} type="number" placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} className="pl-10" />
-      </div>
-    </div>
-  );
-}
+import { generatePricingPDF } from "@/lib/pricingPdf";
 
 export interface ProductInputs {
+  title: string;
   sellingPrice: string;
   productCost: string;
   mediaCost: string;
@@ -62,6 +23,7 @@ export interface ProductInputs {
 }
 
 const defaultInputs: ProductInputs = {
+  title: "",
   sellingPrice: "",
   productCost: "",
   mediaCost: "",
@@ -72,39 +34,58 @@ const defaultInputs: ProductInputs = {
   extraFees: "",
 };
 
+function useCalculatorResults(inputs: ProductInputs) {
+  return useMemo(() => {
+    const sellingPrice = parseFloat(inputs.sellingPrice || "0");
+    const productCost = parseFloat(inputs.productCost || "0");
+    const pcts = {
+      mediaCost: parseFloat(inputs.mediaCost || "0"),
+      fixedCosts: parseFloat(inputs.fixedCosts || "0"),
+      taxes: parseFloat(inputs.taxes || "0"),
+      gatewayFee: parseFloat(inputs.gatewayFee || "0"),
+      platformFee: parseFloat(inputs.platformFee || "0"),
+      extraFees: parseFloat(inputs.extraFees || "0"),
+    };
+    const values = {
+      mediaCost: (sellingPrice * pcts.mediaCost) / 100,
+      fixedCosts: (sellingPrice * pcts.fixedCosts) / 100,
+      taxes: (sellingPrice * pcts.taxes) / 100,
+      gatewayFee: (sellingPrice * pcts.gatewayFee) / 100,
+      platformFee: (sellingPrice * pcts.platformFee) / 100,
+      extraFees: (sellingPrice * pcts.extraFees) / 100,
+    };
+    const custoVendaTotal = Object.values(values).reduce((a, b) => a + b, 0);
+    const custoTotal = productCost + custoVendaTotal;
+    const margemRS = sellingPrice - custoTotal;
+    const margemPct = sellingPrice > 0 ? (margemRS / sellingPrice) * 100 : 0;
+    return { sellingPrice, productCost, pcts, values, custoVendaTotal, custoTotal, margemRS, margemPct, isValid: sellingPrice > 0 };
+  }, [inputs]);
+}
+
+const costRows: { key: keyof ReturnType<typeof useCalculatorResults>["pcts"]; label: string; inputKey: keyof ProductInputs }[] = [
+  { key: "mediaCost", label: "Custo de Mídia", inputKey: "mediaCost" },
+  { key: "fixedCosts", label: "Custos Fixos", inputKey: "fixedCosts" },
+  { key: "taxes", label: "Impostos", inputKey: "taxes" },
+  { key: "gatewayFee", label: "Taxa do Gateway", inputKey: "gatewayFee" },
+  { key: "platformFee", label: "Taxa da Plataforma", inputKey: "platformFee" },
+  { key: "extraFees", label: "Taxas Extras", inputKey: "extraFees" },
+];
+
 export default function Calculadora() {
   const [inputs, setInputs] = useState<ProductInputs>(defaultInputs);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [productsListOpen, setProductsListOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
+  const results = useCalculatorResults(inputs);
+
   const updateInput = (key: keyof ProductInputs, value: string) => {
     setInputs((prev) => ({ ...prev, [key]: value }));
   };
 
-  const results = useMemo(() => {
-    const sellingPrice = parseFloat(inputs.sellingPrice || "0");
-    const productCost = parseFloat(inputs.productCost || "0");
-    const mediaCostValue = (sellingPrice * parseFloat(inputs.mediaCost || "0")) / 100;
-    const fixedCostsValue = (sellingPrice * parseFloat(inputs.fixedCosts || "0")) / 100;
-    const taxesValue = (sellingPrice * parseFloat(inputs.taxes || "0")) / 100;
-    const gatewayFeeValue = (sellingPrice * parseFloat(inputs.gatewayFee || "0")) / 100;
-    const platformFeeValue = (sellingPrice * parseFloat(inputs.platformFee || "0")) / 100;
-    const extraFeesValue = (sellingPrice * parseFloat(inputs.extraFees || "0")) / 100;
-    const totalOperationalCost = mediaCostValue + fixedCostsValue + taxesValue + gatewayFeeValue + platformFeeValue + extraFeesValue;
-    const totalCost = productCost + totalOperationalCost;
-    const profitPerUnit = sellingPrice - totalCost;
-    const margin = sellingPrice > 0 ? (profitPerUnit / sellingPrice) * 100 : 0;
-    return { totalCost, profitPerUnit, margin, isValid: sellingPrice > 0 };
-  }, [inputs]);
-
-  const getMarginColor = () => {
-    if (results.margin > 0) return "text-success";
-    return "text-destructive";
-  };
-
   const handleLoadProduct = (product: any) => {
     setInputs({
+      title: product.name || "",
       sellingPrice: product.selling_price?.toString() || "",
       productCost: product.product_cost?.toString() || "",
       mediaCost: product.media_cost_pct?.toString() || "",
@@ -119,95 +100,143 @@ export default function Calculadora() {
     toast.success(`Produto "${product.name}" carregado`);
   };
 
+  const handleExportPDF = () => {
+    if (!results.isValid) return;
+    generatePricingPDF(inputs, results);
+    toast.success("PDF exportado!");
+  };
+
+  const isNegative = results.margemPct < 0;
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Precificadora de E-commerce</h1>
-          <p className="mt-2 text-muted-foreground">
-            Descubra rapidamente se o seu preço de venda cobre todos os custos e gera lucro.
+          <p className="mt-1 text-muted-foreground text-sm">
+            Descubra se o seu preço de venda cobre todos os custos e gera lucro.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => setProductsListOpen(true)}>
             <FolderOpen className="h-4 w-4 mr-1" />
             Meus Produtos
           </Button>
+          <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={!results.isValid}>
+            <FileDown className="h-4 w-4 mr-1" />
+            Exportar PDF
+          </Button>
           <Button size="sm" onClick={() => setSaveDialogOpen(true)} disabled={!results.isValid}>
             <Save className="h-4 w-4 mr-1" />
-            Salvar Produto
+            Salvar
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Left: Inputs */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Produto</CardTitle>
-              <p className="text-sm text-muted-foreground">Defina o preço de venda e o custo do produto.</p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <CurrencyInput id="sellingPrice" label="Preço de Venda" value={inputs.sellingPrice} onChange={(v) => updateInput("sellingPrice", v)} />
-              <CurrencyInput id="productCost" label="Custo do Produto" value={inputs.productCost} onChange={(v) => updateInput("productCost", v)} />
-            </CardContent>
-          </Card>
+      {/* Title Field */}
+      <div>
+        <Input
+          placeholder="Título do produto (ex: Camiseta Oversized PP)"
+          value={inputs.title}
+          onChange={(e) => updateInput("title", e.target.value)}
+          className="text-lg font-medium h-12"
+        />
+      </div>
 
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Custos</CardTitle>
-              <p className="text-sm text-muted-foreground">Percentuais aplicados sobre o preço de venda.</p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <PercentageInput id="mediaCost" label="Custo de Mídia" value={inputs.mediaCost} sellingPrice={parseFloat(inputs.sellingPrice || "0")} onChange={(v) => updateInput("mediaCost", v)} />
-              <PercentageInput id="fixedCosts" label="Custos Fixos" value={inputs.fixedCosts} sellingPrice={parseFloat(inputs.sellingPrice || "0")} onChange={(v) => updateInput("fixedCosts", v)} />
-              <PercentageInput id="taxes" label="Impostos" value={inputs.taxes} sellingPrice={parseFloat(inputs.sellingPrice || "0")} onChange={(v) => updateInput("taxes", v)} />
-              <Separator className="my-2" />
-              <PercentageInput id="gatewayFee" label="Taxa do Gateway" value={inputs.gatewayFee} sellingPrice={parseFloat(inputs.sellingPrice || "0")} onChange={(v) => updateInput("gatewayFee", v)} />
-              <PercentageInput id="platformFee" label="Taxa da Plataforma" value={inputs.platformFee} sellingPrice={parseFloat(inputs.sellingPrice || "0")} onChange={(v) => updateInput("platformFee", v)} />
-              <PercentageInput id="extraFees" label="Taxas Extras" value={inputs.extraFees} sellingPrice={parseFloat(inputs.sellingPrice || "0")} onChange={(v) => updateInput("extraFees", v)} />
-            </CardContent>
-          </Card>
-        </div>
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* A) PRODUTO */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Produto</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm text-muted-foreground">Preço de Venda</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                <Input type="number" placeholder="0.00" value={inputs.sellingPrice} onChange={(e) => updateInput("sellingPrice", e.target.value)} className="pl-10" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm text-muted-foreground">Custo do Produto</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                <Input type="number" placeholder="0.00" value={inputs.productCost} onChange={(e) => updateInput("productCost", e.target.value)} className="pl-10" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Right: Results */}
-        <div className="space-y-6">
-          <Card className="sticky top-6">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Resultados</CardTitle>
-              <p className="text-sm text-muted-foreground">Atualizados automaticamente conforme você preenche.</p>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {results.isValid ? (
-                <>
-                  <div className="rounded-lg p-6 text-center bg-accent">
-                    <p className="text-sm text-muted-foreground mb-1">Custo Total</p>
-                    <p className="text-4xl font-bold tracking-tight">R$ {results.totalCost.toFixed(2)}</p>
-                    <p className="text-xs text-muted-foreground mt-2">Soma de todos os custos por unidade</p>
+        {/* B) CUSTOS PERCENTUAIS */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Custos Percentuais</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {/* Table header */}
+              <div className="grid grid-cols-[1fr_80px_90px] gap-2 text-xs font-medium text-muted-foreground px-1">
+                <span>Item</span>
+                <span className="text-center">%</span>
+                <span className="text-right">R$</span>
+              </div>
+              {costRows.map((row) => (
+                <div key={row.key} className="grid grid-cols-[1fr_80px_90px] gap-2 items-center">
+                  <Label className="text-sm truncate">{row.label}</Label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={inputs[row.inputKey]}
+                      onChange={(e) => updateInput(row.inputKey, e.target.value)}
+                      className="pr-7 text-center h-9 text-sm"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">%</span>
                   </div>
-                  <div className="rounded-lg p-6 text-center bg-accent">
-                    <p className="text-sm text-muted-foreground mb-1">Lucro por Unidade</p>
-                    <p className={`text-4xl font-bold tracking-tight ${results.profitPerUnit >= 0 ? "text-success" : "text-destructive"}`}>
-                      R$ {results.profitPerUnit.toFixed(2)}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">Preço de venda menos custo total</p>
-                  </div>
-                  <div className="rounded-lg p-6 text-center bg-accent">
-                    <p className="text-sm text-muted-foreground mb-1">Margem Real</p>
-                    <p className={`text-4xl font-bold tracking-tight ${getMarginColor()}`}>
-                      {results.margin.toFixed(1)}%
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <div className="flex h-64 items-center justify-center text-muted-foreground text-center">
-                  <p>Preencha o preço de venda para ver os resultados</p>
+                  <span className="text-sm text-muted-foreground text-right tabular-nums">
+                    R$ {results.values[row.key].toFixed(2)}
+                  </span>
                 </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* C) RESULTADOS */}
+        <Card className={isNegative && results.isValid ? "border-destructive/50" : ""}>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              Resultados
+              {results.isValid && (
+                isNegative
+                  ? <AlertTriangle className="h-4 w-4 text-destructive" />
+                  : <CheckCircle className="h-4 w-4 text-success" />
               )}
-            </CardContent>
-          </Card>
-        </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {results.isValid ? (
+              <div className="space-y-4">
+                <ResultRow label="Custo Venda Total" value={`R$ ${results.custoVendaTotal.toFixed(2)}`} />
+                <ResultRow label="Custo Total" value={`R$ ${results.custoTotal.toFixed(2)}`} />
+                <div className="border-t border-border pt-4 space-y-3">
+                  <ResultRow label="Margem (R$)" value={`R$ ${results.margemRS.toFixed(2)}`} highlight={isNegative ? "negative" : "positive"} />
+                  <div className={`rounded-lg p-4 text-center ${isNegative ? "bg-destructive/10" : "bg-success/10"}`}>
+                    <p className="text-xs text-muted-foreground mb-1">Margem</p>
+                    <p className={`text-3xl font-bold tabular-nums ${isNegative ? "text-destructive" : "text-success"}`}>
+                      {results.margemPct.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex h-40 items-center justify-center text-muted-foreground text-center text-sm">
+                <p>Preencha o preço de venda para ver os resultados.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <SaveProductDialog
@@ -223,6 +252,16 @@ export default function Calculadora() {
         onOpenChange={setProductsListOpen}
         onLoadProduct={handleLoadProduct}
       />
+    </div>
+  );
+}
+
+function ResultRow({ label, value, highlight }: { label: string; value: string; highlight?: "positive" | "negative" }) {
+  const colorClass = highlight === "negative" ? "text-destructive" : highlight === "positive" ? "text-success" : "text-foreground";
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className={`text-sm font-semibold tabular-nums ${colorClass}`}>{value}</span>
     </div>
   );
 }
