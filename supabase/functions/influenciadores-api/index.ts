@@ -6,32 +6,69 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
 }
 
-// Simple XOR-based encryption for demonstration
-// In production, use Web Crypto API with AES-GCM
-function encryptPhone(phone: string, key: string): string {
+// AES-GCM encryption for phone numbers using Web Crypto API
+async function encryptPhone(phone: string, key: string): Promise<string> {
   if (!phone) return ''
-  const keyBytes = new TextEncoder().encode(key)
-  const phoneBytes = new TextEncoder().encode(phone)
-  const encrypted = new Uint8Array(phoneBytes.length)
-  
-  for (let i = 0; i < phoneBytes.length; i++) {
-    encrypted[i] = phoneBytes[i] ^ keyBytes[i % keyBytes.length]
-  }
-  
-  return btoa(String.fromCharCode(...encrypted))
+  const encoder = new TextEncoder()
+  const data = encoder.encode(phone)
+
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', encoder.encode(key), 'PBKDF2', false, ['deriveKey']
+  )
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+  const cryptoKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt']
+  )
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, data)
+
+  const combined = new Uint8Array(salt.length + iv.length + new Uint8Array(encrypted).length)
+  combined.set(salt, 0)
+  combined.set(iv, salt.length)
+  combined.set(new Uint8Array(encrypted), salt.length + iv.length)
+  return btoa(String.fromCharCode(...combined))
 }
 
-function decryptPhone(encrypted: string, key: string): string {
+async function decryptPhone(encrypted: string, key: string): Promise<string> {
   if (!encrypted) return ''
   try {
-    const keyBytes = new TextEncoder().encode(key)
-    const encryptedBytes = new Uint8Array(atob(encrypted).split('').map(c => c.charCodeAt(0)))
-    const decrypted = new Uint8Array(encryptedBytes.length)
-    
-    for (let i = 0; i < encryptedBytes.length; i++) {
-      decrypted[i] = encryptedBytes[i] ^ keyBytes[i % keyBytes.length]
+    const encoder = new TextEncoder()
+    const combined = Uint8Array.from(atob(encrypted), c => c.charCodeAt(0))
+
+    // Try AES-GCM first (new format: 16 salt + 12 iv + ciphertext)
+    if (combined.length > 28) {
+      try {
+        const salt = combined.slice(0, 16)
+        const iv = combined.slice(16, 28)
+        const ciphertext = combined.slice(28)
+
+        const keyMaterial = await crypto.subtle.importKey(
+          'raw', encoder.encode(key), 'PBKDF2', false, ['deriveKey']
+        )
+        const cryptoKey = await crypto.subtle.deriveKey(
+          { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+          keyMaterial,
+          { name: 'AES-GCM', length: 256 },
+          false,
+          ['decrypt']
+        )
+        const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, cryptoKey, ciphertext)
+        return new TextDecoder().decode(decrypted)
+      } catch {
+        // Fall through to legacy XOR decryption
+      }
     }
-    
+
+    // Legacy XOR fallback for existing data
+    const keyBytes = encoder.encode(key)
+    const decrypted = new Uint8Array(combined.length)
+    for (let i = 0; i < combined.length; i++) {
+      decrypted[i] = combined[i] ^ keyBytes[i % keyBytes.length]
+    }
     return new TextDecoder().decode(decrypted)
   } catch {
     return ''
@@ -196,15 +233,15 @@ Deno.serve(async (req) => {
         
         // Merge decrypted phones
         type InfluenciadorRow = { id: string; telefone: string | null; tags: string[] | null; status: string | null }
-        const result = (data as InfluenciadorRow[] || []).map(inf => {
+        const result = await Promise.all((data as InfluenciadorRow[] || []).map(async inf => {
           const contact = contactMap.get(inf.id)
           return {
             ...inf,
-            telefone: contact ? decryptPhone(contact.telefone_encrypted, encryptionKey) : inf.telefone,
+            telefone: contact ? await decryptPhone(contact.telefone_encrypted, encryptionKey) : inf.telefone,
             tags: inf.tags || [],
             status: inf.status || 'em_aberto'
           }
-        })
+        }))
         
         return new Response(JSON.stringify(result), {
           headers: { 
@@ -266,7 +303,7 @@ Deno.serve(async (req) => {
             .insert({
               influenciador_id: newInfluenciador.id,
               user_id: user.id,
-              telefone_encrypted: encryptPhone(phoneDigits, encryptionKey),
+              telefone_encrypted: await encryptPhone(phoneDigits, encryptionKey),
               telefone_masked: maskPhone(phoneDigits)
             } as never)
         }
@@ -350,7 +387,7 @@ Deno.serve(async (req) => {
             .insert({
               influenciador_id: id,
               user_id: user.id,
-              telefone_encrypted: encryptPhone(phoneDigits, encryptionKey),
+              telefone_encrypted: await encryptPhone(phoneDigits, encryptionKey),
               telefone_masked: maskPhone(phoneDigits)
             } as never)
         }

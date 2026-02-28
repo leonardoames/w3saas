@@ -35,6 +35,19 @@ serve(async (req) => {
     if (!email || !priceId) {
       throw new Error("Email and priceId are required");
     }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email) || email.length > 255) {
+      throw new Error("Invalid email format");
+    }
+
+    // Validate priceId is one of our known prices
+    const validPriceIds = Object.values(PRICES);
+    if (!validPriceIds.includes(priceId)) {
+      throw new Error("Invalid price ID");
+    }
+
     logStep("Request data received", { email, priceId, planType });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
