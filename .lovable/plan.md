@@ -1,33 +1,32 @@
 
 
-## Problemas Identificados
+## Diagnóstico
 
-1. **Criar usuário não funciona**: O `sendInvite` usa `resetPasswordForEmail` que apenas envia email de reset -- não cria conta. Deveria usar a edge function `create-bulk-users` (que já existe e funciona) para criar 1 usuário.
-2. **Sem campo de senha temporária**: O dialog não tem input para definir senha temporária.
-3. **Sem opção de role admin**: Não existe checkbox/toggle para definir o novo usuário como admin.
-4. **Sem opções de Mentorado/Cliente W3**: Faltam no dialog de criação individual.
+Atualmente, o sistema tem dois fluxos que **não enviam email real**:
 
-## Plano de Implementação
+1. **Criar usuário (admin)**: Cria a conta com senha temporária via `create-bulk-users`, mas apenas mostra um toast na tela do admin. O usuário nunca recebe email.
+2. **Resetar senha (admin)**: Define senha temporária via `admin-reset-password`, mas também só mostra toast. Nenhum email é enviado.
 
-### 1. Atualizar o dialog "Adicionar Novo Usuário"
+O projeto **não tem nenhum mecanismo de envio de email transacional** configurado. Os emails de autenticação padrão do sistema (confirmação, recovery) funcionam automaticamente, mas emails customizados (como "sua senha temporária é X") precisam de configuração adicional.
 
-Adicionar ao dialog (em `AdminUsers.tsx`):
-- Campo **senha temporária** (obrigatório, min 6 chars, default `appw3acesso`)
-- Checkbox **Tornar Admin**
-- Checkbox **Mentorado**
-- Checkbox **Cliente W3**
+## O que é necessário
 
-### 2. Reescrever a função `sendInvite`
+### Opção A — Emails de autenticação padrão (recovery/reset)
+Configurar **templates de email customizados** via Lovable Cloud para que os emails padrão de autenticação (reset de senha, confirmação) sejam enviados com a marca do projeto e de um domínio próprio. Isso requer um domínio de email verificado.
 
-Substituir `resetPasswordForEmail` por chamada à edge function `create-bulk-users` com array de 1 usuário, passando email, nome, plano, flags mentorado/w3_client e a senha temporária definida.
+### Opção B — Emails transacionais customizados (notificar senha temporária)
+Criar uma edge function que envia email ao usuário quando o admin cria a conta ou reseta a senha, informando as credenciais temporárias. Isso requer integração com um serviço de email (ex: Resend) e uma API key.
 
-Após criação com sucesso, se o checkbox admin estiver marcado, chamar `admin_update_role` via RPC para atribuir a role.
+### Plano recomendado (ambas opções combinadas)
 
-### 3. Adicionar estados para os novos campos
+1. **Configurar domínio de email** via Lovable Cloud para emails de autenticação com marca própria
+2. **Adicionar fluxo "Esqueci minha senha"** na tela de login — usando `resetPasswordForEmail` do sistema de autenticação, que já envia email automaticamente
+3. **Criar edge function de notificação** para enviar email ao usuário quando admin cria conta ou reseta senha, com as credenciais temporárias
+4. **Criar página `/reset-password`** para que o link do email de recovery funcione corretamente
 
-Novos states: `newUserPassword` (default `"appw3acesso"`), `newUserIsAdmin`, `newUserMentorado`, `newUserW3Client`.
+### Detalhes técnicos
 
----
-
-Nenhuma migration necessária -- toda a infraestrutura backend (edge function, RPCs) já existe.
+- O fluxo "Esqueci minha senha" usa `supabase.auth.resetPasswordForEmail()` que já envia email automaticamente sem precisar de serviço externo
+- Para emails customizados (notificar senha temp), seria necessário um conector de email (Resend) com API key
+- A página `/reset-password` precisa capturar o token da URL e permitir definir nova senha via `supabase.auth.updateUser()`
 
