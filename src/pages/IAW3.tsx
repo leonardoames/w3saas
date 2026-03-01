@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Sparkles, Copy, Loader2, FileText, ShoppingBag, Search, BarChart3, Megaphone, Video, Plus, Mic, Send, X, Trash2 } from "lucide-react";
+import HtmlPreviewMessage, { hasHtmlContent } from "@/components/ia-w3/HtmlPreviewMessage";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -258,23 +259,23 @@ export default function IAW3() {
                 >
                   {message.role === "user" ? (
                     <p className="whitespace-pre-wrap">{message.content}</p>
+                  ) : hasHtmlContent(message.content) ? (
+                    <HtmlPreviewMessage content={message.content} />
                   ) : (
-                    <div 
-                      className="prose prose-sm max-w-none dark:prose-invert prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2 prose-ul:my-2 prose-li:my-0"
-                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(message.content) }}
-                    />
-                  )}
-                  
-                  {/* Copy button for assistant messages */}
-                  {message.role === "assistant" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute -right-10 top-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-                      onClick={() => handleCopyMessage(message.content)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
+                    <>
+                      <div 
+                        className="prose prose-sm max-w-none dark:prose-invert prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2 prose-ul:my-2 prose-li:my-0"
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(message.content) }}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute -right-10 top-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                        onClick={() => handleCopyMessage(message.content)}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>
