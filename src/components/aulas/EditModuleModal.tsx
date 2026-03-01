@@ -3,23 +3,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { CoverUpload } from "./CoverUpload";
 
 interface Module {
   id: string;
   title: string;
   description: string;
   order: number;
+  cover_url?: string | null;
 }
 
 interface EditModuleModalProps {
@@ -30,26 +27,21 @@ interface EditModuleModalProps {
 }
 
 export function EditModuleModal({ isOpen, onClose, module, onSuccess }: EditModuleModalProps) {
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-  });
+  const [formData, setFormData] = useState({ title: "", description: "" });
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     if (module) {
-      setFormData({
-        title: module.title,
-        description: module.description || "",
-      });
+      setFormData({ title: module.title, description: module.description || "" });
+      setCoverUrl(module.cover_url || null);
     }
   }, [module]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!module) return;
-    
     setSaving(true);
 
     try {
@@ -58,25 +50,18 @@ export function EditModuleModal({ isOpen, onClose, module, onSuccess }: EditModu
         .update({
           title: formData.title.trim(),
           description: formData.description.trim() || null,
-        })
+          cover_url: coverUrl,
+        } as any)
         .eq("id", module.id);
 
       if (error) throw error;
 
-      toast({
-        title: "✅ Módulo atualizado!",
-        description: "As alterações foram salvas com sucesso.",
-      });
-
+      toast({ title: "✅ Módulo atualizado!", description: "As alterações foram salvas com sucesso." });
       onSuccess();
       onClose();
     } catch (error) {
       console.error("Erro ao atualizar módulo:", error);
-      toast({
-        title: "❌ Erro",
-        description: "Não foi possível atualizar o módulo.",
-        variant: "destructive",
-      });
+      toast({ title: "❌ Erro", description: "Não foi possível atualizar o módulo.", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -89,7 +74,6 @@ export function EditModuleModal({ isOpen, onClose, module, onSuccess }: EditModu
           <DialogTitle>Editar Módulo</DialogTitle>
           <DialogDescription>Altere as informações do módulo</DialogDescription>
         </DialogHeader>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="edit-module-title">Título do Módulo *</Label>
@@ -101,7 +85,6 @@ export function EditModuleModal({ isOpen, onClose, module, onSuccess }: EditModu
               required
             />
           </div>
-
           <div>
             <Label htmlFor="edit-module-description">Descrição</Label>
             <Textarea
@@ -111,11 +94,9 @@ export function EditModuleModal({ isOpen, onClose, module, onSuccess }: EditModu
               placeholder="Descrição breve do módulo"
             />
           </div>
-
+          <CoverUpload currentUrl={coverUrl} onUrlChange={setCoverUrl} moduleId={module?.id} />
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
+            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
             <Button type="submit" disabled={saving}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Salvar Alterações
