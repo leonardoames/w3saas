@@ -1,32 +1,29 @@
 
 
-## Plano: Criar Edge Function `sync-shopee`
+## Diagnóstico: Dados incorretos na sincronização Shopee
 
-### Problema
+### Problemas identificados no código atual
 
-O erro "Failed to send a request to the Edge Function" ocorre porque a função `sync-shopee` não existe. O frontend chama `supabase.functions.invoke("sync-shopee")` ao clicar em "Sincronizar", mas essa função nunca foi criada.
+1. **Faturamento zerado/incorreto**: O `get_order_detail` só retorna `total_amount` se for solicitado em `response_optional_fields`. O código atual só pede `order_status`, então `order.total_amount` retorna `undefined` → `parseFloat("0")` → zero.
+
+2. **Data dos pedidos incorreta**: O código usa `create_time` (quando o pedido foi criado), mas para faturamento o correto é usar `pay_time` (quando o pagamento foi confirmado).
+
+3. **Sessões incorretas**: A API de pedidos da Shopee não fornece dados de visitas/sessões. O campo `sessoes` não deveria ser preenchido por esta função.
+
+4. **ROAS**: O ROAS depende de dados de investimento (Shopee Ads API, endpoint separado). A API de pedidos não fornece isso — o campo `investimento_trafego` deve ficar zerado.
 
 ### Solução
 
-Criar a Edge Function `sync-shopee` seguindo o mesmo padrão read-only das outras integrações (nuvemshop, shopify, olist_tiny).
+Corrigir a Edge Function `sync-shopee` com as seguintes mudanças:
 
-### Detalhes técnicos
-
-A Shopee API exige assinatura HMAC-SHA256 em todas as requisições. O fluxo será:
-
-1. Autenticar o usuário via JWT
-2. Buscar credenciais (access_token, shop_id) da tabela `user_integrations`
-3. Chamar `GET /api/v2/order/get_order_list` (somente leitura) para os últimos 90 dias
-4. Para cada lote, chamar `GET /api/v2/order/get_order_detail` para obter valores
-5. Agregar por dia e salvar na tabela `metrics_diarias` com `platform: "shopee"`
-6. Atualizar `last_sync_at` na integração
-
-Todas as chamadas são **GET** (read-only) — nenhuma alteração é feita na conta Shopee.
-
-### Edições
-
-| Arquivo | Mudança |
+| Problema | Correção |
 |---|---|
-| `supabase/functions/sync-shopee/index.ts` | Nova Edge Function com paginação, HMAC sign, rate limiting e upsert em `metrics_diarias` |
-| `supabase/config.toml` | Já tem `shopee-oauth`, precisa adicionar `[functions.sync-shopee]` com `verify_jwt = false` (config.toml é automático, será adicionado pela plataforma ao criar a função) |
+| `response_optional_fields` incompleto | Solicitar `total_amount,pay_time,escrow_amount,buyer_total_amount` |
+| Data errada | Usar `pay_time` (data do pagamento) em vez de `create_time` |
+| Sessões inventadas | Não preencher `sessoes` (deixar 0) |
+| Faturamento | Usar `escrow_amount` (valor líquido que o vendedor recebe) como faturamento principal, com fallback para `total_amount` |
+
+### Arquivo editado
+
+`supabase/functions/sync-shopee/index.ts` — atualizar `response_optional_fields`, lógica de data e campo de valor.
 
