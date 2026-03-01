@@ -1,31 +1,59 @@
 
 
-## Plano: Corrigir preview quebrado do HTML
+## Plano: Upload de imagens no chat da IA W3
 
-### Problema
+### O que muda
 
-O preview está cortando o conteúdo (botões, elementos) porque:
+O usuário poderá anexar imagens (fotos de produtos, screenshots de anúncios, prints de métricas) diretamente no chat. A IA analisará visualmente as imagens para fazer diagnósticos.
 
-1. **O container pai tem `max-w-[85%]` e `overflow` implícito** do `rounded-2xl` — a bolha de mensagem do assistente limita a largura e corta o conteúdo do iframe
-2. **O iframe não tem `border:0`** — pode adicionar bordas extras indesejadas
-3. **O `padding` do body do iframe (`16px`) pode estar cortando elementos** que usam `width:100%` com `box-sizing` incorreto
+### Implementação
 
-### Solução
+**1. Frontend (`src/pages/IAW3.tsx`)**
 
-**Arquivo:** `src/pages/IAW3.tsx` (linhas 252-258)
+- Adicionar estado `attachedImages: { file: File, preview: string }[]` para armazenar imagens selecionadas antes do envio
+- Adicionar botão de upload (ícone `ImagePlus`) ao lado do botão de áudio na barra de input
+- Input file hidden (`accept="image/*"`, `multiple`) acionado pelo botão
+- Exibir thumbnails das imagens anexadas acima do textarea (com botão X para remover)
+- Ao enviar, converter cada imagem para base64 (`FileReader.readAsDataURL`) e incluir no payload como `images: string[]`
+- Nas mensagens do usuário que contêm imagens, renderizar os thumbnails junto ao texto
+- Atualizar `ChatMessage` para incluir `images?: string[]`
 
-- Quando a mensagem contém HTML (renderiza `HtmlPreviewMessage`), remover o `max-w-[85%]` e usar `max-w-full w-full` para que o preview ocupe toda a largura disponível
-- Remover o `px-4 py-3` padding da bolha para HTML, pois o componente já tem seu próprio layout
+**2. Edge Function (`supabase/functions/ia-w3/index.ts`)**
 
-**Arquivo:** `src/components/ia-w3/HtmlPreviewMessage.tsx` (linha 30)
+- Receber o novo campo `images: string[]` (array de data URLs base64) do body
+- Quando houver imagens, montar a mensagem do usuário no formato multimodal da OpenAI:
+  ```ts
+  {
+    role: "user",
+    content: [
+      { type: "text", text: userMessage },
+      { type: "image_url", image_url: { url: base64DataUrl } },
+      // ... mais imagens
+    ]
+  }
+  ```
+- O modelo `gpt-4.1-mini` já suporta visão, então não precisa trocar o modelo
+- Limitar a 3 imagens por mensagem para controlar tokens
 
-- Adicionar `box-sizing:border-box; overflow-x:hidden;` ao estilo base do body do iframe e `*{box-sizing:border-box;}` para garantir que todos os elementos respeitem a largura
-- Adicionar `border:0` ao iframe para evitar bordas extras
+**3. Exibição no chat**
+
+- Mensagens do usuário com imagens: grid de thumbnails clicáveis acima do texto
+- Thumbnails com `object-cover`, `rounded-lg`, tamanho `80x80px`
+
+### Visual do input com imagens anexadas
+
+```text
+┌──────────────────────────────────────────────────┐
+│  [thumb1 ✕] [thumb2 ✕]                          │  ← previews
+├──────────────────────────────────────────────────┤
+│  [+]  Pergunte alguma coisa...  [📷] [🎤] [➤]   │  ← input bar
+└──────────────────────────────────────────────────┘
+```
 
 ### Edições
 
 | Arquivo | Mudança |
 |---|---|
-| `src/pages/IAW3.tsx` | Condicionar classes da bolha: se for HTML, usar `w-full max-w-full p-0` em vez de `max-w-[85%] px-4 py-3` |
-| `src/components/ia-w3/HtmlPreviewMessage.tsx` | Adicionar `*{box-sizing:border-box}` e `overflow-x:hidden` no CSS base do iframe; adicionar `border:0` e `style={{border:'none'}}` no elemento iframe |
+| `src/pages/IAW3.tsx` | Adicionar estado de imagens, botão upload, previews, converter para base64, enviar no payload, exibir imagens nas mensagens |
+| `supabase/functions/ia-w3/index.ts` | Receber campo `images`, montar mensagem multimodal com `image_url`, limitar a 3 imagens |
 
