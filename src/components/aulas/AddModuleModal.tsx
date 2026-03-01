@@ -3,17 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { CoverUpload } from "./CoverUpload";
 
 interface AddModuleModalProps {
   isOpen: boolean;
@@ -22,10 +18,8 @@ interface AddModuleModalProps {
 }
 
 export function AddModuleModal({ isOpen, onClose, onSuccess }: AddModuleModalProps) {
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-  });
+  const [formData, setFormData] = useState({ title: "", description: "" });
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -34,7 +28,6 @@ export function AddModuleModal({ isOpen, onClose, onSuccess }: AddModuleModalPro
     setSaving(true);
 
     try {
-      // Get the next order number
       const { data: modules } = await supabase
         .from("course_modules")
         .select("order")
@@ -47,25 +40,19 @@ export function AddModuleModal({ isOpen, onClose, onSuccess }: AddModuleModalPro
         title: formData.title.trim(),
         description: formData.description.trim() || null,
         order: nextOrder,
-      });
+        cover_url: coverUrl,
+      } as any);
 
       if (error) throw error;
 
-      toast({
-        title: "✅ Módulo criado!",
-        description: "O novo módulo foi adicionado com sucesso.",
-      });
-
+      toast({ title: "✅ Módulo criado!", description: "O novo módulo foi adicionado com sucesso." });
       setFormData({ title: "", description: "" });
+      setCoverUrl(null);
       onSuccess();
       onClose();
     } catch (error) {
       console.error("Erro ao criar módulo:", error);
-      toast({
-        title: "❌ Erro",
-        description: "Não foi possível criar o módulo.",
-        variant: "destructive",
-      });
+      toast({ title: "❌ Erro", description: "Não foi possível criar o módulo.", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -78,7 +65,6 @@ export function AddModuleModal({ isOpen, onClose, onSuccess }: AddModuleModalPro
           <DialogTitle>Adicionar Novo Módulo</DialogTitle>
           <DialogDescription>Crie um novo módulo para organizar suas aulas</DialogDescription>
         </DialogHeader>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="module-title">Título do Módulo *</Label>
@@ -90,7 +76,6 @@ export function AddModuleModal({ isOpen, onClose, onSuccess }: AddModuleModalPro
               required
             />
           </div>
-
           <div>
             <Label htmlFor="module-description">Descrição</Label>
             <Textarea
@@ -100,11 +85,9 @@ export function AddModuleModal({ isOpen, onClose, onSuccess }: AddModuleModalPro
               placeholder="Descrição breve do módulo"
             />
           </div>
-
+          <CoverUpload currentUrl={coverUrl} onUrlChange={setCoverUrl} />
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
+            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
             <Button type="submit" disabled={saving}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Criar Módulo
