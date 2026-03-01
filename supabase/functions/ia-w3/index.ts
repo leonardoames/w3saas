@@ -417,10 +417,10 @@ serve(async (req) => {
     console.log("Authenticated user:", userId);
     // ========== FIM AUTENTICAÇÃO ==========
 
-    const { userMessage, mode, chatHistory } = await req.json();
+    const { userMessage, mode, chatHistory, images } = await req.json();
 
-    if (!userMessage || typeof userMessage !== "string") {
-      return new Response(JSON.stringify({ error: "userMessage é obrigatório" }), {
+    if ((!userMessage || typeof userMessage !== "string") && (!images || !Array.isArray(images) || images.length === 0)) {
+      return new Response(JSON.stringify({ error: "userMessage ou images é obrigatório" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -479,16 +479,32 @@ serve(async (req) => {
     }
 
     // Build messages array with chat history
-    const messages: Array<{ role: string; content: string }> = [{ role: "system", content: systemPrompt }];
+    const messages: Array<{ role: string; content: any }> = [{ role: "system", content: systemPrompt }];
 
     // Add chat history if provided (last 10 turns)
     if (chatHistory && Array.isArray(chatHistory)) {
-      const recentHistory = chatHistory.slice(-20); // 10 turns = 20 messages
-      messages.push(...recentHistory);
+      const recentHistory = chatHistory.slice(-20);
+      for (const msg of recentHistory) {
+        // For history messages with images, just send the text part
+        messages.push({ role: msg.role, content: msg.content });
+      }
     }
 
-    // Add current user message
-    messages.push({ role: "user", content: userMessage });
+    // Add current user message (multimodal if images present)
+    const validImages = Array.isArray(images) ? images.slice(0, 3) : [];
+    if (validImages.length > 0) {
+      const contentParts: any[] = [];
+      if (userMessage) {
+        contentParts.push({ type: "text", text: userMessage });
+      }
+      for (const imgUrl of validImages) {
+        contentParts.push({ type: "image_url", image_url: { url: imgUrl } });
+      }
+      messages.push({ role: "user", content: contentParts });
+      console.log(`Multimodal message with ${validImages.length} image(s)`);
+    } else {
+      messages.push({ role: "user", content: userMessage });
+    }
 
     console.log("Calling OpenAI with mode:", mode || "default");
     console.log("Messages count:", messages.length);
