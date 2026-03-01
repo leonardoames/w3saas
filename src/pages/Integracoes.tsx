@@ -55,12 +55,9 @@ const platforms: PlatformInfo[] = [
     name: "Shopee",
     description: "Integre com a Shopee para acompanhar vendas, métricas e gastos com Shopee Ads.",
     color: "bg-orange-500",
-    fields: [
-      { key: "partner_id", label: "Partner ID", placeholder: "Seu Partner ID" },
-      { key: "partner_key", label: "Partner Key", placeholder: "Sua Partner Key", type: "password" },
-      { key: "shop_id", label: "Shop ID", placeholder: "ID da sua loja" },
-    ],
+    fields: [],
     docsUrl: "https://open.shopee.com/documents",
+    oauth: true,
   },
   {
     id: "mercado_livre",
@@ -183,27 +180,35 @@ export default function Integracoes() {
     if (!connectDialog || !user) return;
     setSaving(true);
 
-    // If this platform uses OAuth (Shopify), redirect to authorization
+    // If this platform uses OAuth, redirect to authorization
     if (connectDialog.oauth) {
       try {
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData?.session?.access_token;
 
-        const res = await supabase.functions.invoke("shopify-oauth?action=authorize", {
+        // Determine which edge function to call based on platform
+        const oauthFunction = connectDialog.id === "shopee"
+          ? "shopee-oauth?action=authorize"
+          : "shopify-oauth?action=authorize";
+
+        const body = connectDialog.id === "shopee"
+          ? {}
+          : {
+              client_id: formData.client_id,
+              client_secret: formData.client_secret,
+              shop_domain: formData.shop_domain,
+            };
+
+        const res = await supabase.functions.invoke(oauthFunction, {
           headers: { Authorization: `Bearer ${token}` },
-          body: {
-            client_id: formData.client_id,
-            client_secret: formData.client_secret,
-            shop_domain: formData.shop_domain,
-          },
+          body,
         });
 
         if (res.error) {
           toast({ title: "Erro", description: res.error.message, variant: "destructive" });
         } else if (res.data?.auth_url) {
-          // Redirect user to Shopify authorization
           window.location.href = res.data.auth_url;
-          return; // don't close dialog or reset state
+          return;
         }
       } catch (err: any) {
         toast({ title: "Erro", description: err.message, variant: "destructive" });
@@ -259,6 +264,16 @@ export default function Integracoes() {
   };
 
   const openConnectDialog = (platform: PlatformInfo) => {
+    // For OAuth platforms with no fields, trigger OAuth directly
+    if (platform.oauth && platform.fields.length === 0) {
+      setConnectDialog(platform);
+      // Trigger handleConnect immediately after state update
+      setTimeout(() => {
+        handleConnectOAuth(platform);
+      }, 0);
+      return;
+    }
+
     const existing = integrations[platform.id];
     if (existing?.credentials) {
       const creds: Record<string, string> = {};
@@ -268,6 +283,35 @@ export default function Integracoes() {
       setFormData({});
     }
     setConnectDialog(platform);
+  };
+
+  const handleConnectOAuth = async (platform: PlatformInfo) => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      const oauthFunction = platform.id === "shopee"
+        ? "shopee-oauth?action=authorize"
+        : "shopify-oauth?action=authorize";
+
+      const res = await supabase.functions.invoke(oauthFunction, {
+        headers: { Authorization: `Bearer ${token}` },
+        body: {},
+      });
+
+      if (res.error) {
+        toast({ title: "Erro", description: res.error.message, variant: "destructive" });
+      } else if (res.data?.auth_url) {
+        window.location.href = res.data.auth_url;
+        return;
+      }
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    }
+    setSaving(false);
+    setConnectDialog(null);
   };
 
   const isConnected = (platformId: string) => {
