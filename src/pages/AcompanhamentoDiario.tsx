@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Upload, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -10,6 +11,7 @@ import { PeriodFilter } from "@/components/dashboard/PeriodFilter";
 import { DailyResultsTable, DailyResult } from "@/components/acompanhamento/DailyResultsTable";
 import { DailyResultModal, DailyResultFormData } from "@/components/acompanhamento/DailyResultModal";
 import { ImportPreviewDialog, ImportRow } from "@/components/acompanhamento/ImportPreviewDialog";
+import { MetricsSessionsTable, MetricRow } from "@/components/acompanhamento/MetricsSessionsTable";
 
 const emptyForm: DailyResultFormData = {
   data: format(new Date(), "yyyy-MM-dd"),
@@ -99,6 +101,9 @@ export default function AcompanhamentoDiario() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ created: number; updated: number } | null>(null);
 
+  // Metrics from integrations
+  const [metricsData, setMetricsData] = useState<MetricRow[]>([]);
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
@@ -108,17 +113,39 @@ export default function AcompanhamentoDiario() {
 
   const loadData = useCallback(async () => {
     if (!user) return;
-    const { data, error } = await supabase
-      .from("daily_results" as any)
-      .select("*")
-      .eq("user_id", user.id)
-      .order("data", { ascending: false });
-    if (!error && data) setAllData(data as any);
+    const [dailyRes, metricsRes] = await Promise.all([
+      supabase
+        .from("daily_results" as any)
+        .select("*")
+        .eq("user_id", user.id)
+        .order("data", { ascending: false }),
+      supabase
+        .from("metrics_diarias")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("data", { ascending: false }),
+    ]);
+    if (!dailyRes.error && dailyRes.data) setAllData(dailyRes.data as any);
+    if (!metricsRes.error && metricsRes.data) setMetricsData(metricsRes.data as any);
   }, [user]);
 
   useEffect(() => {
     if (user) loadData();
   }, [user, loadData]);
+
+  const handleUpdateSessions = async (id: string, sessoes: number) => {
+    try {
+      const { error } = await supabase
+        .from("metrics_diarias")
+        .update({ sessoes })
+        .eq("id", id);
+      if (error) throw error;
+      toast({ title: "Sessões atualizadas!" });
+      setMetricsData(prev => prev.map(m => m.id === id ? { ...m, sessoes } : m));
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    }
+  };
 
   const handlePeriodChange = (period: string, start: Date, end: Date) => {
     setSelectedPeriod(period);
@@ -136,6 +163,14 @@ export default function AcompanhamentoDiario() {
     }
     return result;
   }, [allData, dateRange, searchDate]);
+
+  const filteredMetrics = useMemo(() => {
+    return metricsData.filter((d) => {
+      const date = parseISO(d.data);
+      if (!isValid(date)) return false;
+      return isWithinInterval(date, { start: dateRange.from, end: dateRange.to });
+    });
+  }, [metricsData, dateRange]);
 
   // Add/Edit
   const handleOpenAdd = () => {
@@ -290,10 +325,25 @@ export default function AcompanhamentoDiario() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
-          <DailyResultsTable data={filteredData} onEdit={handleEdit} onDelete={handleDelete} />
-        </div>
+        {/* Tabs: Manual + Integrações */}
+        <Tabs defaultValue="manual" className="space-y-4">
+          <TabsList className="bg-muted/50">
+            <TabsTrigger value="manual" className="text-xs">Dados Manuais</TabsTrigger>
+            <TabsTrigger value="integracoes" className="text-xs">
+              Integrações {filteredMetrics.length > 0 && `(${filteredMetrics.length})`}
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="manual">
+            <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
+              <DailyResultsTable data={filteredData} onEdit={handleEdit} onDelete={handleDelete} />
+            </div>
+          </TabsContent>
+          <TabsContent value="integracoes">
+            <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
+              <MetricsSessionsTable data={filteredMetrics} onUpdateSessions={handleUpdateSessions} />
+            </div>
+          </TabsContent>
+        </Tabs>
 
         {/* Modals */}
         <DailyResultModal
