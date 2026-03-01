@@ -1,19 +1,24 @@
 
 
-## Diagnóstico
+## Plano: Incluir CSS no modo Copy Site da IA W3
 
-O menu dropdown dos 3 pontos **não aparece** porque está preso dentro de um container com `overflow-x-auto` (linha 487). Em CSS, quando `overflow` é definido como `auto`/`hidden` em qualquer eixo, o browser força o outro eixo a também clipar conteúdo. Isso faz o dropdown ser cortado/invisível mesmo com `z-index` alto.
+O modo "Copy Site" (linhas 84-129 do `supabase/functions/ia-w3/index.ts`) já usa estilos inline (`style="..."`), mas o usuário quer que a IA também gere CSS mais completo -- com blocos `<style>`, animações, hover effects, media queries responsivas, etc.
 
-## Solução
+### Alteração
 
-1. **Remover `overflow-y-visible`** do container da tabela (não funciona junto com `overflow-x-auto`)
-2. **Usar `DropdownMenu` com `modal={false}` + portal** — já está `modal={false}`, mas o conteúdo precisa ser renderizado via portal (fora do container com overflow). Adicionar `forceMount` ou mover para fora do overflow container
-3. **Alternativa mais simples**: Remover `overflow-x-auto` do wrapper da tabela e usar `min-w-full` na tabela, ou usar CSS `position: fixed` no dropdown via `container` prop
+**Arquivo:** `supabase/functions/ia-w3/index.ts` (linhas 84-129)
 
-**Abordagem recomendada**: Adicionar `container={document.body}` (ou equivalente Radix `portal`) ao `DropdownMenuContent` para que o menu seja renderizado no body, escapando do overflow clipping. No Radix/shadcn, o `DropdownMenuContent` já usa portal por padrão, mas o `modal={false}` pode estar desabilitando isso. A solução é remover `modal={false}` ou garantir que o portal funcione.
+Atualizar o prompt do modo `copy-site` para:
 
-### Passos de implementação
+1. Instruir a IA a gerar um bloco `<style>` no topo do HTML com classes reutilizáveis, animações (hover em botões, transições suaves), media queries para responsividade
+2. Manter os estilos inline como fallback, mas priorizar classes CSS
+3. Incluir no template de exemplo: animações de CTA, efeitos hover, tipografia responsiva, e transições
+4. Adicionar `style` à lista de `ALLOWED_TAGS` no sanitizador DOMPurify do frontend (`src/pages/IAW3.tsx`, linha 144) para que o CSS não seja removido ao renderizar
 
-1. **`src/pages/admin/AdminUsers.tsx`**: Remover `modal={false}` do `<DropdownMenu>` (linha 528) para que o Radix use portal padrão e o dropdown escape do overflow container
-2. Se necessário, ajustar o `overflow` do container da tabela para não clipar
+### Resumo das edições
+
+| Arquivo | O que muda |
+|---|---|
+| `supabase/functions/ia-w3/index.ts` | Prompt do `copy-site` reescrito para incluir `<style>` com classes CSS, animações, hover, responsividade |
+| `src/pages/IAW3.tsx` | Adicionar `style` em `ALLOWED_TAGS` do DOMPurify |
 
