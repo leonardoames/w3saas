@@ -1,32 +1,31 @@
 
 
-## Plano: Preview maior com simulação de tela mobile
+## Plano: Corrigir preview quebrado do HTML
 
-### O que muda
+### Problema
 
-**Arquivo:** `src/components/ia-w3/HtmlPreviewMessage.tsx`
+O preview está cortando o conteúdo (botões, elementos) porque:
 
-1. Aumentar altura do iframe de `min-h-[400px]` para `min-h-[700px]`
-2. Adicionar toggle de viewport: **Desktop** (100% largura) e **Mobile** (375px centralizado, com borda de "device frame")
-3. No modo mobile, o iframe terá `width: 375px` e `max-height: 812px` (simulando iPhone), centralizado com uma borda arredondada estilo device frame
-4. Adicionar ícones `Monitor` e `Smartphone` do lucide-react nos botões de toggle
+1. **O container pai tem `max-w-[85%]` e `overflow` implícito** do `rounded-2xl` — a bolha de mensagem do assistente limita a largura e corta o conteúdo do iframe
+2. **O iframe não tem `border:0`** — pode adicionar bordas extras indesejadas
+3. **O `padding` do body do iframe (`16px`) pode estar cortando elementos** que usam `width:100%` com `box-sizing` incorreto
 
-### Visual
+### Solução
 
-```text
-┌──────────────────────────────────────────────┐
-│ [👁 Preview] [</> Código]   [🖥 Desktop] [📱 Mobile]   [Copiar] │
-├──────────────────────────────────────────────┤
-│                                              │
-│   Desktop: iframe 100% width, 700px height   │
-│   Mobile:  iframe 375px centered, device frame│
-│                                              │
-└──────────────────────────────────────────────┘
-```
+**Arquivo:** `src/pages/IAW3.tsx` (linhas 252-258)
 
-### Edição
+- Quando a mensagem contém HTML (renderiza `HtmlPreviewMessage`), remover o `max-w-[85%]` e usar `max-w-full w-full` para que o preview ocupe toda a largura disponível
+- Remover o `px-4 py-3` padding da bolha para HTML, pois o componente já tem seu próprio layout
+
+**Arquivo:** `src/components/ia-w3/HtmlPreviewMessage.tsx` (linha 30)
+
+- Adicionar `box-sizing:border-box; overflow-x:hidden;` ao estilo base do body do iframe e `*{box-sizing:border-box;}` para garantir que todos os elementos respeitem a largura
+- Adicionar `border:0` ao iframe para evitar bordas extras
+
+### Edições
 
 | Arquivo | Mudança |
 |---|---|
-| `src/components/ia-w3/HtmlPreviewMessage.tsx` | Adicionar estado `device`, toggle Desktop/Mobile, iframe maior, simulação de tela mobile com 375px centralizado |
+| `src/pages/IAW3.tsx` | Condicionar classes da bolha: se for HTML, usar `w-full max-w-full p-0` em vez de `max-w-[85%] px-4 py-3` |
+| `src/components/ia-w3/HtmlPreviewMessage.tsx` | Adicionar `*{box-sizing:border-box}` e `overflow-x:hidden` no CSS base do iframe; adicionar `border:0` e `style={{border:'none'}}` no elemento iframe |
 
