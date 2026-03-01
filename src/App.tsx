@@ -13,6 +13,7 @@ import Landing from "./pages/Landing";
 import Checkout from "./pages/Checkout";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import AcessoBloqueado from "./pages/AcessoBloqueado";
 
 // App pages
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/checkout/sucesso" element={<CheckoutSuccess />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/acesso-bloqueado" element={<AcessoBloqueado />} />
 
               {/* Protected app routes */}
