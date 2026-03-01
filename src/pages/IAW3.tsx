@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Sparkles, Copy, Loader2, FileText, ShoppingBag, Search, BarChart3, Megaphone, Video, Plus, Mic, Send, X, Trash2 } from "lucide-react";
+import { Sparkles, Copy, Loader2, FileText, ShoppingBag, Search, BarChart3, Megaphone, Video, Plus, Mic, Send, X, Trash2, ImagePlus } from "lucide-react";
 import HtmlPreviewMessage, { hasHtmlContent } from "@/components/ia-w3/HtmlPreviewMessage";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  images?: string[];
 }
 
 interface Mode {
@@ -40,8 +41,10 @@ export default function IAW3() {
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
+  const [attachedImages, setAttachedImages] = useState<{ file: File; preview: string }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   // Auto-scroll to bottom when new messages arrive
@@ -57,10 +60,59 @@ export default function IAW3() {
     }
   }, [prompt]);
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const currentCount = attachedImages.length;
+    const remaining = 3 - currentCount;
+    if (remaining <= 0) {
+      toast({ title: "Limite atingido", description: "Máximo de 3 imagens por mensagem", variant: "destructive" });
+      return;
+    }
+
+    const validFiles = files.slice(0, remaining).filter(f => {
+      if (!f.type.startsWith("image/")) {
+        toast({ title: "Arquivo inválido", description: `${f.name} não é uma imagem`, variant: "destructive" });
+        return false;
+      }
+      if (f.size > 5 * 1024 * 1024) {
+        toast({ title: "Arquivo muito grande", description: `${f.name} excede 5MB`, variant: "destructive" });
+        return false;
+      }
+      return true;
+    });
+
+    const newImages = validFiles.map(file => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+    setAttachedImages(prev => [...prev, ...newImages]);
+
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  };
+
+  const removeImage = (index: number) => {
+    setAttachedImages(prev => {
+      const removed = prev[index];
+      if (removed) URL.revokeObjectURL(removed.preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
   const handleGenerate = async (customPrompt?: string) => {
     const messageToSend = customPrompt || prompt;
     
-    if (!messageToSend.trim()) {
+    if (!messageToSend.trim() && attachedImages.length === 0) {
       toast({
         title: "Campo vazio",
         description: "Por favor, descreva o que você precisa",
@@ -72,18 +124,38 @@ export default function IAW3() {
     setIsGenerating(true);
     setFollowUpQuestions([]);
 
+    // Convert images to base64
+    let imageBase64s: string[] = [];
+    if (attachedImages.length > 0) {
+      try {
+        imageBase64s = await Promise.all(attachedImages.map(img => fileToBase64(img.file)));
+      } catch {
+        toast({ title: "Erro", description: "Falha ao processar imagens", variant: "destructive" });
+        setIsGenerating(false);
+        return;
+      }
+    }
+
     // Add user message to history immediately
-    const newUserMessage: ChatMessage = { role: "user", content: messageToSend };
+    const newUserMessage: ChatMessage = {
+      role: "user",
+      content: messageToSend || (imageBase64s.length > 0 ? "Analise esta(s) imagem(ns)" : ""),
+      images: imageBase64s.length > 0 ? imageBase64s : undefined,
+    };
     const updatedHistory = [...chatHistory, newUserMessage];
     setChatHistory(updatedHistory);
     setPrompt("");
+    // Clean up previews
+    attachedImages.forEach(img => URL.revokeObjectURL(img.preview));
+    setAttachedImages([]);
 
     try {
       const { data, error } = await supabase.functions.invoke("ia-w3", {
         body: {
-          userMessage: messageToSend,
+          userMessage: newUserMessage.content,
           mode: selectedMode,
-          chatHistory: chatHistory, // Send previous history, not including current message
+          chatHistory: chatHistory,
+          images: imageBase64s.length > 0 ? imageBase64s : undefined,
         },
       });
 
@@ -259,8 +331,22 @@ export default function IAW3() {
                         : "max-w-[85%] px-4 py-3 bg-muted/50"
                   )}
                 >
-                  {message.role === "user" ? (
-                    <p className="whitespace-pre-wrap">{message.content}</p>
+                {message.role === "user" ? (
+                    <div>
+                      {message.images && message.images.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {message.images.map((img, imgIdx) => (
+                            <img
+                              key={imgIdx}
+                              src={img}
+                              alt={`Anexo ${imgIdx + 1}`}
+                              className="w-20 h-20 object-cover rounded-lg border border-primary-foreground/20"
+                            />
+                          ))}
+                        </div>
+                      )}
+                      <p className="whitespace-pre-wrap">{message.content}</p>
+                    </div>
                   ) : hasHtmlContent(message.content) ? (
                     <HtmlPreviewMessage content={message.content} />
                   ) : (
@@ -323,6 +409,27 @@ export default function IAW3() {
       {/* Input area - fixed at bottom */}
       <div className="border-t border-border/50 bg-background px-4 py-4">
         <div className="max-w-5xl mx-auto">
+          {/* Image previews above input */}
+          {attachedImages.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {attachedImages.map((img, idx) => (
+                <div key={idx} className="relative group">
+                  <img
+                    src={img.preview}
+                    alt={`Preview ${idx + 1}`}
+                    className="w-16 h-16 object-cover rounded-lg border border-border"
+                  />
+                  <button
+                    onClick={() => removeImage(idx)}
+                    className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="relative flex items-end gap-2 rounded-2xl bg-muted/50 border border-border/50 px-3 py-2">
             {/* Plus menu for modes */}
             <DropdownMenu>
@@ -370,6 +477,25 @@ export default function IAW3() {
               disabled={isGenerating}
             />
 
+            {/* Image upload button */}
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleImageSelect}
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0 rounded-full hover:bg-muted text-muted-foreground"
+              disabled={isGenerating}
+              onClick={() => imageInputRef.current?.click()}
+            >
+              <ImagePlus className="h-5 w-5" />
+            </Button>
+
             {/* Audio button */}
             <Button
               variant="ghost"
@@ -388,7 +514,7 @@ export default function IAW3() {
                 "h-9 w-9 shrink-0 rounded-full transition-colors",
                 prompt.trim() ? "bg-primary hover:bg-primary/90" : "bg-muted text-muted-foreground"
               )}
-              disabled={isGenerating || !prompt.trim()}
+              disabled={isGenerating || (!prompt.trim() && attachedImages.length === 0)}
               onClick={() => handleGenerate()}
             >
               {isGenerating ? (
