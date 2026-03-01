@@ -2,7 +2,7 @@ import { SidebarNavLink } from "./SidebarNavLink";
 import {
   LayoutDashboard, GraduationCap, ListChecks, Calculator, GitCompare,
   Sparkles, Brain, Store, ShoppingBag, CalendarDays, ChevronLeft,
-  ChevronRight, X, Shield, Plug, ChevronDown, BarChart3,
+  ChevronRight, X, Shield, Plug, ChevronDown, BarChart3, Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,6 +17,7 @@ interface MenuItem {
   title: string;
   icon: LucideIcon;
   path: string;
+  adminOnly?: boolean;
 }
 
 interface MenuGroup {
@@ -34,6 +35,7 @@ const menuGroups: MenuGroup[] = [
       { title: "Acompanhamento Diário", icon: BarChart3, path: "/app/acompanhamento" },
       { title: "Plano de Ação", icon: ListChecks, path: "/app/plano-acao" },
       { title: "Integrações", icon: Plug, path: "/app/integracoes" },
+      { title: "Dash Admin", icon: Activity, path: "/app/dash-admin", adminOnly: true },
     ],
   },
   {
@@ -86,12 +88,18 @@ function SidebarGroup({
   group,
   pathname,
   onNavClick,
+  isAdmin,
 }: {
   group: MenuGroup;
   pathname: string;
   onNavClick?: () => void;
+  isAdmin?: boolean;
 }) {
-  const active = isGroupActive(group, pathname);
+  const visibleItems = group.items.filter((item) => !item.adminOnly || isAdmin);
+  if (visibleItems.length === 0) return null;
+  const active = visibleItems.some(
+    (item) => item.path === "/app" ? pathname === "/app" : pathname.startsWith(item.path)
+  );
   const GroupIcon = group.icon;
 
   return (
@@ -103,7 +111,7 @@ function SidebarGroup({
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="ml-6 space-y-0.5 py-1 border-l border-border/40">
-          {group.items.map((item) => (
+          {visibleItems.map((item) => (
             <SidebarNavLink
               key={item.path}
               to={item.path}
@@ -155,7 +163,7 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
   const renderExpandedNav = (onNav?: () => void) => (
     <>
       {allGroups.map((group) => (
-        <SidebarGroup key={group.title} group={group} pathname={location.pathname} onNavClick={onNav} />
+        <SidebarGroup key={group.title} group={group} pathname={location.pathname} onNavClick={onNav} isAdmin={isAdmin} />
       ))}
 
       {/* Standalone: IA W3 */}
@@ -173,7 +181,7 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
 
   // Collapsed: show only icons with tooltips (flat list)
   const allItemsFlat: MenuItem[] = [
-    ...allGroups.flatMap((g) => g.items),
+    ...allGroups.flatMap((g) => g.items).filter((item) => !item.adminOnly || isAdmin),
     ...standaloneItems,
   ];
 

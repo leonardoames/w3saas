@@ -33,6 +33,7 @@ import Produtos from "./pages/Produtos";
 import CalendarioComercial from "./pages/CalendarioComercial";
 import Integracoes from "./pages/Integracoes";
 import ShopifyCallback from "./pages/ShopifyCallback";
+import DashAdmin from "./pages/DashAdmin";
 
 // Admin pages
 import AdminUsers from "./pages/admin/AdminUsers";
@@ -81,6 +82,7 @@ const App = () => (
                         <Route path="/catalogo" element={<Catalogo />} />
                         <Route path="/produtos" element={<Produtos />} />
                         <Route path="/calendario" element={<CalendarioComercial />} />
+                        <Route path="/dash-admin" element={<DashAdmin />} />
                         <Route path="/integracoes" element={<Integracoes />} />
                         <Route path="/integracoes/shopify/callback" element={<ShopifyCallback />} />
                         <Route path="*" element={<NotFound />} />
