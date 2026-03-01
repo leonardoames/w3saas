@@ -165,7 +165,7 @@ export default function Integracoes() {
   const fetchIntegrations = async () => {
     const { data, error } = await supabase
       .from("user_integrations" as any)
-      .select("*")
+      .select("id, user_id, platform, is_active, sync_status, last_sync_at, created_at, updated_at")
       .eq("user_id", user!.id);
 
     if (!error && data) {
@@ -274,14 +274,8 @@ export default function Integracoes() {
       return;
     }
 
-    const existing = integrations[platform.id];
-    if (existing?.credentials) {
-      const creds: Record<string, string> = {};
-      platform.fields.forEach((f) => (creds[f.key] = existing.credentials[f.key] || ""));
-      setFormData(creds);
-    } else {
-      setFormData({});
-    }
+    // Never pre-fill credentials from existing data — credentials are write-only
+    setFormData({});
     setConnectDialog(platform);
   };
 
