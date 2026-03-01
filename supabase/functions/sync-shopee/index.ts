@@ -282,11 +282,22 @@ Deno.serve(async (req) => {
         // Use pay_time (payment confirmed) instead of create_time
         const timestamp = order.pay_time || order.create_time;
         const dateObj = new Date(timestamp * 1000);
-        const dateStr = dateObj.toISOString().split("T")[0];
+        // Use local date components to avoid UTC timezone shift
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+        const day = String(dateObj.getDate()).padStart(2, "0");
+        const dateStr = `${year}-${month}-${day}`;
 
-        // Use escrow_amount (net seller revenue) with fallback to total_amount
-        const faturamento = parseFloat(order.escrow_amount || order.total_amount || "0");
-        const vendasValor = parseFloat(order.total_amount || order.escrow_amount || "0");
+        // Use total_amount (gross) as faturamento, escrow_amount as net reference
+        const totalAmount = typeof order.total_amount === "string"
+          ? parseFloat(order.total_amount)
+          : Number(order.total_amount || 0);
+        const escrowAmount = typeof order.escrow_amount === "string"
+          ? parseFloat(order.escrow_amount)
+          : Number(order.escrow_amount || 0);
+
+        const faturamento = totalAmount || escrowAmount || 0;
+        const vendasValor = totalAmount || escrowAmount || 0;
 
         if (!dailyMap[dateStr]) {
           dailyMap[dateStr] = { faturamento: 0, vendas_quantidade: 0, vendas_valor: 0 };
