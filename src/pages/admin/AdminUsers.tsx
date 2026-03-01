@@ -8,14 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -107,6 +99,7 @@ export default function AdminUsers() {
   const [editedName, setEditedName] = useState("");
 
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; user: UserProfile | null }>({ open: false, user: null });
+  const [actionsDialog, setActionsDialog] = useState<{ open: boolean; user: UserProfile | null }>({ open: false, user: null });
 
   // Suspend confirmation dialog
   const [suspendDialog, setSuspendDialog] = useState<{ open: boolean; user: UserProfile | null; action: "active" | "suspended" }>({ open: false, user: null, action: "suspended" });
@@ -525,85 +518,15 @@ export default function AdminUsers() {
                           {user.last_login_at ? format(new Date(user.last_login_at), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "-"}
                         </TableCell>
                         <TableCell className="relative">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Abrir menu</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 z-[100] bg-popover border shadow-lg" sideOffset={5}>
-                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-
-                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setEditNameDialog({ open: true, user }); setEditedName(user.full_name || ""); }}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Editar nome
-                              </DropdownMenuItem>
-
-                              {user.access_status === "suspended" ? (
-                                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setSuspendDialog({ open: true, user, action: "active" }); }}>
-                                  <Check className="mr-2 h-4 w-4" />
-                                  Liberar acesso
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setSuspendDialog({ open: true, user, action: "suspended" }); }}>
-                                  <UserX className="mr-2 h-4 w-4" />
-                                  Suspender acesso
-                                </DropdownMenuItem>
-                              )}
-
-                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setResetPasswordDialog({ open: true, user }); setTempPassword(""); }}>
-                                <Key className="mr-2 h-4 w-4" />
-                                Resetar senha
-                              </DropdownMenuItem>
-
-                              <DropdownMenuSeparator />
-
-                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setPlanDialog({ open: true, user }); setSelectedPlan(user.plan_type); }}>
-                                <CreditCard className="mr-2 h-4 w-4" />
-                                Alterar plano
-                              </DropdownMenuItem>
-
-                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setExpirationDialog({ open: true, user }); setExpirationDate(user.access_expires_at?.split("T")[0] || ""); }}>
-                                <Calendar className="mr-2 h-4 w-4" />
-                                Definir expiração
-                              </DropdownMenuItem>
-
-                              <DropdownMenuSeparator />
-
-                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setPlanoUser(user); }}>
-                                <ClipboardList className="mr-2 h-4 w-4" />
-                                Plano de Ação
-                              </DropdownMenuItem>
-
-                              <DropdownMenuSeparator />
-
-                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); updateUserRole(user.user_id, !user.isAdmin); }}>
-                                <Shield className="mr-2 h-4 w-4" />
-                                {user.isAdmin ? "Remover admin" : "Tornar admin"}
-                              </DropdownMenuItem>
-
-                              <DropdownMenuSeparator />
-
-                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); updateUserFlag(user.user_id, "is_mentorado", !user.is_mentorado); }}>
-                                <Crown className="mr-2 h-4 w-4" />
-                                {user.is_mentorado ? "Desmarcar Mentorado" : "Marcar como Mentorado"}
-                              </DropdownMenuItem>
-
-                              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); updateUserFlag(user.user_id, "is_w3_client", !user.is_w3_client); }}>
-                                <Users className="mr-2 h-4 w-4" />
-                                {user.is_w3_client ? "Desmarcar Cliente W3" : "Marcar como Cliente W3"}
-                              </DropdownMenuItem>
-
-                              <DropdownMenuSeparator />
-
-                              <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => { e.preventDefault(); setDeleteDialog({ open: true, user }); }}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Remover usuário
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => setActionsDialog({ open: true, user })}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Abrir menu</span>
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -614,6 +537,80 @@ export default function AdminUsers() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog
+        open={actionsDialog.open}
+        onOpenChange={(open) => setActionsDialog({ open, user: open ? actionsDialog.user : null })}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ações do usuário</DialogTitle>
+            <DialogDescription>
+              {actionsDialog.user?.email || "Selecione um usuário"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {actionsDialog.user && (
+            <div className="grid gap-1 py-2">
+              <Button variant="ghost" className="justify-start" onClick={() => { setEditNameDialog({ open: true, user: actionsDialog.user }); setEditedName(actionsDialog.user.full_name || ""); setActionsDialog({ open: false, user: null }); }}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Editar nome
+              </Button>
+
+              <Button variant="ghost" className="justify-start" onClick={() => { setSuspendDialog({ open: true, user: actionsDialog.user, action: actionsDialog.user.access_status === "suspended" ? "active" : "suspended" }); setActionsDialog({ open: false, user: null }); }}>
+                {actionsDialog.user.access_status === "suspended" ? <Check className="mr-2 h-4 w-4" /> : <UserX className="mr-2 h-4 w-4" />}
+                {actionsDialog.user.access_status === "suspended" ? "Liberar acesso" : "Suspender acesso"}
+              </Button>
+
+              <Button variant="ghost" className="justify-start" onClick={() => { setResetPasswordDialog({ open: true, user: actionsDialog.user }); setTempPassword(""); setActionsDialog({ open: false, user: null }); }}>
+                <Key className="mr-2 h-4 w-4" />
+                Resetar senha
+              </Button>
+
+              <div className="my-1 border-t border-border" />
+
+              <Button variant="ghost" className="justify-start" onClick={() => { setPlanDialog({ open: true, user: actionsDialog.user }); setSelectedPlan(actionsDialog.user.plan_type); setActionsDialog({ open: false, user: null }); }}>
+                <CreditCard className="mr-2 h-4 w-4" />
+                Alterar plano
+              </Button>
+
+              <Button variant="ghost" className="justify-start" onClick={() => { setExpirationDialog({ open: true, user: actionsDialog.user }); setExpirationDate(actionsDialog.user.access_expires_at?.split("T")[0] || ""); setActionsDialog({ open: false, user: null }); }}>
+                <Calendar className="mr-2 h-4 w-4" />
+                Definir expiração
+              </Button>
+
+              <div className="my-1 border-t border-border" />
+
+              <Button variant="ghost" className="justify-start" onClick={() => { setPlanoUser(actionsDialog.user); setActionsDialog({ open: false, user: null }); }}>
+                <ClipboardList className="mr-2 h-4 w-4" />
+                Plano de Ação
+              </Button>
+
+              <Button variant="ghost" className="justify-start" onClick={() => { updateUserRole(actionsDialog.user.user_id, !actionsDialog.user.isAdmin); setActionsDialog({ open: false, user: null }); }}>
+                <Shield className="mr-2 h-4 w-4" />
+                {actionsDialog.user.isAdmin ? "Remover admin" : "Tornar admin"}
+              </Button>
+
+              <Button variant="ghost" className="justify-start" onClick={() => { updateUserFlag(actionsDialog.user.user_id, "is_mentorado", !actionsDialog.user.is_mentorado); setActionsDialog({ open: false, user: null }); }}>
+                <Crown className="mr-2 h-4 w-4" />
+                {actionsDialog.user.is_mentorado ? "Desmarcar Mentorado" : "Marcar como Mentorado"}
+              </Button>
+
+              <Button variant="ghost" className="justify-start" onClick={() => { updateUserFlag(actionsDialog.user.user_id, "is_w3_client", !actionsDialog.user.is_w3_client); setActionsDialog({ open: false, user: null }); }}>
+                <Users className="mr-2 h-4 w-4" />
+                {actionsDialog.user.is_w3_client ? "Desmarcar Cliente W3" : "Marcar como Cliente W3"}
+              </Button>
+
+              <div className="my-1 border-t border-border" />
+
+              <Button variant="ghost" className="justify-start text-destructive hover:text-destructive" onClick={() => { setDeleteDialog({ open: true, user: actionsDialog.user }); setActionsDialog({ open: false, user: null }); }}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Remover usuário
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog Plano */}
       <Dialog open={planDialog.open} onOpenChange={(open) => { setPlanDialog({ open, user: open ? planDialog.user : null }); if (!open) setSelectedPlan(""); }}>
