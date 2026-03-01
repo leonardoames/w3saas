@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Eye, Code, Copy } from "lucide-react";
+import { Eye, Code, Copy, Monitor, Smartphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +19,7 @@ export function hasHtmlContent(html: string): boolean {
 
 export default function HtmlPreviewMessage({ content }: HtmlPreviewMessageProps) {
   const [view, setView] = useState<"preview" | "code">("preview");
+  const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const { toast } = useToast();
 
   const handleCopy = () => {
@@ -31,7 +32,7 @@ export default function HtmlPreviewMessage({ content }: HtmlPreviewMessageProps)
   return (
     <div className="w-full">
       {/* Toggle bar */}
-      <div className="flex items-center gap-1 mb-2">
+      <div className="flex items-center gap-1 mb-2 flex-wrap">
         <button
           onClick={() => setView("preview")}
           className={cn(
@@ -56,6 +57,38 @@ export default function HtmlPreviewMessage({ content }: HtmlPreviewMessageProps)
           <Code className="h-3.5 w-3.5" />
           Código
         </button>
+
+        {/* Viewport toggle - only visible in preview mode */}
+        {view === "preview" && (
+          <>
+            <div className="w-px h-5 bg-border mx-1" />
+            <button
+              onClick={() => setDevice("desktop")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                device === "desktop"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted/80 text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Monitor className="h-3.5 w-3.5" />
+              Desktop
+            </button>
+            <button
+              onClick={() => setDevice("mobile")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                device === "mobile"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted/80 text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Smartphone className="h-3.5 w-3.5" />
+              Mobile
+            </button>
+          </>
+        )}
+
         <Button
           variant="ghost"
           size="sm"
@@ -69,13 +102,33 @@ export default function HtmlPreviewMessage({ content }: HtmlPreviewMessageProps)
 
       {/* Content */}
       {view === "preview" ? (
-        <iframe
-          srcDoc={iframeDoc}
-          sandbox="allow-scripts"
-          className="w-full min-h-[400px] rounded-lg border border-border/50 bg-white"
-          style={{ colorScheme: "light" }}
-          title="Preview HTML"
-        />
+        <div className={cn(
+          "flex justify-center rounded-lg border border-border/50 bg-muted/30 p-4",
+          device === "mobile" && "py-6"
+        )}>
+          <div className={cn(
+            device === "mobile" && "border-[10px] border-foreground/80 rounded-[2.5rem] shadow-xl overflow-hidden bg-white",
+            device === "desktop" && "w-full"
+          )}>
+            {/* Mobile notch */}
+            {device === "mobile" && (
+              <div className="bg-foreground/80 flex justify-center py-1">
+                <div className="w-20 h-5 bg-black rounded-b-xl" />
+              </div>
+            )}
+            <iframe
+              srcDoc={iframeDoc}
+              sandbox="allow-scripts"
+              className={cn(
+                "bg-white",
+                device === "desktop" && "w-full min-h-[700px]",
+                device === "mobile" && "w-[375px] h-[700px]"
+              )}
+              style={{ colorScheme: "light" }}
+              title="Preview HTML"
+            />
+          </div>
+        </div>
       ) : (
         <pre className="overflow-x-auto rounded-lg bg-muted/80 border border-border/50 p-4 text-xs leading-relaxed max-h-[500px] overflow-y-auto">
           <code className="text-foreground whitespace-pre-wrap break-words">{content}</code>
