@@ -82,50 +82,86 @@ Regra final
 // ==================================================================================
 const MODE_INSTRUCTIONS: Record<string, string> = {
   "copy-site": `
-MODO: Copywriting Premium para E-commerce (Landing Page High-End)
+MODO: Copywriting Premium para E-commerce (Landing Page High-End com CSS Completo)
 
-OBJETIVO: Criar uma estrutura de página de vendas visualmente impressionante e focada em conversão, usando HTML e CSS Inline moderno.
+OBJETIVO: Criar uma estrutura de página de vendas visualmente impressionante e focada em conversão, usando HTML com bloco <style> CSS completo (animações, hover, responsividade) + estilos inline como fallback.
 
 INSTRUÇÕES DE DESIGN E CONTEÚDO:
 Gere um código HTML que possa ser renderizado diretamente, contendo:
-1. **Estilo Inline (CSS):** Use divs com \`style="..."\` para criar cards com sombra suave, botões de CTA pulsantes e tipografia hierárquica.
-2. **Estrutura:** - Hero Section (Headline + Subheadline + CTA).
-   - Grid de Benefícios (Ícones + Títulos curtos).
-   - Prova Social (Simulação de reviews).
-   - Tabela Técnica (Zebrada).
-   - FAQ (Perguntas de objeção).
+1. **Bloco <style> no topo:** OBRIGATÓRIO. Inclua classes CSS reutilizáveis com:
+   - Animações (@keyframes) para CTA pulsante e fade-in de seções
+   - Efeitos :hover em botões (escala, sombra, cor)
+   - Transições suaves (transition) em cards e links
+   - Media queries (@media) para responsividade mobile (max-width: 768px e 480px)
+   - Tipografia responsiva com clamp() ou media queries
+2. **Estilos Inline como fallback:** Mantenha style="..." nos elementos principais para garantir renderização mesmo sem suporte a <style>.
+3. **Estrutura:** 
+   - Hero Section (Headline + Subheadline + CTA animado)
+   - Grid de Benefícios (Cards com hover effect)
+   - Prova Social (Reviews com estrelas)
+   - Tabela Técnica (Zebrada com hover nas linhas)
+   - FAQ (Perguntas de objeção)
+   - CTA Final com urgência
 
-FORMATO DE SAÍDA OBRIGATÓRIO (HTML):
-<div style="font-family: 'Segoe UI', system-ui, sans-serif; max-width: 800px; margin: 0 auto; color: #333; line-height: 1.6;">
-  <div style="text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #f9f9f9 0%, #e3e3e3 100%); border-radius: 12px; margin-bottom: 30px;">
-    <h1 style="color: #e65100; margin-bottom: 10px; font-size: 2.2rem;">[Headline de Alto Impacto]</h1>
+FORMATO DE SAÍDA OBRIGATÓRIO (HTML com CSS):
+<style>
+  .w3-page { font-family: 'Segoe UI', system-ui, sans-serif; max-width: 800px; margin: 0 auto; color: #333; line-height: 1.7; }
+  @keyframes w3-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  @keyframes w3-fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .w3-hero { text-align: center; padding: 50px 20px; background: linear-gradient(135deg, #fff5f0 0%, #ffe0cc 100%); border-radius: 16px; margin-bottom: 30px; animation: w3-fadeIn 0.8s ease-out; }
+  .w3-hero h1 { color: #e65100; font-size: clamp(1.8rem, 4vw, 2.5rem); margin-bottom: 12px; font-weight: 800; }
+  .w3-hero p { font-size: clamp(1rem, 2vw, 1.15rem); color: #555; max-width: 600px; margin: 0 auto; }
+  .w3-cta { display: inline-block; background: linear-gradient(135deg, #e65100, #ff6d00); color: white; padding: 16px 36px; border: none; border-radius: 50px; font-weight: 700; font-size: 1.05rem; cursor: pointer; margin-top: 24px; box-shadow: 0 6px 20px rgba(230, 81, 0, 0.35); animation: w3-pulse 2s infinite; transition: all 0.3s ease; text-decoration: none; }
+  .w3-cta:hover { transform: scale(1.07); box-shadow: 0 8px 28px rgba(230, 81, 0, 0.5); background: linear-gradient(135deg, #ff6d00, #e65100); }
+  .w3-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 40px; }
+  .w3-card { padding: 24px; border: 1px solid #f0f0f0; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: transform 0.3s ease, box-shadow 0.3s ease; animation: w3-fadeIn 0.8s ease-out; }
+  .w3-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+  .w3-card h3 { color: #e65100; margin-bottom: 8px; }
+  .w3-section { margin-bottom: 40px; animation: w3-fadeIn 0.8s ease-out; }
+  .w3-table { width: 100%; border-collapse: collapse; }
+  .w3-table tr { border-bottom: 1px solid #eee; transition: background 0.2s ease; }
+  .w3-table tr:hover { background: #fff8f0; }
+  .w3-table tr:nth-child(even) { background: #fafafa; }
+  .w3-table td { padding: 12px 10px; }
+  .w3-guarantee { margin-top: 30px; padding: 20px; border-left: 4px solid #4CAF50; background: linear-gradient(90deg, #e8f5e9, #f1f8e9); border-radius: 0 8px 8px 0; }
+  @media (max-width: 768px) {
+    .w3-hero { padding: 30px 16px; }
+    .w3-grid { grid-template-columns: 1fr; }
+    .w3-cta { padding: 14px 28px; font-size: 0.95rem; width: 100%; }
+  }
+  @media (max-width: 480px) {
+    .w3-hero h1 { font-size: 1.5rem; }
+    .w3-card { padding: 16px; }
+  }
+</style>
+<div class="w3-page" style="font-family: 'Segoe UI', system-ui, sans-serif; max-width: 800px; margin: 0 auto; color: #333; line-height: 1.7;">
+  <div class="w3-hero" style="text-align: center; padding: 50px 20px; background: linear-gradient(135deg, #fff5f0, #ffe0cc); border-radius: 16px; margin-bottom: 30px;">
+    <h1 style="color: #e65100; font-size: 2.2rem;">[Headline de Alto Impacto]</h1>
     <p style="font-size: 1.1rem; color: #555;">[Subheadline que ataca a dor principal]</p>
-    <button style="background-color: #e65100; color: white; padding: 15px 30px; border: none; border-radius: 50px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 20px; box-shadow: 0 4px 6px rgba(230, 81, 0, 0.3);">COMPRAR AGORA ➔</button>
+    <a class="w3-cta" style="display: inline-block; background: #e65100; color: white; padding: 16px 36px; border: none; border-radius: 50px; font-weight: bold; margin-top: 24px;">COMPRAR AGORA ➔</a>
   </div>
-
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px;">
-    <div style="padding: 20px; border: 1px solid #eee; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-       <h3 style="color: #e65100;">✨ [Benefício 1]</h3>
+  <div class="w3-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 40px;">
+    <div class="w3-card" style="padding: 24px; border: 1px solid #eee; border-radius: 12px;">
+       <h3 style="color: #e65100;">✨ [Benefício]</h3>
        <p>[Descrição curta]</p>
     </div>
-    </div>
-
-  <div style="margin-bottom: 40px;">
-     <h2>Por que você precisa disso?</h2>
-     <p>[Texto focado na transformação do usuário, usando parágrafos curtos]</p>
   </div>
-
+  <div class="w3-section" style="margin-bottom: 40px;">
+     <h2>Por que você precisa disso?</h2>
+     <p>[Texto focado na transformação]</p>
+  </div>
   <div style="background: #f9f9f9; padding: 20px; border-radius: 8px;">
     <h3>📋 Ficha Técnica</h3>
-    <table style="width: 100%; border-collapse: collapse;">
+    <table class="w3-table" style="width: 100%; border-collapse: collapse;">
       <tr style="border-bottom: 1px solid #ddd;"><td style="padding: 10px; font-weight: bold;">Característica</td><td style="padding: 10px;">Valor</td></tr>
     </table>
   </div>
-  
-  <div style="margin-top: 30px; padding: 15px; border-left: 4px solid #4CAF50; background: #e8f5e9;">
+  <div class="w3-guarantee" style="margin-top: 30px; padding: 20px; border-left: 4px solid #4CAF50; background: #e8f5e9;">
     <p>🛡️ <strong>Garantia Blindada:</strong> [Texto de garantia]</p>
   </div>
 </div>
+
+IMPORTANTE: Sempre gere o bloco <style> ANTES do HTML. Use prefixo "w3-" nas classes para evitar conflitos. Inclua animações de hover, pulse no CTA, fade-in nas seções e media queries para mobile.
 `,
 
   "copy-marketplace": `
