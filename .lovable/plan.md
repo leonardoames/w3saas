@@ -1,59 +1,73 @@
 
 
-## Plano: Upload de imagens no chat da IA W3
+## Plano: Integração OAuth Shopee (fluxo profissional multi-usuário)
 
-### O que muda
+### Arquitetura
 
-O usuário poderá anexar imagens (fotos de produtos, screenshots de anúncios, prints de métricas) diretamente no chat. A IA analisará visualmente as imagens para fazer diagnósticos.
-
-### Implementação
-
-**1. Frontend (`src/pages/IAW3.tsx`)**
-
-- Adicionar estado `attachedImages: { file: File, preview: string }[]` para armazenar imagens selecionadas antes do envio
-- Adicionar botão de upload (ícone `ImagePlus`) ao lado do botão de áudio na barra de input
-- Input file hidden (`accept="image/*"`, `multiple`) acionado pelo botão
-- Exibir thumbnails das imagens anexadas acima do textarea (com botão X para remover)
-- Ao enviar, converter cada imagem para base64 (`FileReader.readAsDataURL`) e incluir no payload como `images: string[]`
-- Nas mensagens do usuário que contêm imagens, renderizar os thumbnails junto ao texto
-- Atualizar `ChatMessage` para incluir `images?: string[]`
-
-**2. Edge Function (`supabase/functions/ia-w3/index.ts`)**
-
-- Receber o novo campo `images: string[]` (array de data URLs base64) do body
-- Quando houver imagens, montar a mensagem do usuário no formato multimodal da OpenAI:
-  ```ts
-  {
-    role: "user",
-    content: [
-      { type: "text", text: userMessage },
-      { type: "image_url", image_url: { url: base64DataUrl } },
-      // ... mais imagens
-    ]
-  }
-  ```
-- O modelo `gpt-4.1-mini` já suporta visão, então não precisa trocar o modelo
-- Limitar a 3 imagens por mensagem para controlar tokens
-
-**3. Exibição no chat**
-
-- Mensagens do usuário com imagens: grid de thumbnails clicáveis acima do texto
-- Thumbnails com `object-cover`, `rounded-lg`, tamanho `80x80px`
-
-### Visual do input com imagens anexadas
+O fluxo segue o mesmo padrão já implementado para Shopify: Edge Function gera a URL assinada no backend, o usuário é redirecionado para a Shopee, e uma página de callback troca o `code` pelo `access_token`.
 
 ```text
-┌──────────────────────────────────────────────────┐
-│  [thumb1 ✕] [thumb2 ✕]                          │  ← previews
-├──────────────────────────────────────────────────┤
-│  [+]  Pergunte alguma coisa...  [📷] [🎤] [➤]   │  ← input bar
-└──────────────────────────────────────────────────┘
+┌─────────────┐     ┌──────────────────────┐     ┌─────────────────┐
+│  Frontend   │────→│  Edge Function       │────→│  Shopee API     │
+│  Botão      │     │  shopee-oauth        │     │  auth_partner   │
+│  Conectar   │     │  (HMAC-SHA256 sign)  │     │                 │
+└─────────────┘     └──────────────────────┘     └────────┬────────┘
+                                                          │ redirect
+                    ┌──────────────────────┐     ┌────────▼────────┐
+                    │  Edge Function       │←────│  Callback Page  │
+                    │  shopee-oauth?cb     │     │  /shopee/cb     │
+                    │  (token exchange)    │     └─────────────────┘
+                    └──────────────────────┘
 ```
+
+### Credenciais
+
+As chaves **Partner ID** e **Partner Key** (Live) serão armazenadas como secrets do backend — o lojista **não** precisa fornecê-las. Ele apenas clica "Conectar" e autoriza na Shopee.
+
+- `SHOPEE_PARTNER_ID` = `2030510`
+- `SHOPEE_PARTNER_KEY` = `shpk6f42506e76625259655a534154534e546741526f51676e6c465565446874`
 
 ### Edições
 
 | Arquivo | Mudança |
 |---|---|
-| `src/pages/IAW3.tsx` | Adicionar estado de imagens, botão upload, previews, converter para base64, enviar no payload, exibir imagens nas mensagens |
-| `supabase/functions/ia-w3/index.ts` | Receber campo `images`, montar mensagem multimodal com `image_url`, limitar a 3 imagens |
+| **Secrets** | Adicionar `SHOPEE_PARTNER_ID` e `SHOPEE_PARTNER_KEY` |
+| **`supabase/functions/shopee-oauth/index.ts`** | Nova Edge Function: action=`authorize` (gera HMAC-SHA256 sign + URL) e action=`callback` (troca code por access_token via `/api/v2/auth/token/get`) |
+| **`supabase/config.toml`** | Adicionar `[functions.shopee-oauth]` com `verify_jwt = false` |
+| **`src/pages/ShopeeCallback.tsx`** | Nova página de callback (mesmo padrão do ShopifyCallback) |
+| **`src/App.tsx`** | Adicionar rota `/app/integracoes/shopee/callback` |
+| **`src/pages/Integracoes.tsx`** | Mudar Shopee para `oauth: true`, remover campos manuais, e adaptar `handleConnect` para invocar `shopee-oauth?action=authorize` |
+
+### Detalhes da Edge Function `shopee-oauth`
+
+**action=authorize:**
+1. Valida JWT do usuário
+2. Calcula `timestamp` = `Math.floor(Date.now() / 1000)`
+3. `baseString` = `partnerId + apiPath + timestamp`
+4. `sign` = HMAC-SHA256(`partnerKey`, `baseString`).hex()
+5. Monta URL: `https://partner.shopeemobile.com/api/v2/shop/auth_partner?partner_id=...&timestamp=...&sign=...&redirect=...`
+6. Salva `user_id` + `nonce` no state (base64)
+7. Upsert `user_integrations` com `sync_status: "pending_oauth"`
+8. Retorna `{ auth_url }` para o frontend redirecionar
+
+**action=callback:**
+1. Recebe `code`, `shop_id`, `state` do frontend
+2. Decodifica state para obter `user_id`
+3. Calcula nova assinatura para `/api/v2/auth/token/get`
+4. POST para Shopee com `code`, `shop_id`, `partner_id`
+5. Recebe `access_token` + `refresh_token`
+6. Salva tokens em `user_integrations`, marca `is_active: true`, `sync_status: "connected"`
+
+### Mudança no Frontend (Integracoes.tsx)
+
+A Shopee passa de formulário manual para OAuth com um clique:
+- `oauth: true` na definição da plataforma
+- `fields: []` (sem campos para o lojista preencher)
+- No `handleConnect`, quando `platform.id === "shopee"`, invoca `shopee-oauth?action=authorize` e redireciona para a `auth_url` retornada
+
+### Redirect URL para cadastrar na Shopee
+
+`https://app.leonardoames.com.br/app/integracoes/shopee/callback`
+
+Esta URL precisa ser registrada no console da Shopee Open Platform como Auth Redirect URL.
 
