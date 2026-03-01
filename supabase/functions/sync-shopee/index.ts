@@ -264,7 +264,7 @@ Deno.serve(async (req) => {
         "/api/v2/order/get_order_detail",
         {
           order_sn_list: orderSnList,
-          response_optional_fields: "order_status",
+          response_optional_fields: "total_amount,pay_time,escrow_amount,buyer_total_amount,order_status",
         },
         partnerId,
         partnerKey,
@@ -279,17 +279,21 @@ Deno.serve(async (req) => {
 
       const orderDetails = detailData.response?.order_list || [];
       for (const order of orderDetails) {
-        // create_time is unix timestamp
-        const dateObj = new Date(order.create_time * 1000);
+        // Use pay_time (payment confirmed) instead of create_time
+        const timestamp = order.pay_time || order.create_time;
+        const dateObj = new Date(timestamp * 1000);
         const dateStr = dateObj.toISOString().split("T")[0];
-        const totalPrice = parseFloat(order.total_amount || "0");
+
+        // Use escrow_amount (net seller revenue) with fallback to total_amount
+        const faturamento = parseFloat(order.escrow_amount || order.total_amount || "0");
+        const vendasValor = parseFloat(order.total_amount || order.escrow_amount || "0");
 
         if (!dailyMap[dateStr]) {
           dailyMap[dateStr] = { faturamento: 0, vendas_quantidade: 0, vendas_valor: 0 };
         }
-        dailyMap[dateStr].faturamento += totalPrice;
+        dailyMap[dateStr].faturamento += faturamento;
         dailyMap[dateStr].vendas_quantidade += 1;
-        dailyMap[dateStr].vendas_valor += totalPrice;
+        dailyMap[dateStr].vendas_valor += vendasValor;
       }
 
       // Rate limiting
