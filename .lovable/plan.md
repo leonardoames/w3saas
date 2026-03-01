@@ -2,31 +2,18 @@
 
 ## Diagnóstico
 
-Atualmente, o sistema tem dois fluxos que **não enviam email real**:
+O menu dropdown dos 3 pontos **não aparece** porque está preso dentro de um container com `overflow-x-auto` (linha 487). Em CSS, quando `overflow` é definido como `auto`/`hidden` em qualquer eixo, o browser força o outro eixo a também clipar conteúdo. Isso faz o dropdown ser cortado/invisível mesmo com `z-index` alto.
 
-1. **Criar usuário (admin)**: Cria a conta com senha temporária via `create-bulk-users`, mas apenas mostra um toast na tela do admin. O usuário nunca recebe email.
-2. **Resetar senha (admin)**: Define senha temporária via `admin-reset-password`, mas também só mostra toast. Nenhum email é enviado.
+## Solução
 
-O projeto **não tem nenhum mecanismo de envio de email transacional** configurado. Os emails de autenticação padrão do sistema (confirmação, recovery) funcionam automaticamente, mas emails customizados (como "sua senha temporária é X") precisam de configuração adicional.
+1. **Remover `overflow-y-visible`** do container da tabela (não funciona junto com `overflow-x-auto`)
+2. **Usar `DropdownMenu` com `modal={false}` + portal** — já está `modal={false}`, mas o conteúdo precisa ser renderizado via portal (fora do container com overflow). Adicionar `forceMount` ou mover para fora do overflow container
+3. **Alternativa mais simples**: Remover `overflow-x-auto` do wrapper da tabela e usar `min-w-full` na tabela, ou usar CSS `position: fixed` no dropdown via `container` prop
 
-## O que é necessário
+**Abordagem recomendada**: Adicionar `container={document.body}` (ou equivalente Radix `portal`) ao `DropdownMenuContent` para que o menu seja renderizado no body, escapando do overflow clipping. No Radix/shadcn, o `DropdownMenuContent` já usa portal por padrão, mas o `modal={false}` pode estar desabilitando isso. A solução é remover `modal={false}` ou garantir que o portal funcione.
 
-### Opção A — Emails de autenticação padrão (recovery/reset)
-Configurar **templates de email customizados** via Lovable Cloud para que os emails padrão de autenticação (reset de senha, confirmação) sejam enviados com a marca do projeto e de um domínio próprio. Isso requer um domínio de email verificado.
+### Passos de implementação
 
-### Opção B — Emails transacionais customizados (notificar senha temporária)
-Criar uma edge function que envia email ao usuário quando o admin cria a conta ou reseta a senha, informando as credenciais temporárias. Isso requer integração com um serviço de email (ex: Resend) e uma API key.
-
-### Plano recomendado (ambas opções combinadas)
-
-1. **Configurar domínio de email** via Lovable Cloud para emails de autenticação com marca própria
-2. **Adicionar fluxo "Esqueci minha senha"** na tela de login — usando `resetPasswordForEmail` do sistema de autenticação, que já envia email automaticamente
-3. **Criar edge function de notificação** para enviar email ao usuário quando admin cria conta ou reseta senha, com as credenciais temporárias
-4. **Criar página `/reset-password`** para que o link do email de recovery funcione corretamente
-
-### Detalhes técnicos
-
-- O fluxo "Esqueci minha senha" usa `supabase.auth.resetPasswordForEmail()` que já envia email automaticamente sem precisar de serviço externo
-- Para emails customizados (notificar senha temp), seria necessário um conector de email (Resend) com API key
-- A página `/reset-password` precisa capturar o token da URL e permitir definir nova senha via `supabase.auth.updateUser()`
+1. **`src/pages/admin/AdminUsers.tsx`**: Remover `modal={false}` do `<DropdownMenu>` (linha 528) para que o Radix use portal padrão e o dropdown escape do overflow container
+2. Se necessário, ajustar o `overflow` do container da tabela para não clipar
 
