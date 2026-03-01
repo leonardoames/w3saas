@@ -525,7 +525,7 @@ export default function AdminUsers() {
                           {user.last_login_at ? format(new Date(user.last_login_at), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "-"}
                         </TableCell>
                         <TableCell className="relative">
-                          <DropdownMenu modal={false}>
+                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
                                 <MoreHorizontal className="h-4 w-4" />
