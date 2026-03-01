@@ -195,6 +195,7 @@ export type Database = {
       }
       course_modules: {
         Row: {
+          course_id: string | null
           cover_url: string | null
           created_at: string | null
           description: string | null
@@ -203,6 +204,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          course_id?: string | null
           cover_url?: string | null
           created_at?: string | null
           description?: string | null
@@ -211,12 +213,57 @@ export type Database = {
           title: string
         }
         Update: {
+          course_id?: string | null
           cover_url?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
           order?: number
           title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_modules_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courses: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          order: number
+          slug: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          order?: number
+          slug: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          order?: number
+          slug?: string
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }

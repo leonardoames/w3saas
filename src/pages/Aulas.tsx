@@ -1,7 +1,8 @@
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Circle, Play, Plus, Lock, Loader2, Pencil, Trash2, ArrowRight } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { CheckCircle2, Circle, Play, Plus, Lock, Pencil, Trash2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminStatus } from "@/hooks/useAdminStatus";
@@ -49,7 +50,11 @@ function normalizePandaEmbed(input: string): string {
 }
 
 export default function Aulas() {
+  const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const { isAdmin, loading: adminLoading } = useAdminStatus();
+  const [courseTitle, setCourseTitle] = useState("");
+  const [courseId, setCourseId] = useState<string | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
@@ -83,17 +88,34 @@ export default function Aulas() {
   const [isDeletingLesson, setIsDeletingLesson] = useState(false);
 
   useEffect(() => {
-    fetchModulesAndLessons();
-  }, []);
+    fetchCourseAndModules();
+  }, [slug]);
 
-  const fetchModulesAndLessons = async () => {
+  const fetchCourseAndModules = async () => {
     try {
+      setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
+
+      // Fetch course by slug
+      const { data: courseData, error: courseError } = await supabase
+        .from("courses")
+        .select("*")
+        .eq("slug", slug || "mentoria-ames")
+        .single();
+      
+      if (courseError || !courseData) {
+        navigate("/app/cursos");
+        return;
+      }
+
+      setCourseTitle(courseData.title);
+      setCourseId(courseData.id);
 
       const { data: modulesData, error: modulesError } = await supabase
         .from("course_modules")
         .select("*")
+        .eq("course_id", courseData.id)
         .order("order");
       if (modulesError) throw modulesError;
 
@@ -186,7 +208,7 @@ export default function Aulas() {
     } catch (error) {
       console.error("Erro ao excluir módulo:", error);
       toast({ title: "❌ Erro", description: "Não foi possível excluir o módulo.", variant: "destructive" });
-      fetchModulesAndLessons();
+      fetchCourseAndModules();
     } finally {
       setIsDeletingModule(false);
       setIsDeleteModuleDialogOpen(false);
@@ -206,7 +228,7 @@ export default function Aulas() {
       const { error: lessonError } = await supabase.from("lessons").delete().eq("id", lessonToDelete.id);
       if (lessonError) throw lessonError;
       toast({ title: "✅ Aula excluída!", description: "A aula foi removida com sucesso." });
-      fetchModulesAndLessons();
+      fetchCourseAndModules();
     } catch (error) {
       console.error("Erro ao excluir aula:", error);
       toast({ title: "❌ Erro", description: "Não foi possível excluir a aula.", variant: "destructive" });
@@ -224,7 +246,6 @@ export default function Aulas() {
   const completedLessons = modules.reduce((sum, m) => sum + m.lessons.filter((l) => l.completed).length, 0);
   const progressPercentage = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
 
-  // Find "continue where you left off" — first incomplete lesson
   const continueLesson = (() => {
     for (const mod of modules) {
       for (const lesson of mod.lessons) {
@@ -239,12 +260,10 @@ export default function Aulas() {
   if (loading || adminLoading) {
     return (
       <div className="container mx-auto p-4 space-y-6 max-w-7xl">
-        {/* Skeleton header */}
         <div className="space-y-3">
           <div className="h-8 w-48 bg-muted rounded animate-pulse" />
           <div className="h-4 w-72 bg-muted rounded animate-pulse" />
         </div>
-        {/* Skeleton grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {Array.from({ length: 5 }).map((_, i) => (
             <ModuleCardSkeleton key={i} />
@@ -259,7 +278,12 @@ export default function Aulas() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Aulas da Mentoria</h1>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/app/cursos")} className="px-2">
+              ← Cursos
+            </Button>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold">{courseTitle}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {completedLessons} de {totalLessons} aulas concluídas
           </p>
@@ -408,7 +432,7 @@ export default function Aulas() {
         </div>
       )}
 
-      {/* Module Grid — Netflix style (hidden when a module is expanded) */}
+      {/* Module Grid — Netflix style */}
       {!expandedModuleId && modules.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {modules.map((module) => {
@@ -439,24 +463,25 @@ export default function Aulas() {
             onClose={() => setIsAddLessonModalOpen(false)}
             moduleId={selectedModuleId}
             moduleTitle={selectedModuleTitle}
-            onSuccess={fetchModulesAndLessons}
+            onSuccess={fetchCourseAndModules}
           />
           <AddModuleModal
             isOpen={isAddModuleModalOpen}
             onClose={() => setIsAddModuleModalOpen(false)}
-            onSuccess={fetchModulesAndLessons}
+            onSuccess={fetchCourseAndModules}
+            courseId={courseId}
           />
           <EditModuleModal
             isOpen={isEditModuleModalOpen}
             onClose={() => setIsEditModuleModalOpen(false)}
             module={moduleToEdit}
-            onSuccess={fetchModulesAndLessons}
+            onSuccess={fetchCourseAndModules}
           />
           <EditLessonModal
             isOpen={isEditLessonModalOpen}
             onClose={() => setIsEditLessonModalOpen(false)}
             lesson={lessonToEdit}
-            onSuccess={fetchModulesAndLessons}
+            onSuccess={fetchCourseAndModules}
           />
           <ConfirmDeleteDialog
             isOpen={isDeleteModuleDialogOpen}

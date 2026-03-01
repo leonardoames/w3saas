@@ -48,7 +48,9 @@ const menuGroups: MenuGroup[] = [
     title: "W3 Educação",
     icon: GraduationCap,
     items: [
-      { title: "Aulas da Mentoria", icon: GraduationCap, path: "/app/aulas" },
+      { title: "Mentoria AMES", icon: GraduationCap, path: "/app/aulas/mentoria-ames" },
+      { title: "Tutorias", icon: GraduationCap, path: "/app/aulas/tutorias" },
+      { title: "Hotseats com Léo", icon: GraduationCap, path: "/app/aulas/hotseats" },
       { title: "Calendário Comercial", icon: CalendarDays, path: "/app/calendario" },
     ],
   },

@@ -15,9 +15,10 @@ interface AddModuleModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  courseId?: string | null;
 }
 
-export function AddModuleModal({ isOpen, onClose, onSuccess }: AddModuleModalProps) {
+export function AddModuleModal({ isOpen, onClose, onSuccess, courseId }: AddModuleModalProps) {
   const [formData, setFormData] = useState({ title: "", description: "" });
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -41,6 +42,7 @@ export function AddModuleModal({ isOpen, onClose, onSuccess }: AddModuleModalPro
         description: formData.description.trim() || null,
         order: nextOrder,
         cover_url: coverUrl,
+        ...(courseId ? { course_id: courseId } : {}),
       } as any);
 
       if (error) throw error;
