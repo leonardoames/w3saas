@@ -1,3 +1,4 @@
+// Dash Admin - Admin-only dashboard for mentorados
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
