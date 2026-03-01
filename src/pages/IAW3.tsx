@@ -251,10 +251,12 @@ export default function IAW3() {
                 )}
                 <div
                   className={cn(
-                    "group relative max-w-[85%] rounded-2xl px-4 py-3",
+                    "group relative rounded-2xl",
                     message.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted/50"
+                      ? "max-w-[85%] px-4 py-3 bg-primary text-primary-foreground"
+                      : hasHtmlContent(message.content)
+                        ? "w-full max-w-full p-0 bg-transparent"
+                        : "max-w-[85%] px-4 py-3 bg-muted/50"
                   )}
                 >
                   {message.role === "user" ? (

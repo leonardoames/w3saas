@@ -27,7 +27,7 @@ export default function HtmlPreviewMessage({ content }: HtmlPreviewMessageProps)
     toast({ title: "Copiado!", description: "Código HTML copiado para a área de transferência" });
   };
 
-  const iframeDoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;}</style></head><body>${content}</body></html>`;
+  const iframeDoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box;}body{margin:0;padding:16px;font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;overflow-x:hidden;}</style></head><body>${content}</body></html>`;
 
   return (
     <div className="w-full">
@@ -120,11 +120,11 @@ export default function HtmlPreviewMessage({ content }: HtmlPreviewMessageProps)
               srcDoc={iframeDoc}
               sandbox="allow-scripts"
               className={cn(
-                "bg-white",
+                "bg-white border-0",
                 device === "desktop" && "w-full min-h-[700px]",
                 device === "mobile" && "w-[375px] h-[700px]"
               )}
-              style={{ colorScheme: "light" }}
+              style={{ colorScheme: "light", border: "none" }}
               title="Preview HTML"
             />
           </div>
