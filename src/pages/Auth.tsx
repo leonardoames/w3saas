@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Lock } from "lucide-react";
+import { AlertCircle, Lock, CheckCircle2 } from "lucide-react";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -19,6 +19,9 @@ export default function Auth() {
   const [confirmPassword, setConfirmPassword] = useState("");
   
   const [loginData, setLoginData] = useState({ email: "", password: "" });
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -98,6 +101,27 @@ export default function Auth() {
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      setForgotSent(true);
+      toast({
+        title: "Email enviado!",
+        description: "Verifique sua caixa de entrada para redefinir a senha.",
+      });
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -250,6 +274,50 @@ export default function Auth() {
               {loading ? "Entrando..." : "Entrar"}
             </Button>
           </form>
+
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => { setForgotMode(true); setError(null); setForgotSent(false); setForgotEmail(loginData.email); }}
+              className="text-sm text-primary hover:underline font-medium"
+            >
+              Esqueci minha senha
+            </button>
+          </div>
+
+          {forgotMode && (
+            <div className="mt-4 border-t pt-4">
+              {forgotSent ? (
+                <Alert className="border-green-200 bg-green-50 dark:bg-green-950/30">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-700 dark:text-green-400">
+                    Email enviado! Verifique sua caixa de entrada (e spam) para o link de redefinição.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <form onSubmit={handleForgotPassword} className="space-y-3">
+                  <Label htmlFor="forgot-email">Email para recuperação</Label>
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    required
+                    disabled={loading}
+                  />
+                  <div className="flex gap-2">
+                    <Button type="submit" className="flex-1" disabled={loading}>
+                      {loading ? "Enviando..." : "Enviar link"}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => setForgotMode(false)}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
             <p>Ainda não tem uma conta?</p>
