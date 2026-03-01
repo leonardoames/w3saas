@@ -161,9 +161,10 @@ export default function IAW3() {
       ALLOWED_TAGS: [
         'p', 'br', 'strong', 'em', 'ul', 'ol', 'li',
         'h2', 'h3', 'h4', 'h5', 'h6',
-        'div', 'span', 'table', 'tr', 'td', 'th', 'tbody', 'thead'
+        'div', 'span', 'table', 'tr', 'td', 'th', 'tbody', 'thead',
+        'style', 'a', 'button'
       ],
-      ALLOWED_ATTR: ['class'],
+      ALLOWED_ATTR: ['class', 'style', 'href'],
       KEEP_CONTENT: true,
       ALLOW_DATA_ATTR: false,
     });
