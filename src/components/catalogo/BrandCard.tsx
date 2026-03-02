@@ -1,4 +1,4 @@
-import { Heart, ExternalLink, Store } from "lucide-react";
+import { Heart, ExternalLink, Store, Instagram } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Brand } from "@/types/brand";
@@ -62,18 +62,28 @@ export function BrandCard({ brand, liked, likeCount, onToggleLike }: BrandCardPr
             {brand.category}
           </Badge>
         </div>
-        <p className="text-body text-muted-foreground opacity-70 line-clamp-1">
+        <p className="text-body text-muted-foreground opacity-70 line-clamp-3 min-h-[3.75rem]">
           {brand.short_description}
         </p>
 
         {/* Footer */}
         <div className="mt-2 flex items-center justify-between">
-          <Button variant="outline" size="sm" asChild className="h-8 text-xs">
-            <a href={brand.website_url} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-              Visitar Loja
-            </a>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild className="h-8 text-xs">
+              <a href={brand.website_url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                Visitar Loja
+              </a>
+            </Button>
+            {brand.instagram_url && (
+              <Button variant="outline" size="sm" asChild className="h-8 text-xs">
+                <a href={brand.instagram_url} target="_blank" rel="noopener noreferrer">
+                  <Instagram className="mr-1.5 h-3.5 w-3.5" />
+                  Instagram
+                </a>
+              </Button>
+            )}
+          </div>
 
           <button
             onClick={() => onToggleLike(brand.id)}
