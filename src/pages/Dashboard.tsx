@@ -184,14 +184,14 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-10 space-y-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">Visão consolidada dos seus resultados</p>
+          <h1 className="text-page-title text-foreground">Dashboard</h1>
+          <p className="text-caption text-muted-foreground mt-1">Visão consolidada dos seus resultados</p>
         </div>
 
         {/* Period Filter */}
-        <div className="bg-card border border-border rounded-lg p-4 shadow-sm">
+        <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
           <div className="flex items-center justify-between flex-wrap gap-3">
-            <h3 className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Período de análise</h3>
+            <h3 className="text-xs uppercase tracking-wide text-muted-foreground font-medium opacity-60">Período de análise</h3>
             <div className="flex items-center gap-3 flex-wrap">
               <PlatformSelect 
                 value={selectedPlatform} 
@@ -234,7 +234,7 @@ export default function Dashboard() {
 
         {/* Chart + Side Metrics */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-card border border-border rounded-lg p-6 md:p-8 shadow-sm">
+          <div className="lg:col-span-2 bg-card border border-border rounded-xl p-6 md:p-8 shadow-sm">
             <h3 className="text-sm font-semibold text-foreground mb-1">Evolução de Faturamento</h3>
             <p className="text-xs text-muted-foreground mb-4">Acompanhe a tendência no período selecionado</p>
             <RevenueChart data={chartData} previousTotal={prevFat} />
