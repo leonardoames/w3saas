@@ -219,13 +219,13 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
   // User info card
   const renderUserInfo = (expanded: boolean) =>
     expanded ? (
-      <div className="flex items-center gap-3 rounded-lg px-4 py-3 bg-[#242424]/95">
+      <div className="flex items-center gap-3 rounded-lg px-4 py-3 bg-accent">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
           <span className="text-sm font-semibold">{getUserInitials()}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white truncate">{getUserName()}</p>
-          <p className="text-xs text-white">{getPlanLabel()}</p>
+          <p className="text-sm font-medium text-foreground truncate">{getUserName()}</p>
+          <p className="text-xs text-muted-foreground">{getPlanLabel()}</p>
         </div>
       </div>
     ) : (
