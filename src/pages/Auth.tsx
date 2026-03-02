@@ -24,43 +24,41 @@ export default function Auth() {
   const [forgotSent, setForgotSent] = useState(false);
 
   useEffect(() => {
+    let ignore = false;
+
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
+      if (ignore) return;
       if (user) {
-        // Check must_change_password flag
         const { data: profile } = await supabase
           .from("profiles")
           .select("must_change_password")
           .eq("user_id", user.id)
           .maybeSingle();
         
+        if (ignore) return;
         if (profile?.must_change_password) {
           setMustChangePassword(true);
         } else {
-          navigate("/");
+          navigate("/app");
         }
       }
     };
     checkUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session) {
-        // Check flag before redirecting
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("must_change_password")
-          .eq("user_id", session.user.id)
-          .maybeSingle();
-        
-        if (profile?.must_change_password) {
-          setMustChangePassword(true);
-        } else {
-          navigate("/");
-        }
+    // No async inside callback — just redirect if already handled by handleLogin
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (ignore) return;
+      // Only handle token refresh or signout; login is handled by handleLogin
+      if (event === "SIGNED_OUT") {
+        setMustChangePassword(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      ignore = true;
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -86,9 +84,12 @@ export default function Auth() {
         
         if (profile?.must_change_password) {
           setMustChangePassword(true);
+          setLoading(false);
           return;
         }
       }
+
+      navigate("/app");
 
       toast({
         title: "Login realizado!",
@@ -160,7 +161,7 @@ export default function Auth() {
       });
 
       setMustChangePassword(false);
-      navigate("/");
+      navigate("/app");
     } catch (error: any) {
       setError(error.message);
     } finally {
