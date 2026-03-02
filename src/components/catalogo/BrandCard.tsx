@@ -26,18 +26,18 @@ export function BrandCard({ brand, liked, likeCount, onToggleLike }: BrandCardPr
   return (
     <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-5 transition-colors hover:bg-[hsl(var(--card-elevated))]">
       {/* Logo */}
-      <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-[10px] bg-muted">
+      <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-[10px] bg-[hsl(var(--card-elevated))]">
         {brand.logo_url ? (
           <img
             src={brand.logo_url}
             alt={`Logo ${brand.name}`}
-            className="h-full w-full object-cover"
+            className="h-16 w-16 object-contain"
           />
         ) : faviconUrl ? (
           <img
             src={faviconUrl}
             alt={`Favicon ${brand.name}`}
-            className="h-full w-full object-contain p-2"
+            className="h-16 w-16 object-contain p-2"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = "none";
               (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
@@ -45,7 +45,7 @@ export function BrandCard({ brand, liked, likeCount, onToggleLike }: BrandCardPr
           />
         ) : null}
         {!brand.logo_url && (
-          <div className={`flex h-full w-full items-center justify-center ${faviconUrl ? "hidden" : ""}`}>
+          <div className={`flex h-16 w-16 items-center justify-center ${faviconUrl ? "hidden" : ""}`}>
             <Store className="h-7 w-7 text-muted-foreground" />
           </div>
         )}
