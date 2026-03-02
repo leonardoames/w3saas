@@ -52,6 +52,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { BulkUserImportDialog } from "@/components/admin/BulkUserImportDialog";
+import { AdminWhatsAppConfig } from "@/components/admin/AdminWhatsAppConfig";
 
 // Plano de Ação imports
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -463,6 +464,9 @@ export default function AdminUsers() {
             </Button>
           </div>
         </div>
+
+        {/* WhatsApp Config */}
+        <AdminWhatsAppConfig />
 
         <Card>
           <CardHeader className="p-4 sm:p-6">
