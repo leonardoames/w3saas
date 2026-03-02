@@ -14,7 +14,7 @@ export function KPICard({ title, value, subtitle, change, onClick, dominant }: K
   
   return (
     <div 
-      className={`bg-card border border-border rounded-lg shadow-sm transition-all ${
+      className={`bg-card border border-border rounded-xl shadow-sm transition-all ${
         dominant ? 'p-6 md:p-8 col-span-2 lg:col-span-1' : 'p-5 md:p-6'
       } ${
         isClickable 
@@ -27,7 +27,7 @@ export function KPICard({ title, value, subtitle, change, onClick, dominant }: K
       onKeyDown={isClickable ? (e) => e.key === 'Enter' && onClick?.() : undefined}
     >
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium">{title}</span>
+        <span className="text-xs uppercase tracking-wide text-muted-foreground font-medium opacity-60">{title}</span>
         {isClickable && (
           <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
         )}
