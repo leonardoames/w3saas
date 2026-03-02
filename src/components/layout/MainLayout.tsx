@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { WhatsAppFloatingButton } from "./WhatsAppFloatingButton";
 interface MainLayoutProps {
   children: React.ReactNode;
 }
@@ -61,6 +62,7 @@ export function MainLayout({
         <div className="p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
           {children}
         </div>
+        <WhatsAppFloatingButton />
       </main>
     </div>;
 }
