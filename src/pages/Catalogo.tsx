@@ -7,8 +7,10 @@ import { useToast } from "@/hooks/use-toast";
 import { BrandForm } from "@/components/brands/BrandForm";
 import { BrandCard } from "@/components/catalogo/BrandCard";
 import { useBrandLikes } from "@/hooks/useBrandLikes";
-import { Plus, Loader2, AlertCircle, Store, Search } from "lucide-react";
+import { Plus, Loader2, AlertCircle, Store, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Brand } from "@/types/brand";
+
+const PAGE_SIZE = 20;
 
 export default function Catalogo() {
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -23,6 +25,8 @@ export default function Catalogo() {
   const brandIds = useMemo(() => brands.map((b) => b.id), [brands]);
   const { likes, toggleLike } = useBrandLikes(brandIds);
 
+  const [page, setPage] = useState(1);
+
   const filteredBrands = useMemo(() => {
     if (!search.trim()) return brands;
     const q = search.toLowerCase();
@@ -32,6 +36,15 @@ export default function Catalogo() {
         b.category.toLowerCase().includes(q)
     );
   }, [brands, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredBrands.length / PAGE_SIZE));
+  const paginatedBrands = useMemo(
+    () => filteredBrands.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filteredBrands, page]
+  );
+
+  // Reset page when search changes
+  useEffect(() => { setPage(1); }, [search]);
 
   useEffect(() => {
     fetchBrands();
@@ -139,17 +152,46 @@ export default function Catalogo() {
 
       {/* Brand List */}
       {filteredBrands.length > 0 ? (
-        <div className="flex flex-col gap-3">
-          {filteredBrands.map((brand) => (
-            <BrandCard
-              key={brand.id}
-              brand={brand}
-              liked={likes[brand.id]?.liked ?? false}
-              likeCount={likes[brand.id]?.count ?? 0}
-              onToggleLike={toggleLike}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {paginatedBrands.map((brand) => (
+              <BrandCard
+                key={brand.id}
+                brand={brand}
+                liked={likes[brand.id]?.liked ?? false}
+                likeCount={likes[brand.id]?.count ?? 0}
+                onToggleLike={toggleLike}
+              />
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                <ChevronLeft className="mr-1 h-4 w-4" />
+                Anterior
+              </Button>
+              <span className="text-caption text-muted-foreground">
+                {page} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Próxima
+                <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card py-16">
           <Store className="mb-4 h-12 w-12 text-muted-foreground" />
