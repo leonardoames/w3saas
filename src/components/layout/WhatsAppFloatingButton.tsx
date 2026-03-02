@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAdminStatus } from "@/hooks/useAdminStatus";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function WhatsAppFloatingButton() {
   const [number, setNumber] = useState<string | null>(null);
-  const { isAdmin } = useAdminStatus();
 
   useEffect(() => {
     const fetch = async () => {
@@ -19,7 +17,7 @@ export function WhatsAppFloatingButton() {
     fetch();
   }, []);
 
-  if (isAdmin || !number) return null;
+  if (!number) return null;
 
   return (
     <TooltipProvider>
