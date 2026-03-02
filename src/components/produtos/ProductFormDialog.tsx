@@ -11,10 +11,12 @@ import { Upload, X } from "lucide-react";
 interface Product {
   id: string;
   title: string;
+  tagline: string | null;
   description: string | null;
   image_url: string | null;
   details_url: string | null;
   whatsapp_url: string | null;
+  button_text: string | null;
   display_order: number;
 }
 
@@ -27,10 +29,12 @@ interface ProductFormDialogProps {
 
 export function ProductFormDialog({ open, onOpenChange, product, onSaved }: ProductFormDialogProps) {
   const [title, setTitle] = useState("");
+  const [tagline, setTagline] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [detailsUrl, setDetailsUrl] = useState("");
   const [whatsappUrl, setWhatsappUrl] = useState("");
+  const [buttonText, setButtonText] = useState("Falar com Especialista");
   const [displayOrder, setDisplayOrder] = useState(0);
   const [saving, setSaving] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -40,18 +44,22 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
   useEffect(() => {
     if (product) {
       setTitle(product.title);
+      setTagline(product.tagline || "");
       setDescription(product.description || "");
       setImageUrl(product.image_url || "");
       setDetailsUrl(product.details_url || "");
       setWhatsappUrl(product.whatsapp_url || "");
+      setButtonText(product.button_text || "Falar com Especialista");
       setDisplayOrder(product.display_order);
       setImagePreview(product.image_url || null);
     } else {
       setTitle("");
+      setTagline("");
       setDescription("");
       setImageUrl("");
       setDetailsUrl("");
       setWhatsappUrl("");
+      setButtonText("Falar com Especialista");
       setDisplayOrder(0);
       setImagePreview(null);
     }
@@ -61,16 +69,8 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast.error("Selecione um arquivo de imagem");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Imagem deve ter no máximo 5MB");
-      return;
-    }
-
+    if (!file.type.startsWith("image/")) { toast.error("Selecione um arquivo de imagem"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Imagem deve ter no máximo 5MB"); return; }
     setImageFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => setImagePreview(ev.target?.result as string);
@@ -94,18 +94,12 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
   };
 
   const handleSave = async () => {
-    if (!title.trim()) {
-      toast.error("Título é obrigatório");
-      return;
-    }
+    if (!title.trim()) { toast.error("Nome é obrigatório"); return; }
     setSaving(true);
 
     let finalImageUrl = imageUrl;
-
     try {
-      if (imageFile) {
-        finalImageUrl = await uploadImage(imageFile);
-      }
+      if (imageFile) finalImageUrl = await uploadImage(imageFile);
     } catch {
       toast.error("Erro ao fazer upload da imagem");
       setSaving(false);
@@ -114,10 +108,12 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
 
     const payload = {
       title: title.trim(),
+      tagline: tagline.trim() || null,
       description: description.trim() || null,
       image_url: finalImageUrl.trim() || null,
       details_url: detailsUrl.trim() || null,
       whatsapp_url: whatsappUrl.trim() || null,
+      button_text: buttonText.trim() || "Falar com Especialista",
       display_order: displayOrder,
     };
 
@@ -130,10 +126,10 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
 
     setSaving(false);
     if (error) {
-      toast.error("Erro ao salvar produto");
+      toast.error("Erro ao salvar solução");
       console.error(error);
     } else {
-      toast.success(product ? "Produto atualizado!" : "Produto criado!");
+      toast.success(product ? "Solução atualizada!" : "Solução criada!");
       onSaved();
       onOpenChange(false);
     }
@@ -141,31 +137,29 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{product ? "Editar Produto" : "Novo Produto"}</DialogTitle>
+          <DialogTitle>{product ? "Editar Solução" : "Nova Solução"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label>Título *</Label>
-            <Input placeholder="Ex: Mentoria Ames" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <Label>Nome *</Label>
+            <Input placeholder="Ex: Mentoria AMES" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Tagline</Label>
+            <Input placeholder="Ex: by W3 Educação" value={tagline} onChange={(e) => setTagline(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label>Descrição</Label>
-            <Textarea placeholder="Descrição do produto" value={description} onChange={(e) => setDescription(e.target.value)} />
+            <Textarea placeholder="O que essa solução resolve?" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
           </div>
           <div className="space-y-2">
-            <Label>Imagem do Produto</Label>
+            <Label>Imagem</Label>
             {imagePreview ? (
               <div className="relative w-full rounded-md overflow-hidden border border-border bg-muted">
                 <img src={imagePreview} alt="Preview" className="w-full h-40 object-cover" />
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-2 right-2 h-7 w-7"
-                  onClick={removeImage}
-                >
+                <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={removeImage}>
                   <X className="h-4 w-4" />
                 </Button>
               </div>
@@ -179,13 +173,11 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
                 Clique para selecionar uma imagem
               </button>
             )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileChange}
-            />
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+          </div>
+          <div className="space-y-2">
+            <Label>Texto do Botão</Label>
+            <Input placeholder="Ex: Falar com Especialista" value={buttonText} onChange={(e) => setButtonText(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
