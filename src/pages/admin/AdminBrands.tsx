@@ -127,7 +127,8 @@ export default function AdminBrands() {
       const { error } = await supabase
         .from("brands")
         .update({ 
-          status: "approved", 
+          status: "approved",
+          approval_status: "approved",
           is_active: true,
           updated_at: new Date().toISOString()
         })
@@ -162,7 +163,8 @@ export default function AdminBrands() {
       const { error } = await supabase
         .from("brands")
         .update({ 
-          status: "rejected", 
+          status: "rejected",
+          approval_status: "rejected",
           is_active: false,
           updated_at: new Date().toISOString()
         })
