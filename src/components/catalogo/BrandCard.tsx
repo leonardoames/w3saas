@@ -69,20 +69,19 @@ export function BrandCard({ brand, liked, likeCount, onToggleLike }: BrandCardPr
         {/* Footer */}
         <div className="mt-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
+            {brand.instagram_url && (
+              <Button variant="outline" size="icon" asChild className="h-8 w-8">
+                <a href={brand.instagram_url} target="_blank" rel="noopener noreferrer">
+                  <Instagram className="h-3.5 w-3.5" />
+                </a>
+              </Button>
+            )}
             <Button variant="outline" size="sm" asChild className="h-8 text-xs">
               <a href={brand.website_url} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
                 Visitar Loja
               </a>
             </Button>
-            {brand.instagram_url && (
-              <Button variant="outline" size="sm" asChild className="h-8 text-xs">
-                <a href={brand.instagram_url} target="_blank" rel="noopener noreferrer">
-                  <Instagram className="mr-1.5 h-3.5 w-3.5" />
-                  Instagram
-                </a>
-              </Button>
-            )}
           </div>
 
           <button
