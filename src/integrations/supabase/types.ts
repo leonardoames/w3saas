@@ -539,34 +539,40 @@ export type Database = {
       }
       mentoria_products: {
         Row: {
+          button_text: string | null
           created_at: string
           description: string | null
           details_url: string | null
           display_order: number
           id: string
           image_url: string | null
+          tagline: string | null
           title: string
           updated_at: string
           whatsapp_url: string | null
         }
         Insert: {
+          button_text?: string | null
           created_at?: string
           description?: string | null
           details_url?: string | null
           display_order?: number
           id?: string
           image_url?: string | null
+          tagline?: string | null
           title: string
           updated_at?: string
           whatsapp_url?: string | null
         }
         Update: {
+          button_text?: string | null
           created_at?: string
           description?: string | null
           details_url?: string | null
           display_order?: number
           id?: string
           image_url?: string | null
+          tagline?: string | null
           title?: string
           updated_at?: string
           whatsapp_url?: string | null
