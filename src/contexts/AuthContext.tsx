@@ -96,7 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAccessDeniedReason(null);
         setIsLoading(false);
       } else {
-        // Sinaliza que precisa atualizar o perfil
+        // Garante que isLoading = true enquanto o perfil não for carregado
+        setIsLoading(true);
         setNeedsProfileRefresh(true);
       }
     });
