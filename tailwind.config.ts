@@ -21,7 +21,8 @@ export default {
   			foreground: 'hsl(var(--foreground))',
   			primary: {
   				DEFAULT: 'hsl(var(--primary))',
-  				foreground: 'hsl(var(--primary-foreground))'
+  				foreground: 'hsl(var(--primary-foreground))',
+  				hover: 'hsl(var(--primary-hover))'
   			},
   			secondary: {
   				DEFAULT: 'hsl(var(--secondary))',
@@ -104,7 +105,7 @@ export default {
   		},
   		fontFamily: {
   			sans: [
-  				'Montserrat',
+  				'Inter',
   				'ui-sans-serif',
   				'system-ui',
   				'sans-serif',
@@ -112,15 +113,6 @@ export default {
   				'Segoe UI Emoji',
   				'Segoe UI Symbol',
   				'Noto Color Emoji'
-  			],
-  			serif: [
-  				'Libre Caslon Text',
-  				'ui-serif',
-  				'Georgia',
-  				'Cambria',
-  				'Times New Roman',
-  				'Times',
-  				'serif'
   			],
   			mono: [
   				'Roboto Mono',
@@ -133,6 +125,12 @@ export default {
   				'Courier New',
   				'monospace'
   			]
+  		},
+  		fontSize: {
+  			'page-title': ['1.5rem', { lineHeight: '2rem', fontWeight: '700' }],
+  			'section-title': ['1rem', { lineHeight: '1.5rem', fontWeight: '600' }],
+  			'body': ['0.875rem', { lineHeight: '1.25rem', fontWeight: '400' }],
+  			'caption': ['0.75rem', { lineHeight: '1rem', fontWeight: '400' }],
   		}
   	}
   },
