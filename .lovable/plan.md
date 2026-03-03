@@ -1,22 +1,32 @@
 
 
-## Diagnóstico
+## Plan: Add "Shopee ADS" Integration
 
-O login fica travado em "Entrando..." porque o código faz `await` de queries ao banco de dados dentro do callback `onAuthStateChange` — isso causa deadlock com o Supabase Auth. Além disso, ambos `handleLogin` e `onAuthStateChange` competem para verificar `must_change_password`, criando uma race condition.
+The user created a separate Shopee Open Platform app specifically for marketing/ads data. We need to add it as a distinct integration alongside the existing "Shopee" (sales).
 
-Outro problema: `navigate("/")` redireciona para a Landing page, não para `/app`.
+### What changes
 
-## Solução
+1. **Store new secrets** — `SHOPEE_ADS_PARTNER_ID` (2030838) and `SHOPEE_ADS_PARTNER_KEY` via the secrets tool.
 
-Simplificar o Auth.tsx:
+2. **New edge function `shopee-ads-oauth`** — Clone of `shopee-oauth` but using the ADS partner credentials and platform identifier `shopee_ads`. Callback redirect to `/app/integracoes/shopee-ads/callback`.
 
-1. **Remover queries async do `onAuthStateChange`** — apenas verificar se há sessão e redirecionar
-2. **`handleLogin` faz a verificação de `must_change_password`** e navega para `/app` (não `/`)
-3. **`onAuthStateChange`** apenas redireciona para `/app` se já logado (sem await de queries)
-4. **`checkUser` no mount** — verificar sessão existente e redirecionar ou mostrar tela de troca de senha
+3. **New edge function `sync-shopee-ads`** — Clone of `sync-shopee` but using ADS credentials. Instead of fetching orders, it will call the Shopee Marketing API (`/api/v2/marketing/...`) to pull ad spend and campaign metrics, storing them in `metrics_diarias` with `platform = 'shopee_ads'`.
 
-### Mudanças em `src/pages/Auth.tsx`:
-- No `useEffect`, `onAuthStateChange`: se `SIGNED_IN`, buscar perfil fora do callback (via flag de estado)
-- Em `handleLogin`: após login bem-sucedido, verificar `must_change_password`. Se `false`, `navigate("/app")`
-- Corrigir todos os `navigate("/")` para `navigate("/app")`
+4. **New callback page `ShopeeAdsCallback.tsx`** — Clone of `ShopeeCallback.tsx` pointing to `shopee-ads-oauth?action=callback`.
+
+5. **Update `supabase/config.toml`** — Add `[functions.shopee-ads-oauth]` and `[functions.sync-shopee-ads]` with `verify_jwt = false`.
+
+6. **Update `src/pages/Integracoes.tsx`**:
+   - Add `shopee_ads` entry to `platformLogos` (reuse Shopee logo).
+   - Add new platform object: id `shopee_ads`, name "Shopee ADS", description about marketing metrics, `oauth: true`, empty fields.
+   - Route OAuth calls for `shopee_ads` to `shopee-ads-oauth`.
+   - Route sync calls to `sync-shopee-ads`.
+
+7. **Update `src/lib/platformConfig.ts`** — Add `shopee_ads` to `PlatformType` union and `PLATFORMS_LIST`.
+
+8. **Update `src/App.tsx`** — Add route `/integracoes/shopee-ads/callback` → `ShopeeAdsCallback`.
+
+### Notes
+- The Shopee Marketing API requires the same OAuth flow but with different partner credentials. The `shopee_ads` platform identifier keeps data separate from the sales integration.
+- The sync function will initially focus on ad spend data that maps to `investimento_trafego` in `metrics_diarias`.
 
