@@ -21,6 +21,7 @@ import lojaIntegradaLogo from "@/assets/platforms/loja-integrada.png";
 const platformLogos: Record<string, string> = {
   nuvemshop: nuvemshopLogo,
   shopee: shopeeLogo,
+  shopee_ads: shopeeLogo,
   mercado_livre: mercadoLivreLogo,
   shopify: shopifyLogo,
   olist_tiny: olistTinyLogo,
@@ -55,6 +56,15 @@ const platforms: PlatformInfo[] = [
     name: "Shopee",
     description: "Integre com a Shopee para acompanhar vendas, métricas e gastos com Shopee Ads.",
     color: "bg-orange-500",
+    fields: [],
+    docsUrl: "https://open.shopee.com/documents",
+    oauth: true,
+  },
+  {
+    id: "shopee_ads",
+    name: "Shopee ADS",
+    description: "Conecte ao app de Marketing da Shopee para importar métricas de investimento em anúncios automaticamente.",
+    color: "bg-orange-600",
     fields: [],
     docsUrl: "https://open.shopee.com/documents",
     oauth: true,
@@ -145,7 +155,8 @@ export default function Integracoes() {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
       
-      const res = await supabase.functions.invoke(`sync-${platformId}`, {
+      const syncFnName = platformId === 'shopee_ads' ? 'sync-shopee-ads' : `sync-${platformId}`;
+      const res = await supabase.functions.invoke(syncFnName, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -189,6 +200,8 @@ export default function Integracoes() {
         // Determine which edge function to call based on platform
         const oauthFunction = connectDialog.id === "shopee"
           ? "shopee-oauth?action=authorize"
+          : connectDialog.id === "shopee_ads"
+          ? "shopee-ads-oauth?action=authorize"
           : "shopify-oauth?action=authorize";
 
         const body = connectDialog.id === "shopee"
@@ -288,6 +301,8 @@ export default function Integracoes() {
 
       const oauthFunction = platform.id === "shopee"
         ? "shopee-oauth?action=authorize"
+        : platform.id === "shopee_ads"
+        ? "shopee-ads-oauth?action=authorize"
         : "shopify-oauth?action=authorize";
 
       const res = await supabase.functions.invoke(oauthFunction, {
