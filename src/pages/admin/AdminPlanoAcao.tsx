@@ -20,6 +20,8 @@ import { useTasks, SECTIONS, Task } from "@/hooks/useTasks";
 import { ProgressCard } from "@/components/plano-acao/ProgressCard";
 import { TaskSection } from "@/components/plano-acao/TaskSection";
 import { AddTaskDialog } from "@/components/plano-acao/AddTaskDialog";
+import { PlanAulasTab } from "@/components/plano-acao/PlanAulasTab";
+import { PlanFerramentasTab } from "@/components/plano-acao/PlanFerramentasTab";
 
 interface UserProfile {
   user_id: string;
@@ -292,9 +294,11 @@ function UserPlanView({ user, onBack }: { user: UserProfile; onBack: () => void 
       />
 
       <Tabs defaultValue="ames" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 h-auto">
-          <TabsTrigger value="ames" className="text-xs sm:text-sm py-2">Plano AMES</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5 h-auto">
+          <TabsTrigger value="ames" className="text-xs sm:text-sm py-2">AMES</TabsTrigger>
           <TabsTrigger value="custom" className="text-xs sm:text-sm py-2">Personalizado</TabsTrigger>
+          <TabsTrigger value="aulas" className="text-xs sm:text-sm py-2">Aulas</TabsTrigger>
+          <TabsTrigger value="ferramentas" className="text-xs sm:text-sm py-2">Ferramentas</TabsTrigger>
           <TabsTrigger value="mapa-mental" className="text-xs sm:text-sm py-2">Mapa Mental</TabsTrigger>
         </TabsList>
 
@@ -376,6 +380,14 @@ function UserPlanView({ user, onBack }: { user: UserProfile; onBack: () => void 
             </Accordion>
           )}
         </TabsContent>
+        <TabsContent value="aulas" className="mt-6">
+          <PlanAulasTab userId={user.user_id} />
+        </TabsContent>
+
+        <TabsContent value="ferramentas" className="mt-6">
+          <PlanFerramentasTab userId={user.user_id} />
+        </TabsContent>
+
         <TabsContent value="mapa-mental" className="mt-6">
           <div className="space-y-4">
             <div>
