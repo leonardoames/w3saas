@@ -34,6 +34,7 @@ import CalendarioComercial from "./pages/CalendarioComercial";
 import Integracoes from "./pages/Integracoes";
 import ShopifyCallback from "./pages/ShopifyCallback";
 import ShopeeCallback from "./pages/ShopeeCallback";
+import ShopeeAdsCallback from "./pages/ShopeeAdsCallback";
 import DashAdmin from "./pages/DashAdmin";
 
 // Admin pages
@@ -87,6 +88,7 @@ const App = () => (
                         <Route path="/integracoes" element={<Integracoes />} />
                         <Route path="/integracoes/shopify/callback" element={<ShopifyCallback />} />
                         <Route path="/integracoes/shopee/callback" element={<ShopeeCallback />} />
+                        <Route path="/integracoes/shopee-ads/callback" element={<ShopeeAdsCallback />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </MainLayout>
