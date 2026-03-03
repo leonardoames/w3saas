@@ -10,6 +10,7 @@ import { ProgressCard } from "@/components/plano-acao/ProgressCard";
 import { TaskSection } from "@/components/plano-acao/TaskSection";
 import { AddTaskDialog } from "@/components/plano-acao/AddTaskDialog";
 import { MiroEmbed } from "@/components/plano-acao/MiroEmbed";
+import { UserResourcesTab } from "@/components/plano-acao/UserResourcesTab";
 
 export default function PlanoAcao() {
   const { user, profile } = useAuth();
@@ -93,9 +94,10 @@ export default function PlanoAcao() {
       />
 
       <Tabs defaultValue="ames" className="w-full">
-        <TabsList className={`grid w-full ${profile?.is_mentorado ? 'grid-cols-3' : 'grid-cols-2'}`}>
+        <TabsList className={`grid w-full ${profile?.is_mentorado ? 'grid-cols-4' : 'grid-cols-3'}`}>
           <TabsTrigger value="ames">Plano AMES</TabsTrigger>
           <TabsTrigger value="custom">Personalizado</TabsTrigger>
+          <TabsTrigger value="recursos">Recursos</TabsTrigger>
           {profile?.is_mentorado && (
             <TabsTrigger value="mapa-mental">Mapa Mental</TabsTrigger>
           )}
@@ -168,6 +170,10 @@ export default function PlanoAcao() {
               />
             </Accordion>
           )}
+        </TabsContent>
+
+        <TabsContent value="recursos" className="mt-6">
+          <UserResourcesTab />
         </TabsContent>
 
         {profile?.is_mentorado && (

@@ -696,6 +696,80 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_aulas: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          id: string
+          lesson_id: string
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          id?: string
+          lesson_id: string
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          lesson_id?: string
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_aulas_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_ferramentas: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          description: string | null
+          external_url: string | null
+          file_url: string | null
+          id: string
+          title: string
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          external_url?: string | null
+          file_url?: string | null
+          id?: string
+          title: string
+          type?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          external_url?: string | null
+          file_url?: string | null
+          id?: string
+          title?: string
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           access_expires_at: string | null
