@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { format, subDays, parseISO, isWithinInterval, isValid } from "date-fns";
+import { format, subDays, parseISO, isWithinInterval, isValid, startOfDay, endOfDay, differenceInCalendarDays } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { useNavigate } from "react-router-dom";
 import { KPICard } from "@/components/dashboard/KPICard";
@@ -31,7 +31,7 @@ export default function Dashboard() {
   const [allMetricsRaw, setAllMetricsRaw] = useState<any[]>([]);
 
   const [selectedPeriod, setSelectedPeriod] = useState("7d");
-  const [dateRange, setDateRange] = useState({ from: subDays(new Date(), 7), to: new Date() });
+  const [dateRange, setDateRange] = useState({ from: startOfDay(subDays(new Date(), 7)), to: endOfDay(new Date()) });
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformType>("todos");
 
@@ -98,7 +98,7 @@ export default function Dashboard() {
 
   const handlePeriodChange = (period: string, start: Date, end: Date) => {
     setSelectedPeriod(period);
-    setDateRange({ from: start, to: end });
+    setDateRange({ from: startOfDay(start), to: endOfDay(end) });
   };
 
   // When a specific platform is selected, rebuild data from metricsRaw only
@@ -117,22 +117,24 @@ export default function Dashboard() {
     return Object.values(dateMap).sort((a, b) => a.data.localeCompare(b.data));
   }, [allData, allMetricsRaw, selectedPlatform]);
 
-  const filtered = useMemo(
-    () =>
-      effectiveData.filter((m) => {
-        const date = parseISO(m.data);
-        return isValid(date) && isWithinInterval(date, { start: dateRange.from, end: dateRange.to });
-      }),
-    [effectiveData, dateRange]
-  );
+  const filtered = useMemo(() => {
+    const rangeStart = startOfDay(dateRange.from);
+    const rangeEnd = endOfDay(dateRange.to);
 
-  const prevFiltered = useMemo(() => {
-    const len = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24));
-    const prevEnd = subDays(dateRange.from, 1);
-    const prevStart = subDays(prevEnd, len);
     return effectiveData.filter((m) => {
       const date = parseISO(m.data);
-      return isValid(date) && isWithinInterval(date, { start: prevStart, end: prevEnd });
+      return isValid(date) && isWithinInterval(date, { start: rangeStart, end: rangeEnd });
+    });
+  }, [effectiveData, dateRange]);
+
+  const prevFiltered = useMemo(() => {
+    const daysCount = differenceInCalendarDays(dateRange.to, dateRange.from) + 1;
+    const prevEnd = subDays(startOfDay(dateRange.from), 1);
+    const prevStart = subDays(prevEnd, daysCount - 1);
+
+    return effectiveData.filter((m) => {
+      const date = parseISO(m.data);
+      return isValid(date) && isWithinInterval(date, { start: startOfDay(prevStart), end: endOfDay(prevEnd) });
     });
   }, [effectiveData, dateRange]);
 
