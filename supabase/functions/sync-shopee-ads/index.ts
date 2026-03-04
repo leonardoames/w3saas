@@ -197,8 +197,8 @@ Deno.serve(async (req) => {
 
     const dailySpend: Record<string, DayMetrics> = {};
 
-    // Chunk into 30-day windows to avoid API limits
-    const chunkSize = 30;
+    // Chunk into 29-day windows (API max is 1 month)
+    const chunkSize = 29;
     let chunkStart = new Date(ninetyDaysAgo);
 
     while (chunkStart < now) {
@@ -222,22 +222,27 @@ Deno.serve(async (req) => {
           console.error(`[sync-shopee-ads] API error for ${startStr}-${endStr}:`, JSON.stringify(perfRes));
         }
 
-        const dailyData = perfRes.response?.daily_performance || perfRes.response?.data || [];
+        // API returns response as array directly
+        const dailyData = Array.isArray(perfRes.response) ? perfRes.response : (perfRes.response?.daily_performance || perfRes.response?.data || []);
         console.log(`[sync-shopee-ads] Got ${dailyData.length} days of data for ${startStr}-${endStr}`);
 
         for (const day of dailyData) {
-          const dateStr = day.date;
-          if (!dateStr) continue;
+          const rawDate = day.date; // DD-MM-YYYY format
+          if (!rawDate) continue;
 
-          if (!dailySpend[dateStr]) {
-            dailySpend[dateStr] = { cost: 0, clicks: 0, gmv: 0, orders: 0 };
+          // Convert DD-MM-YYYY to YYYY-MM-DD for database storage
+          const parts = rawDate.split("-");
+          const isoDate = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : rawDate;
+
+          if (!dailySpend[isoDate]) {
+            dailySpend[isoDate] = { cost: 0, clicks: 0, gmv: 0, orders: 0 };
           }
-          // Shopee returns cost/gmv in micro-units (divide by 100000)
-          dailySpend[dateStr].cost += Number(day.cost || 0) / 100000;
-          dailySpend[dateStr].clicks += Number(day.clicks || 0);
-          // ROAS direto: use direct_gmv and direct_order_num
-          dailySpend[dateStr].gmv += Number(day.direct_gmv || 0) / 100000;
-          dailySpend[dateStr].orders += Number(day.direct_order_num || 0);
+          // API returns values in currency units (not micro-units based on logs)
+          dailySpend[isoDate].cost += Number(day.expense || day.cost || 0);
+          dailySpend[isoDate].clicks += Number(day.clicks || 0);
+          // ROAS direto: use direct_gmv and direct_order
+          dailySpend[isoDate].gmv += Number(day.direct_gmv || 0);
+          dailySpend[isoDate].orders += Number(day.direct_order || day.direct_order_num || 0);
         }
       } catch (apiErr) {
         console.error(`[sync-shopee-ads] Error fetching ${startStr}-${endStr}:`, apiErr);
