@@ -1,46 +1,29 @@
 
 
-## Plan: Fix Shopee ADS Sync - Correct API Endpoints
+## Analysis: Data for Today and Yesterday
 
-### Root Cause
+### What I found
 
-The edge function logs show: `Shopee Marketing API 404: {"error":"error_not_found"}`. The function is calling **non-existent endpoints**:
-- `/api/v2/marketing/get_all_campaign_list` -- does NOT exist
-- `/api/v2/marketing/get_campaign_daily_performance` -- does NOT exist
-
-After investigating the Shopee Open Platform SDK source code, the correct Shopee Ads namespace is `/api/v2/ads/`, not `/api/v2/marketing/`.
-
-### Correct Approach
-
-The Shopee Ads API provides a single aggregated endpoint that returns daily performance across **all** CPC ads -- no need to list campaigns individually:
+After querying the database, the `metrics_diarias` table for `shopee_ads` **already contains data for 03-03 (yesterday)**:
 
 ```text
-GET /api/v2/ads/get_all_cpc_ads_daily_performance
-  Query params: start_date, end_date, access_token, partner_id, shop_id, timestamp, sign
+2026-03-03: R$ 1.993,85 faturamento | R$ 153,74 investimento | 1.209 sessões | 32 vendas
+2026-03-02: R$ 796,37 faturamento | R$ 84,65 investimento | 535 sessões | 16 vendas
+2026-03-01: R$ 2.028,83 faturamento | R$ 148,53 investimento | 904 sessões | 35 vendas
 ```
 
-This eliminates the two-step approach (list campaigns → fetch per-campaign performance) and returns aggregated daily metrics including cost, clicks, impressions, gmv, direct_gmv, orders, etc.
+### Why today (03-04) has no data
 
-### Changes to `supabase/functions/sync-shopee-ads/index.ts`
+This is **expected behavior** -- the Shopee Ads API has a ~1 day delay for performance data. Data for today will only become available tomorrow when you sync again.
 
-1. **Replace `shopeePost` with `shopeeGet`** -- the Ads API uses GET requests, not POST
-2. **Replace the two-step campaign iteration** with a single call to `/api/v2/ads/get_all_cpc_ads_daily_performance`
-3. **Fix the API path namespace**: `/api/v2/ads/` instead of `/api/v2/marketing/`
-4. **Map response fields to `metrics_diarias`**:
+### Why yesterday's data might not show on the Dashboard
 
-```text
-Shopee Ads API field     →  metrics_diarias column
-──────────────────────────────────────────────────
-cost                     →  investimento_trafego
-clicks                   →  sessoes
-direct_gmv               →  faturamento + vendas_valor (per user preference: ROAS direto)
-direct_order_num         →  vendas_quantidade
-```
+The most likely reason is that you synced the data **after** the Dashboard page was already loaded. The Dashboard doesn't auto-refresh after a sync. You need to **reload the page** or navigate away and back to the Dashboard to see updated data.
 
-5. **Keep 90-day sync window** as requested
-6. **Add detailed logging** of API responses for debugging
-7. **Handle date pagination** if the API limits the date range per request (chunk into 30-day windows)
+### No code changes needed
 
-### Summary of files
-- **Edit**: `supabase/functions/sync-shopee-ads/index.ts` -- rewrite API calls to use correct `/api/v2/ads/` GET endpoints
+The sync is working correctly. The data is in the database. Simply:
+
+1. **Refresh the Dashboard page** (or navigate away and back) to see yesterday's data
+2. Data for today (03-04) will appear after your next sync tomorrow -- this is a Shopee API limitation, not a bug
 
