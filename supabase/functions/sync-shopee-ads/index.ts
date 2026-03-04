@@ -108,6 +108,14 @@ async function shopeePost(
   return JSON.parse(text);
 }
 
+// ---- Daily metrics aggregation type ----
+interface DayMetrics {
+  cost: number;
+  clicks: number;
+  gmv: number;
+  orders: number;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -129,15 +137,14 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims) {
+    const { data: { user }, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !user) {
       return new Response(JSON.stringify({ error: "Usuário inválido" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const userId = claimsData.claims.sub as string;
+    const userId = user.id;
 
     // ---- Get integration ----
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -178,21 +185,22 @@ Deno.serve(async (req) => {
 
     const accessToken = await refreshTokenIfNeeded(adminClient, integration, partnerId, partnerKey);
 
-    // ---- Fetch daily ad spend (last 30 days) ----
-    // Shopee Marketing API: get_shop_daily_performance
+    // ---- Fetch daily ad performance (last 90 days) ----
     const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
+    // Use local date components to avoid timezone shifts
     const formatDate = (d: Date) => {
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
     };
 
-    // Try to get campaign-level data to aggregate daily spend
-    const dailySpend: Record<string, number> = {};
+    const dailySpend: Record<string, DayMetrics> = {};
     let syncedDays = 0;
 
     try {
-      // Use get_all_campaign_list to get campaigns, then get daily performance
       const campaignRes = await shopeePost(
         "/api/v2/marketing/get_all_campaign_list",
         {},
@@ -209,15 +217,15 @@ Deno.serve(async (req) => {
       const campaigns = campaignRes.response?.campaign_list || [];
 
       if (campaigns.length > 0) {
-        // Get daily performance for each campaign
         for (const campaign of campaigns) {
-          await new Promise((r) => setTimeout(r, 200));
+          // Rate-limit delay
+          await new Promise((r) => setTimeout(r, 300));
 
           const perfRes = await shopeePost(
             "/api/v2/marketing/get_campaign_daily_performance",
             {
               campaign_id: campaign.campaign_id,
-              start_date: formatDate(thirtyDaysAgo),
+              start_date: formatDate(ninetyDaysAgo),
               end_date: formatDate(now),
             },
             partnerId,
@@ -234,42 +242,53 @@ Deno.serve(async (req) => {
           const dailyData = perfRes.response?.daily_performance || [];
           for (const day of dailyData) {
             const dateStr = day.date;
-            const cost = Number(day.cost || 0) / 100000; // Shopee returns cost in micro-units
             if (!dailySpend[dateStr]) {
-              dailySpend[dateStr] = 0;
+              dailySpend[dateStr] = { cost: 0, clicks: 0, gmv: 0, orders: 0 };
             }
-            dailySpend[dateStr] += cost;
+            // Shopee returns cost and gmv in micro-units (divide by 100000)
+            dailySpend[dateStr].cost += Number(day.cost || 0) / 100000;
+            dailySpend[dateStr].clicks += Number(day.clicks || 0);
+            dailySpend[dateStr].gmv += Number(day.broad_gmv || day.direct_gmv || 0) / 100000;
+            dailySpend[dateStr].orders += Number(day.broad_order_num || day.direct_order_num || 0);
           }
         }
       }
     } catch (apiErr) {
       console.error("Shopee Marketing API error:", apiErr);
-      // Continue — we'll still update sync status
     }
 
     // ---- Upsert metrics ----
-    for (const [date, spend] of Object.entries(dailySpend)) {
-      if (spend <= 0) continue;
+    for (const [date, metrics] of Object.entries(dailySpend)) {
+      // Skip days with zero activity
+      if (metrics.cost <= 0 && metrics.clicks <= 0 && metrics.gmv <= 0 && metrics.orders <= 0) continue;
 
       const { data: existing } = await adminClient
         .from("metrics_diarias")
-        .select("id, investimento_trafego")
+        .select("id")
         .eq("user_id", userId)
         .eq("data", date)
         .eq("platform", PLATFORM)
         .maybeSingle();
 
+      const upsertData = {
+        investimento_trafego: metrics.cost,
+        sessoes: metrics.clicks,
+        faturamento: metrics.gmv,
+        vendas_valor: metrics.gmv,
+        vendas_quantidade: metrics.orders,
+      };
+
       if (existing) {
         await adminClient
           .from("metrics_diarias")
-          .update({ investimento_trafego: spend })
+          .update(upsertData)
           .eq("id", existing.id);
       } else {
         await adminClient.from("metrics_diarias").insert({
           user_id: userId,
           data: date,
           platform: PLATFORM,
-          investimento_trafego: spend,
+          ...upsertData,
         });
       }
       syncedDays++;
@@ -283,7 +302,7 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        message: `Sincronização Shopee ADS concluída! ${syncedDays} dias com investimento atualizados.`,
+        message: `Sincronização Shopee ADS concluída! ${syncedDays} dias atualizados com métricas completas.`,
         synced: syncedDays,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
