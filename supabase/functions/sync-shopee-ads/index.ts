@@ -74,9 +74,9 @@ async function refreshTokenIfNeeded(
   return data.access_token;
 }
 
-async function shopeePost(
+async function shopeeGet(
   path: string,
-  params: Record<string, any>,
+  extraParams: Record<string, string>,
   partnerId: number,
   partnerKey: string,
   accessToken: string,
@@ -86,29 +86,37 @@ async function shopeePost(
   const baseString = `${partnerId}${path}${timestamp}${accessToken}${shopId}`;
   const sign = await hmacSign(partnerKey, baseString);
 
-  const urlParams = new URLSearchParams();
-  urlParams.set("partner_id", String(partnerId));
-  urlParams.set("timestamp", String(timestamp));
-  urlParams.set("sign", sign);
-  urlParams.set("access_token", accessToken);
-  urlParams.set("shop_id", String(shopId));
+  const urlParams = new URLSearchParams({
+    partner_id: String(partnerId),
+    timestamp: String(timestamp),
+    sign,
+    access_token: accessToken,
+    shop_id: String(shopId),
+    ...extraParams,
+  });
 
   const url = `${SHOPEE_HOST}${path}?${urlParams.toString()}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(params),
-  });
+  console.log(`[shopeeGet] GET ${path} params:`, JSON.stringify(extraParams));
+
+  const res = await fetch(url, { method: "GET" });
   const text = await res.text();
 
+  console.log(`[shopeeGet] Response status: ${res.status}, body preview: ${text.substring(0, 500)}`);
+
   if (!res.ok) {
-    throw new Error(`Shopee Marketing API ${res.status}: ${text}`);
+    throw new Error(`Shopee Ads API ${res.status}: ${text}`);
   }
 
   return JSON.parse(text);
 }
 
-// ---- Daily metrics aggregation type ----
+function formatDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 interface DayMetrics {
   cost: number;
   clicks: number;
@@ -122,7 +130,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // ---- Auth ----
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Não autenticado" }), {
@@ -146,7 +153,6 @@ Deno.serve(async (req) => {
     }
     const userId = user.id;
 
-    // ---- Get integration ----
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, serviceKey);
 
@@ -185,81 +191,66 @@ Deno.serve(async (req) => {
 
     const accessToken = await refreshTokenIfNeeded(adminClient, integration, partnerId, partnerKey);
 
-    // ---- Fetch daily ad performance (last 90 days) ----
+    // ---- Fetch daily ad performance (last 90 days) using correct /api/v2/ads/ endpoint ----
     const now = new Date();
     const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
-    // Use local date components to avoid timezone shifts
-    const formatDate = (d: Date) => {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    };
-
     const dailySpend: Record<string, DayMetrics> = {};
-    let syncedDays = 0;
 
-    try {
-      const campaignRes = await shopeePost(
-        "/api/v2/marketing/get_all_campaign_list",
-        {},
-        partnerId,
-        partnerKey,
-        accessToken,
-        creds.shop_id
-      );
+    // Chunk into 30-day windows to avoid API limits
+    const chunkSize = 30;
+    let chunkStart = new Date(ninetyDaysAgo);
 
-      if (campaignRes.error) {
-        console.error("Shopee get_all_campaign_list error:", campaignRes);
-      }
+    while (chunkStart < now) {
+      const chunkEnd = new Date(Math.min(chunkStart.getTime() + chunkSize * 24 * 60 * 60 * 1000, now.getTime()));
+      const startStr = formatDate(chunkStart);
+      const endStr = formatDate(chunkEnd);
 
-      const campaigns = campaignRes.response?.campaign_list || [];
+      console.log(`[sync-shopee-ads] Fetching ads performance: ${startStr} → ${endStr}`);
 
-      if (campaigns.length > 0) {
-        for (const campaign of campaigns) {
-          // Rate-limit delay
-          await new Promise((r) => setTimeout(r, 300));
+      try {
+        const perfRes = await shopeeGet(
+          "/api/v2/ads/get_all_cpc_ads_daily_performance",
+          { start_date: startStr, end_date: endStr },
+          partnerId,
+          partnerKey,
+          accessToken,
+          creds.shop_id
+        );
 
-          const perfRes = await shopeePost(
-            "/api/v2/marketing/get_campaign_daily_performance",
-            {
-              campaign_id: campaign.campaign_id,
-              start_date: formatDate(ninetyDaysAgo),
-              end_date: formatDate(now),
-            },
-            partnerId,
-            partnerKey,
-            accessToken,
-            creds.shop_id
-          );
-
-          if (perfRes.error) {
-            console.warn(`Campaign ${campaign.campaign_id} perf error:`, perfRes.error);
-            continue;
-          }
-
-          const dailyData = perfRes.response?.daily_performance || [];
-          for (const day of dailyData) {
-            const dateStr = day.date;
-            if (!dailySpend[dateStr]) {
-              dailySpend[dateStr] = { cost: 0, clicks: 0, gmv: 0, orders: 0 };
-            }
-            // Shopee returns cost and gmv in micro-units (divide by 100000)
-            dailySpend[dateStr].cost += Number(day.cost || 0) / 100000;
-            dailySpend[dateStr].clicks += Number(day.clicks || 0);
-            dailySpend[dateStr].gmv += Number(day.broad_gmv || day.direct_gmv || 0) / 100000;
-            dailySpend[dateStr].orders += Number(day.broad_order_num || day.direct_order_num || 0);
-          }
+        if (perfRes.error) {
+          console.error(`[sync-shopee-ads] API error for ${startStr}-${endStr}:`, JSON.stringify(perfRes));
         }
+
+        const dailyData = perfRes.response?.daily_performance || perfRes.response?.data || [];
+        console.log(`[sync-shopee-ads] Got ${dailyData.length} days of data for ${startStr}-${endStr}`);
+
+        for (const day of dailyData) {
+          const dateStr = day.date;
+          if (!dateStr) continue;
+
+          if (!dailySpend[dateStr]) {
+            dailySpend[dateStr] = { cost: 0, clicks: 0, gmv: 0, orders: 0 };
+          }
+          // Shopee returns cost/gmv in micro-units (divide by 100000)
+          dailySpend[dateStr].cost += Number(day.cost || 0) / 100000;
+          dailySpend[dateStr].clicks += Number(day.clicks || 0);
+          // ROAS direto: use direct_gmv and direct_order_num
+          dailySpend[dateStr].gmv += Number(day.direct_gmv || 0) / 100000;
+          dailySpend[dateStr].orders += Number(day.direct_order_num || 0);
+        }
+      } catch (apiErr) {
+        console.error(`[sync-shopee-ads] Error fetching ${startStr}-${endStr}:`, apiErr);
       }
-    } catch (apiErr) {
-      console.error("Shopee Marketing API error:", apiErr);
+
+      // Rate-limit delay between chunks
+      await new Promise((r) => setTimeout(r, 500));
+      chunkStart = new Date(chunkEnd.getTime() + 24 * 60 * 60 * 1000);
     }
 
     // ---- Upsert metrics ----
+    let syncedDays = 0;
     for (const [date, metrics] of Object.entries(dailySpend)) {
-      // Skip days with zero activity
       if (metrics.cost <= 0 && metrics.clicks <= 0 && metrics.gmv <= 0 && metrics.orders <= 0) continue;
 
       const { data: existing } = await adminClient
@@ -279,10 +270,7 @@ Deno.serve(async (req) => {
       };
 
       if (existing) {
-        await adminClient
-          .from("metrics_diarias")
-          .update(upsertData)
-          .eq("id", existing.id);
+        await adminClient.from("metrics_diarias").update(upsertData).eq("id", existing.id);
       } else {
         await adminClient.from("metrics_diarias").insert({
           user_id: userId,
@@ -294,11 +282,12 @@ Deno.serve(async (req) => {
       syncedDays++;
     }
 
-    // ---- Update last_sync_at ----
     await adminClient
       .from("user_integrations")
       .update({ last_sync_at: new Date().toISOString(), sync_status: "connected" })
       .eq("id", integration.id);
+
+    console.log(`[sync-shopee-ads] Done. ${syncedDays} days synced.`);
 
     return new Response(
       JSON.stringify({
