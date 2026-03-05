@@ -71,7 +71,8 @@ export default function Dashboard() {
     const dateMap: Record<string, DailyRow> = {};
 
     for (const d of dailyData) {
-      const key = d.data;
+      if (!d.data) continue;
+      const key = d.data.substring(0, 10);
       if (!dateMap[key]) dateMap[key] = { data: key, investimento: 0, sessoes: 0, pedidos_pagos: 0, receita_paga: 0 };
       dateMap[key].investimento += Number(d.investimento) || 0;
       dateMap[key].sessoes += Number(d.sessoes) || 0;
@@ -80,7 +81,8 @@ export default function Dashboard() {
     }
 
     for (const d of metricsData) {
-      const key = d.data;
+      if (!d.data) continue;
+      const key = d.data.substring(0, 10);
       if (!dateMap[key]) dateMap[key] = { data: key, investimento: 0, sessoes: 0, pedidos_pagos: 0, receita_paga: 0 };
       dateMap[key].investimento += Number(d.investimento_trafego) || 0;
       dateMap[key].sessoes += Number(d.sessoes) || 0;
@@ -106,9 +108,10 @@ export default function Dashboard() {
     if (selectedPlatform === "todos") return allData;
     const dateMap: Record<string, DailyRow> = {};
     for (const d of allMetricsRaw) {
-      if (d.platform !== selectedPlatform) continue;
-      const key = d.data;
-      if (!dateMap[key]) dateMap[key] = { data: key, investimento: 0, sessoes: 0, pedidos_pagos: 0, receita_paga: 0 };
+    if (d.platform !== selectedPlatform) continue;
+    if (!d.data) continue;
+    const key = d.data.substring(0, 10);
+    if (!dateMap[key]) dateMap[key] = { data: key, investimento: 0, sessoes: 0, pedidos_pagos: 0, receita_paga: 0 };
       dateMap[key].investimento += Number(d.investimento_trafego) || 0;
       dateMap[key].sessoes += Number(d.sessoes) || 0;
       dateMap[key].pedidos_pagos += Number(d.vendas_quantidade) || 0;
@@ -122,7 +125,8 @@ export default function Dashboard() {
     const rangeEnd = endOfDay(dateRange.to);
 
     return effectiveData.filter((m) => {
-      const date = parseISO(m.data);
+      if (!m.data) return false;
+      const date = parseISO(m.data.substring(0, 10));
       return isValid(date) && isWithinInterval(date, { start: rangeStart, end: rangeEnd });
     });
   }, [effectiveData, dateRange]);
@@ -133,7 +137,8 @@ export default function Dashboard() {
     const prevStart = subDays(prevEnd, daysCount - 1);
 
     return effectiveData.filter((m) => {
-      const date = parseISO(m.data);
+      if (!m.data) return false;
+      const date = parseISO(m.data.substring(0, 10));
       return isValid(date) && isWithinInterval(date, { start: startOfDay(prevStart), end: endOfDay(prevEnd) });
     });
   }, [effectiveData, dateRange]);
