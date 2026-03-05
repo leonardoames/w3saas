@@ -1,29 +1,18 @@
 
 
-## Analysis: Data for Today and Yesterday
+## Fix: Normalize date keys and parsing in Dashboard
 
-### What I found
+The root cause is a timezone mismatch: dates from the database may include time/timezone components, causing `parseISO` to shift dates when converting to local time. Additionally, date keys in `dateMap` may not group properly if they contain time components.
 
-After querying the database, the `metrics_diarias` table for `shopee_ads` **already contains data for 03-03 (yesterday)**:
+### Changes to `src/pages/Dashboard.tsx`
 
-```text
-2026-03-03: R$ 1.993,85 faturamento | R$ 153,74 investimento | 1.209 sessões | 32 vendas
-2026-03-02: R$ 796,37 faturamento | R$ 84,65 investimento | 535 sessões | 16 vendas
-2026-03-01: R$ 2.028,83 faturamento | R$ 148,53 investimento | 904 sessões | 35 vendas
-```
+**1. Normalize date keys in `loadData`** — Use `substring(0, 10)` on both `dailyData` and `metricsData` loops to extract only `YYYY-MM-DD`.
 
-### Why today (03-04) has no data
+**2. Normalize date keys in `effectiveData` useMemo** — Same `substring(0, 10)` fix for platform-specific filtering.
 
-This is **expected behavior** -- the Shopee Ads API has a ~1 day delay for performance data. Data for today will only become available tomorrow when you sync again.
+**3. Normalize date parsing in `filtered` and `prevFiltered`** — Use `parseISO(m.data.substring(0, 10))` to ensure local timezone interpretation.
 
-### Why yesterday's data might not show on the Dashboard
+**4. Add null safety** — Guard against null `data` values before calling `substring`.
 
-The most likely reason is that you synced the data **after** the Dashboard page was already loaded. The Dashboard doesn't auto-refresh after a sync. You need to **reload the page** or navigate away and back to the Dashboard to see updated data.
-
-### No code changes needed
-
-The sync is working correctly. The data is in the database. Simply:
-
-1. **Refresh the Dashboard page** (or navigate away and back) to see yesterday's data
-2. Data for today (03-04) will appear after your next sync tomorrow -- this is a Shopee API limitation, not a bug
+All changes are in a single file: `src/pages/Dashboard.tsx`. No database or backend changes needed.
 
