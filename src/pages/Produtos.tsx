@@ -97,7 +97,7 @@ export default function Produtos() {
           {products.map((product) => (
             <div
               key={product.id}
-              className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#222222] bg-[#111111] transition-colors hover:border-[#333333]"
+              className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-muted-foreground/20"
             >
               {/* Admin controls */}
               {isAdmin && (
