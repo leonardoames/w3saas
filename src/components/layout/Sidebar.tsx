@@ -2,7 +2,7 @@ import { SidebarNavLink } from "./SidebarNavLink";
 import {
   LayoutDashboard, GraduationCap, ListChecks, Calculator, GitCompare,
   Sparkles, Brain, Store, ShoppingBag, CalendarDays, ChevronLeft,
-  ChevronRight, X, Shield, Plug, ChevronDown, BarChart3, Activity,
+  ChevronRight, X, Shield, ChevronDown, BarChart3, Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,7 +34,7 @@ const menuGroups: MenuGroup[] = [
       { title: "Dashboard", icon: LayoutDashboard, path: "/app" },
       { title: "Acompanhamento Diário", icon: BarChart3, path: "/app/acompanhamento" },
       { title: "Plano de Ação", icon: ListChecks, path: "/app/plano-acao" },
-      { title: "Integrações", icon: Plug, path: "/app/integracoes" },
+      { title: "Integrações", icon: Activity, path: "/app/integracoes" },
       { title: "Dash Admin", icon: Activity, path: "/app/dash-admin", adminOnly: true },
     ],
   },
@@ -136,12 +136,7 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
   const handleNavClick = () => { if (isMobile) onMobileClose(); };
 
   const getUserName = () => profile?.full_name || "Usuário";
-  const getUserInitials = () => {
-    if (profile?.full_name) {
-      return profile.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
-    }
-    return "U";
-  };
+  const getUserEmail = () => profile?.email || "";
   const getPlanLabel = () => {
     if (profile?.is_mentorado) return "Mentorado";
     if (profile?.is_w3_client) return "Cliente W3";
@@ -165,12 +160,6 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
     </>
   );
 
-  const allItemsFlat: MenuItem[] = [
-    ...allGroups.flatMap((g) => g.items).filter((item) => !item.adminOnly || isAdmin),
-    ...standaloneItems,
-  ];
-
-  // For collapsed sidebar, show only group-level icons + standalone items
   const collapsedItems: MenuItem[] = [
     ...allGroups.map((g) => ({ title: g.title, icon: g.icon, path: g.items[0]?.path || "/app" })),
     ...standaloneItems,
@@ -207,24 +196,19 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
     </>
   );
 
+  // User info: text only (no avatar) — avatar lives in header
   const renderUserInfo = (expanded: boolean) =>
     expanded ? (
-      <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 bg-accent/50">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-          <span className="text-xs font-semibold">{getUserInitials()}</span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-medium text-foreground truncate">{getUserName()}</p>
-          <p className="text-[11px] text-muted-foreground">{getPlanLabel()}</p>
-        </div>
+      <div className="rounded-lg px-3 py-2.5 bg-accent/50">
+        <p className="text-[13px] font-medium text-foreground truncate">{getUserName()}</p>
+        <p className="text-[11px] text-muted-foreground truncate">{getUserEmail()}</p>
+        <p className="text-[10px] text-muted-foreground/70 mt-0.5">{getPlanLabel()}</p>
       </div>
     ) : (
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="flex items-center justify-center">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <span className="text-xs font-semibold">{getUserInitials()}</span>
-            </div>
+          <div className="flex items-center justify-center px-2 py-2">
+            <span className="text-[10px] font-semibold text-muted-foreground">{getUserName().charAt(0).toUpperCase()}</span>
           </div>
         </TooltipTrigger>
         <TooltipContent side="right">

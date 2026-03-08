@@ -1,5 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { LineChart, Line, ResponsiveContainer } from "recharts";
 
 interface KPICardProps {
   title: string;
@@ -9,19 +11,29 @@ interface KPICardProps {
   onClick?: () => void;
   dominant?: boolean;
   invertChange?: boolean;
+  tooltip?: string;
+  sparklineData?: number[];
+  isEmpty?: boolean;
 }
 
-export function KPICard({ title, value, subtitle, change, onClick, dominant, invertChange }: KPICardProps) {
+export function KPICard({ title, value, subtitle, change, onClick, dominant, invertChange, tooltip, sparklineData, isEmpty }: KPICardProps) {
   const isClickable = !!onClick;
   
-  // For metrics like "Custo por Venda", a decrease is good
   const isPositive = invertChange ? (change !== undefined && change < 0) : (change !== undefined && change > 0);
   const isNegative = invertChange ? (change !== undefined && change > 0) : (change !== undefined && change < 0);
 
-  return (
+  // Sparkline trend color
+  const sparkTrend = sparklineData && sparklineData.length >= 2
+    ? sparklineData[sparklineData.length - 1] >= sparklineData[0]
+    : true;
+  const sparkColor = sparkTrend ? "hsl(24, 94%, 53%)" : "hsl(0, 84%, 60%)";
+
+  const sparkChartData = sparklineData?.map((v, i) => ({ v, i }));
+
+  const cardContent = (
     <div 
       className={cn(
-        "rounded-xl border border-border bg-card transition-all duration-200 ease-out",
+        "rounded-xl border border-border bg-card transition-all duration-200 ease-out relative overflow-hidden",
         dominant ? "p-4 sm:p-6 md:p-7 col-span-2 sm:col-span-2 lg:col-span-1" : "p-4 sm:p-5 md:p-6",
         isClickable 
           ? "cursor-pointer hover:shadow-md hover:border-primary/30 hover:-translate-y-px group" 
@@ -45,10 +57,13 @@ export function KPICard({ title, value, subtitle, change, onClick, dominant, inv
       )}
         style={{ letterSpacing: '-0.03em' }}
       >
-        {value}
+        {isEmpty ? "—" : value}
       </div>
+      {isEmpty && (
+        <p className="text-[10px] text-muted-foreground mt-1">Sem dados neste período</p>
+      )}
       <div className="flex items-center gap-2 mt-2 sm:mt-2.5">
-        {change !== undefined && change !== 0 && (
+        {!isEmpty && change !== undefined && change !== 0 && (
           <span className={cn(
             "text-[11px] font-semibold px-1.5 py-0.5 rounded-md",
             isPositive
@@ -60,10 +75,38 @@ export function KPICard({ title, value, subtitle, change, onClick, dominant, inv
             {change > 0 ? '↑' : '↓'} {Math.abs(change).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
           </span>
         )}
-        {subtitle && (
+        {subtitle && !isEmpty && (
           <p className="text-[11px] text-muted-foreground">{subtitle}</p>
         )}
       </div>
+
+      {/* Sparkline */}
+      {sparkChartData && sparkChartData.length > 1 && !isEmpty && (
+        <div className="absolute bottom-2 right-2 w-16 h-10 opacity-60">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={sparkChartData}>
+              <Line type="monotone" dataKey="v" stroke={sparkColor} strokeWidth={1.5} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
+
+  if (tooltip) {
+    return (
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {cardContent}
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-[260px] text-xs">
+            {tooltip}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return cardContent;
 }

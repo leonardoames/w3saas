@@ -16,6 +16,8 @@ import { MonthProjection } from "@/components/dashboard/MonthProjection";
 import { DailyAlert } from "@/components/dashboard/DailyAlert";
 import { BreakEvenCard } from "@/components/dashboard/BreakEvenCard";
 import { BestDayBadge } from "@/components/dashboard/BestDayBadge";
+import { KPISkeletonGrid, ChartSkeleton, GoalSkeleton } from "@/components/dashboard/DashboardSkeletons";
+import { EmptyChartState } from "@/components/dashboard/EmptyChartState";
 
 interface DailyRow {
   data: string;
@@ -25,10 +27,22 @@ interface DailyRow {
   receita_paga: number;
 }
 
+// KPI tooltip descriptions
+const KPI_TOOLTIPS = {
+  faturamento: "Soma de todas as vendas no período selecionado",
+  roas: "Faturamento ÷ Investimento em tráfego. Quanto você recebe para cada R$1 investido",
+  vendas: "Total de pedidos registrados no período",
+  sessoes: "Total de visitas à sua loja no período",
+  ticket: "Faturamento ÷ número de vendas. Valor médio de cada pedido",
+  custo: "Investimento em tráfego ÷ número de vendas. Quanto custa gerar cada venda",
+  conversao: "Vendas ÷ Sessões × 100. Percentual de visitantes que compraram",
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
   const [allData, setAllData] = useState<DailyRow[]>([]);
   const [allMetricsRaw, setAllMetricsRaw] = useState<any[]>([]);
   const [revenueGoal, setRevenueGoal] = useState<number | null>(null);
@@ -47,6 +61,7 @@ export default function Dashboard() {
 
   const loadData = useCallback(async () => {
     if (!user) return;
+    setDataLoading(true);
     const last90 = subDays(new Date(), 90);
     const last90Str = format(last90, "yyyy-MM-dd");
 
@@ -92,6 +107,7 @@ export default function Dashboard() {
 
     const merged = Object.values(dateMap).sort((a, b) => a.data.localeCompare(b.data));
     setAllData(merged);
+    setDataLoading(false);
   }, [user]);
 
   useEffect(() => {
@@ -165,8 +181,9 @@ export default function Dashboard() {
 
   const pctChange = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : undefined);
   const daysInPeriod = differenceInCalendarDays(dateRange.to, dateRange.from) + 1;
+  const hasData = filtered.length > 0;
 
-  // Daily alert: today vs avg last 7 days
+  // Daily alert
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const todayData = effectiveData.find(d => d.data === todayStr);
   const todayRevenue = todayData?.receita_paga ?? 0;
@@ -176,6 +193,22 @@ export default function Dashboard() {
     return isValid(date) && date >= startOfDay(sevenAgo) && d.data !== todayStr;
   });
   const avg7d = last7.length > 0 ? last7.reduce((s, d) => s + d.receita_paga, 0) / last7.length : 0;
+
+  // Sparkline data (last 7 data points)
+  const getSparkline = (field: keyof DailyRow) => {
+    const recent = filtered.slice(-7);
+    return recent.map(d => Number(d[field]) || 0);
+  };
+  const sparkFaturamento = getSparkline("receita_paga");
+  const sparkVendas = getSparkline("pedidos_pagos");
+  const sparkSessoes = getSparkline("sessoes");
+  const sparkInvestimento = getSparkline("investimento");
+
+  // Derived sparklines
+  const sparkRoas = sparkFaturamento.map((f, i) => sparkInvestimento[i] > 0 ? f / sparkInvestimento[i] : 0);
+  const sparkTicket = sparkFaturamento.map((f, i) => sparkVendas[i] > 0 ? f / sparkVendas[i] : 0);
+  const sparkCusto = sparkInvestimento.map((inv, i) => sparkVendas[i] > 0 ? inv / sparkVendas[i] : 0);
+  const sparkConversao = sparkVendas.map((v, i) => sparkSessoes[i] > 0 ? (v / sparkSessoes[i]) * 100 : 0);
 
   const chartData = filtered.map((d) => ({
     data: d.data,
@@ -236,32 +269,42 @@ export default function Dashboard() {
       <DailyAlert todayRevenue={todayRevenue} avgRevenue7d={avg7d} />
 
       {/* Revenue Goal */}
-      <RevenueGoalCard currentRevenue={faturamento} userId={user.id} onGoalLoaded={handleGoalLoaded} />
+      {dataLoading ? <GoalSkeleton /> : (
+        <RevenueGoalCard currentRevenue={faturamento} userId={user.id} onGoalLoaded={handleGoalLoaded} />
+      )}
 
       {/* Month Projection */}
       <MonthProjection currentRevenue={faturamento} goal={revenueGoal} />
 
-      {/* KPIs — Linha 1: Métricas principais */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPICard
-          title="Faturamento"
-          value={faturamento.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-          subtitle="Total do período"
-          dominant
-          change={pctChange(faturamento, prevFat)}
-        />
-        <KPICard title="ROAS Médio" value={roas.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} subtitle="Receita / Investimento" change={pctChange(roas, prevRoas)} />
-        <KPICard title="Vendas" value={vendas.toLocaleString("pt-BR")} change={pctChange(vendas, prevVendas)} />
-        <KPICard title="Sessões" value={sessoes.toLocaleString("pt-BR")} change={pctChange(sessoes, prevSessoes)} />
-      </div>
+      {/* KPIs */}
+      {dataLoading ? <KPISkeletonGrid /> : (
+        <>
+          {/* Linha 1: Métricas principais */}
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <KPICard
+              title="Faturamento"
+              value={faturamento.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              subtitle="Total do período"
+              dominant
+              change={pctChange(faturamento, prevFat)}
+              tooltip={KPI_TOOLTIPS.faturamento}
+              sparklineData={sparkFaturamento}
+              isEmpty={!hasData}
+            />
+            <KPICard title="ROAS Médio" value={roas.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} subtitle="Receita / Investimento" change={pctChange(roas, prevRoas)} tooltip={KPI_TOOLTIPS.roas} sparklineData={sparkRoas} isEmpty={!hasData} />
+            <KPICard title="Vendas" value={vendas.toLocaleString("pt-BR")} change={pctChange(vendas, prevVendas)} tooltip={KPI_TOOLTIPS.vendas} sparklineData={sparkVendas} isEmpty={!hasData} />
+            <KPICard title="Sessões" value={sessoes.toLocaleString("pt-BR")} change={pctChange(sessoes, prevSessoes)} tooltip={KPI_TOOLTIPS.sessoes} sparklineData={sparkSessoes} isEmpty={!hasData} />
+          </div>
 
-      {/* KPIs — Linha 2: Métricas secundárias + Break-even */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPICard title="Ticket Médio" value={`R$ ${ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} change={pctChange(ticketMedio, prevTicket)} />
-        <KPICard title="Custo por Venda" value={`R$ ${custoVenda.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} change={pctChange(custoVenda, prevCusto)} invertChange />
-        <KPICard title="Taxa de Conversão" value={`${taxaConversao.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`} change={pctChange(taxaConversao, prevConversao)} />
-        <BreakEvenCard investimento={investimento} faturamento={faturamento} days={daysInPeriod} />
-      </div>
+          {/* Linha 2: Métricas secundárias + Break-even */}
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <KPICard title="Ticket Médio" value={`R$ ${ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} change={pctChange(ticketMedio, prevTicket)} tooltip={KPI_TOOLTIPS.ticket} sparklineData={sparkTicket} isEmpty={!hasData} />
+            <KPICard title="Custo por Venda" value={`R$ ${custoVenda.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} change={pctChange(custoVenda, prevCusto)} invertChange tooltip={KPI_TOOLTIPS.custo} sparklineData={sparkCusto} isEmpty={!hasData} />
+            <KPICard title="Taxa de Conversão" value={`${taxaConversao.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`} change={pctChange(taxaConversao, prevConversao)} tooltip={KPI_TOOLTIPS.conversao} sparklineData={sparkConversao} isEmpty={!hasData} />
+            <BreakEvenCard investimento={investimento} faturamento={faturamento} days={daysInPeriod} />
+          </div>
+        </>
+      )}
 
       {roas < 2 && roas > 0 && (
         <Alert variant="destructive" className="border-destructive/30">
@@ -270,15 +313,17 @@ export default function Dashboard() {
         </Alert>
       )}
 
-      {/* Gráfico — Full width */}
-      <div className="rounded-xl border bg-card p-5 md:p-6" style={{ borderColor: 'hsla(24, 94%, 53%, 0.15)', boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
-        <div className="flex items-center justify-between mb-0.5">
-          <h3 className="text-sm font-medium text-foreground">Evolução de Faturamento</h3>
-          <BestDayBadge data={effectiveData} />
+      {/* Gráfico */}
+      {dataLoading ? <ChartSkeleton /> : !hasData ? <EmptyChartState /> : (
+        <div className="rounded-xl border bg-card p-5 md:p-6" style={{ borderColor: 'hsla(24, 94%, 53%, 0.15)', boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+          <div className="flex items-center justify-between mb-0.5">
+            <h3 className="text-sm font-medium text-foreground">Evolução de Faturamento</h3>
+            <BestDayBadge data={effectiveData} />
+          </div>
+          <p className="text-[11px] text-muted-foreground mb-4">Tendência no período selecionado</p>
+          <RevenueChart data={chartData} previousTotal={prevFat} />
         </div>
-        <p className="text-[11px] text-muted-foreground mb-4">Tendência no período selecionado</p>
-        <RevenueChart data={chartData} previousTotal={prevFat} />
-      </div>
+      )}
 
       {/* CTA sutil */}
       <div className="rounded-lg border border-primary/10 bg-primary/[0.02] px-4 py-2.5 flex items-center justify-between gap-3">
