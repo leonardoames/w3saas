@@ -7,7 +7,6 @@ import { format, subDays, parseISO, isWithinInterval, isValid, startOfDay, endOf
 import { DateRange } from "react-day-picker";
 import { useNavigate } from "react-router-dom";
 import { KPICard } from "@/components/dashboard/KPICard";
-import { MetricCard } from "@/components/dashboard/MetricCard";
 import { PeriodFilter } from "@/components/dashboard/PeriodFilter";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { RevenueGoalCard } from "@/components/dashboard/RevenueGoalCard";
@@ -210,8 +209,8 @@ export default function Dashboard() {
       {/* Revenue Goal */}
       <RevenueGoalCard currentRevenue={faturamento} userId={user.id} />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* KPIs — Linha 1: Métricas principais */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <KPICard
           title="Faturamento"
           value={faturamento.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
@@ -224,6 +223,13 @@ export default function Dashboard() {
         <KPICard title="Sessões" value={sessoes.toLocaleString("pt-BR")} change={pctChange(sessoes, prevSessoes)} />
       </div>
 
+      {/* KPIs — Linha 2: Métricas secundárias */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <KPICard title="Ticket Médio" value={`R$ ${ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+        <KPICard title="Custo por Venda" value={`R$ ${custoVenda.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+        <KPICard title="Taxa de Conversão" value={`${taxaConversao.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`} />
+      </div>
+
       {roas < 2 && roas > 0 && (
         <Alert variant="destructive" className="border-destructive/30">
           <AlertCircle className="h-4 w-4" />
@@ -231,29 +237,19 @@ export default function Dashboard() {
         </Alert>
       )}
 
-      {/* Chart + Side Metrics */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 rounded-xl border border-border bg-card p-5 md:p-6">
-          <h3 className="text-sm font-medium text-foreground mb-0.5">Evolução de Faturamento</h3>
-          <p className="text-[11px] text-muted-foreground mb-4">Tendência no período selecionado</p>
-          <RevenueChart data={chartData} previousTotal={prevFat} />
-        </div>
-        <div className="space-y-3">
-          <MetricCard title="Ticket Médio" value={`R$ ${ticketMedio.toFixed(2)}`} />
-          <MetricCard title="Custo por Venda" value={`R$ ${custoVenda.toFixed(2)}`} />
-          <MetricCard title="Taxa de Conversão" value={`${taxaConversao.toFixed(2)}%`} />
-        </div>
+      {/* Gráfico — Full width */}
+      <div className="rounded-xl border bg-card p-5 md:p-6" style={{ borderColor: 'hsla(24, 94%, 53%, 0.15)', boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+        <h3 className="text-sm font-medium text-foreground mb-0.5">Evolução de Faturamento</h3>
+        <p className="text-[11px] text-muted-foreground mb-4">Tendência no período selecionado</p>
+        <RevenueChart data={chartData} previousTotal={prevFat} />
       </div>
 
-      {/* CTA Card */}
-      <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium text-foreground">Gerencie seus dados no Acompanhamento Diário</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Adicione, edite ou importe seus resultados</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => navigate("/app/acompanhamento")} className="shrink-0 gap-2">
-          <ArrowRight className="h-3.5 w-3.5" />
+      {/* CTA sutil */}
+      <div className="rounded-lg border border-primary/10 bg-primary/[0.02] px-4 py-2.5 flex items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">Gerencie seus dados no <span className="text-foreground font-medium">Acompanhamento Diário</span></p>
+        <Button variant="ghost" size="sm" onClick={() => navigate("/app/acompanhamento")} className="shrink-0 gap-1.5 h-7 text-xs text-muted-foreground hover:text-foreground">
           Ir para Acompanhamento
+          <ArrowRight className="h-3 w-3" />
         </Button>
       </div>
     </div>
