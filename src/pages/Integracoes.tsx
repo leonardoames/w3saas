@@ -17,6 +17,7 @@ import shopifyLogo from "@/assets/platforms/shopify.png";
 import olistTinyLogo from "@/assets/platforms/olist-tiny.png";
 import trayLogo from "@/assets/platforms/tray.png";
 import lojaIntegradaLogo from "@/assets/platforms/loja-integrada.png";
+import bagyLogo from "@/assets/platforms/bagy.png";
 
 const platformLogos: Record<string, string> = {
   nuvemshop: nuvemshopLogo,
@@ -27,6 +28,7 @@ const platformLogos: Record<string, string> = {
   olist_tiny: olistTinyLogo,
   tray: trayLogo,
   loja_integrada: lojaIntegradaLogo,
+  bagy: bagyLogo,
 };
 
 interface PlatformInfo {
@@ -123,6 +125,16 @@ const platforms: PlatformInfo[] = [
       { key: "api_key", label: "Chave da API", placeholder: "Cole sua chave da API aqui", type: "password" },
     ],
     docsUrl: "https://lojaintegrada.docs.apiary.io/",
+  },
+  {
+    id: "bagy",
+    name: "Bagy",
+    description: "Conecte sua loja Bagy para importar pedidos, produtos e métricas de vendas automaticamente.",
+    color: "bg-pink-600",
+    fields: [
+      { key: "api_key", label: "Chave da API", placeholder: "Cole sua chave da API da Bagy aqui", type: "password" },
+    ],
+    docsUrl: "https://bagypro.com/desenvolvedores",
   },
 ];
 
