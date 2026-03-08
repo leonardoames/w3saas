@@ -228,7 +228,7 @@ export default function Dashboard() {
     <div className="space-y-3">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight" style={{ letterSpacing: '-0.025em' }}>Dashboard</h1>
+        <h1 className="page-title">Dashboard</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Visão consolidada dos seus resultados</p>
       </div>
 

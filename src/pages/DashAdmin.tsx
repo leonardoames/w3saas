@@ -102,7 +102,7 @@ export default function DashAdmin() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div>
-            <h1 className="text-2xl font-bold">Dash Admin</h1>
+            <h1 className="page-title">Dash Admin</h1>
             <p className="text-sm text-muted-foreground">
               Painel de acompanhamento · {allMentorados.length} mentorados
             </p>

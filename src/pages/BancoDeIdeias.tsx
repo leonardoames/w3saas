@@ -187,7 +187,7 @@ export default function BancoDeIdeias() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight" style={{ letterSpacing: "-0.025em" }}>Banco de Ideias</h1>
+          <h1 className="page-title">Banco de Ideias</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Gerencie seus criativos e conteúdos</p>
         </div>
         <div className="flex items-center gap-2">

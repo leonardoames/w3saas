@@ -362,7 +362,6 @@ export default function AcompanhamentoDiario() {
           importing={importing}
           result={importResult}
         />
-      </div>
     </div>
   );
 }

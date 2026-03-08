@@ -61,7 +61,7 @@ export default function Cursos() {
     <div className="container mx-auto p-4 space-y-6 max-w-5xl">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">W3 Educação</h1>
+          <h1 className="page-title">W3 Educação</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Escolha um curso para continuar aprendendo
           </p>

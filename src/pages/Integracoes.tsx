@@ -342,8 +342,8 @@ export default function Integracoes() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Integrações</h1>
-        <p className="text-muted-foreground">
+        <h1 className="page-title">Integrações</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           Conecte suas plataformas de e-commerce para sincronizar dados automaticamente com o Dashboard.
         </p>
       </div>

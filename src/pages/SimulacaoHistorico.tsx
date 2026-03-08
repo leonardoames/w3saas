@@ -67,7 +67,7 @@ export default function SimulacaoHistorico() {
           Voltar para Simulação
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Histórico de Cenários</h1>
+          <h1 className="page-title">Histórico de Cenários</h1>
           <p className="text-muted-foreground mt-1">Cenários simulados salvos anteriormente.</p>
         </div>
       </div>

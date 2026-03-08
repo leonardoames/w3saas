@@ -283,7 +283,7 @@ export default function Aulas() {
               ← Cursos
             </Button>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold">{courseTitle}</h1>
+          <h1 className="page-title">{courseTitle}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {completedLessons} de {totalLessons} aulas concluídas
           </p>

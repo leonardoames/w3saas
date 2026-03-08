@@ -166,7 +166,7 @@ export default function CalendarioComercial() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Calendário Comercial 2026</h1>
+          <h1 className="page-title">Calendário Comercial 2026</h1>
           <p className="text-muted-foreground mt-1">
             Planejamento mensal para e-commerce brasileiro
           </p>
