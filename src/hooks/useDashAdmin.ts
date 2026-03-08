@@ -269,6 +269,7 @@ export function useDashAdmin() {
   const monthlyRevenue = useMemo(() => {
     const dailyRows = Array.isArray(revenueQuery.data) ? revenueQuery.data : [];
     const metricsRows = Array.isArray(metricsQuery.data) ? metricsQuery.data : [];
+    const mentoradoIds = new Set(profilesQuery.data?.map(p => p.user_id) || []);
     const monthMap: Record<string, number> = {};
     const currentMonthKey = format(now, "yyyy-MM");
 
@@ -278,7 +279,7 @@ export function useDashAdmin() {
     }
 
     for (const row of dailyRows) {
-      if (!row.data) continue;
+      if (!row.data || !mentoradoIds.has(row.user_id)) continue;
       const month = String(row.data).slice(0, 7);
       if (month in monthMap) {
         monthMap[month] += Number(row.receita_paga || 0);
@@ -286,7 +287,7 @@ export function useDashAdmin() {
     }
 
     for (const row of metricsRows) {
-      if (!row.data) continue;
+      if (!row.data || !mentoradoIds.has(row.user_id)) continue;
       const month = String(row.data).slice(0, 7);
       if (month in monthMap) {
         monthMap[month] += Number(row.faturamento || 0) + Number(row.vendas_valor || 0);
@@ -298,7 +299,7 @@ export function useDashAdmin() {
       total,
       isCurrent: month === currentMonthKey,
     }));
-  }, [revenueQuery.data, metricsQuery.data, now]);
+  }, [revenueQuery.data, metricsQuery.data, profilesQuery.data, now]);
 
   // Top 5 mentorados by revenue (uses period-filtered data)
   const top5 = useMemo(() => {

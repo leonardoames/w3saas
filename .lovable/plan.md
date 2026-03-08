@@ -1,37 +1,18 @@
 
 
-## Diagnosis
+## Fix: Normalize date keys and parsing in Dashboard
 
-The discrepancy between the KPI "Faturamento Total" (R$ 105k) and the chart peak (R$ 220k) is caused by **two different data scopes**:
+The root cause is a timezone mismatch: dates from the database may include time/timezone components, causing `parseISO` to shift dates when converting to local time. Additionally, date keys in `dateMap` may not group properly if they contain time components.
 
-1. **KPIs** correctly filter revenue to only `is_mentorado = true` users (via `revenueAgg` joined to `profilesQuery` which filters by `is_mentorado`).
-2. **Chart (`monthlyRevenue`)** sums revenue from **ALL users** in `daily_results` and `metrics_diarias` — including non-mentorado users — because it reads raw query data without filtering by user IDs.
+### Changes to `src/pages/Dashboard.tsx`
 
-Additionally, there's a potential **double-counting** issue: if a user has entries in both `daily_results` (manual) and `metrics_diarias` (integration) for the same date/platform, both values are summed in the chart.
+**1. Normalize date keys in `loadData`** — Use `substring(0, 10)` on both `dailyData` and `metricsData` loops to extract only `YYYY-MM-DD`.
 
-## Plan
+**2. Normalize date keys in `effectiveData` useMemo** — Same `substring(0, 10)` fix for platform-specific filtering.
 
-### Fix `monthlyRevenue` in `useDashAdmin.ts`
+**3. Normalize date parsing in `filtered` and `prevFiltered`** — Use `parseISO(m.data.substring(0, 10))` to ensure local timezone interpretation.
 
-Filter the chart aggregation to only include `user_id`s that belong to mentorado profiles:
+**4. Add null safety** — Guard against null `data` values before calling `substring`.
 
-1. Extract the set of mentorado `user_id`s from `profilesQuery.data`
-2. In the `monthlyRevenue` memo, skip rows whose `user_id` is not in the mentorado set
-3. This ensures chart data matches KPI data scope
-
-```text
-monthlyRevenue memo:
-  const mentoradoIds = new Set(profilesQuery.data?.map(p => p.user_id) || []);
-  
-  for (const row of dailyRows) {
-    if (!mentoradoIds.has(row.user_id)) continue;  // ← add this filter
-    ...
-  }
-  for (const row of metricsRows) {
-    if (!mentoradoIds.has(row.user_id)) continue;  // ← add this filter
-    ...
-  }
-```
-
-This is a single change in `src/hooks/useDashAdmin.ts` affecting the `monthlyRevenue` useMemo block (~3 lines added).
+All changes are in a single file: `src/pages/Dashboard.tsx`. No database or backend changes needed.
 
