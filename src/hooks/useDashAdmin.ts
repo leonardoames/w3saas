@@ -255,9 +255,10 @@ export function useDashAdmin() {
     };
   }, [mentorados, now]);
 
-  // Monthly revenue chart (last 6 months)
+  // Monthly revenue chart (last 6 months) - combining both sources
   const monthlyRevenue = useMemo(() => {
-    const rows = Array.isArray(revenueQuery.data) ? revenueQuery.data : [];
+    const dailyRows = Array.isArray(revenueQuery.data) ? revenueQuery.data : [];
+    const metricsRows = Array.isArray(metricsQuery.data) ? metricsQuery.data : [];
     const monthMap: Record<string, number> = {};
 
     for (let i = 5; i >= 0; i--) {
@@ -265,7 +266,7 @@ export function useDashAdmin() {
       monthMap[m] = 0;
     }
 
-    for (const row of rows) {
+    for (const row of dailyRows) {
       if (!row.data) continue;
       const month = String(row.data).slice(0, 7);
       if (month in monthMap) {
@@ -273,11 +274,19 @@ export function useDashAdmin() {
       }
     }
 
+    for (const row of metricsRows) {
+      if (!row.data) continue;
+      const month = String(row.data).slice(0, 7);
+      if (month in monthMap) {
+        monthMap[month] += Number(row.faturamento || 0) + Number(row.vendas_valor || 0);
+      }
+    }
+
     return Object.entries(monthMap).map(([month, total]) => ({
       month: format(parseISO(month + "-01"), "MMM/yy"),
       total,
     }));
-  }, [revenueQuery.data, now]);
+  }, [revenueQuery.data, metricsQuery.data, now]);
 
   // Top 5 mentorados by revenue
   const top5 = useMemo(() => {
