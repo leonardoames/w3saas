@@ -45,35 +45,6 @@ export function AdminFilters({ filters, setFilters }: Props) {
           <SelectItem value="never_logged">Nunca logaram</SelectItem>
         </SelectContent>
       </Select>
-
-      <Select value={filters.period} onValueChange={(v) => setFilters((f) => ({ ...f, period: v as any }))}>
-        <SelectTrigger className="w-40 h-9 text-sm">
-          <SelectValue placeholder="Período" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Todos</SelectItem>
-          <SelectItem value="7">Últimos 7 dias</SelectItem>
-          <SelectItem value="30">Últimos 30 dias</SelectItem>
-          <SelectItem value="90">Últimos 90 dias</SelectItem>
-        </SelectContent>
-      </Select>
-
-      {filters.period === "custom" && (
-        <div className="flex gap-2">
-          <Input
-            type="date"
-            value={filters.customStart || ""}
-            onChange={(e) => setFilters((f) => ({ ...f, customStart: e.target.value }))}
-            className="h-9 text-sm w-36"
-          />
-          <Input
-            type="date"
-            value={filters.customEnd || ""}
-            onChange={(e) => setFilters((f) => ({ ...f, customEnd: e.target.value }))}
-            className="h-9 text-sm w-36"
-          />
-        </div>
-      )}
     </div>
   );
 }

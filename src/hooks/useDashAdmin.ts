@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, subDays, subMonths, isAfter, isBefore, addDays, parseISO, differenceInDays, startOfMonth } from "date-fns";
+import { format, subDays, subMonths, isAfter, isBefore, addDays, parseISO, startOfMonth } from "date-fns";
 
 export interface MentoradoRow {
   user_id: string;
@@ -86,7 +86,30 @@ export function useDashAdmin() {
   const thisMonthStart = useMemo(() => startOfMonth(now), [now]);
   const lastMonthStart = useMemo(() => startOfMonth(subMonths(now, 1)), [now]);
 
-  // Aggregate revenue data from both sources
+  // Compute the date cutoff based on the period filter
+  const periodCutoff = useMemo(() => {
+    if (filters.period === "all") return null;
+    if (filters.period === "custom") return null; // handled separately
+    const days = parseInt(filters.period);
+    return subDays(now, days);
+  }, [filters.period, now]);
+
+  // Helper: check if a date string is within the period filter
+  const isDateInPeriod = useCallback((dateStr: string | null | undefined): boolean => {
+    if (!dateStr) return false;
+    if (filters.period === "all") return true;
+    if (filters.period === "custom") {
+      const d = parseISO(String(dateStr).slice(0, 10));
+      if (filters.customStart && isBefore(d, parseISO(filters.customStart))) return false;
+      if (filters.customEnd && isAfter(d, addDays(parseISO(filters.customEnd), 1))) return false;
+      return true;
+    }
+    if (!periodCutoff) return true;
+    const d = parseISO(String(dateStr).slice(0, 10));
+    return isAfter(d, periodCutoff) || d.getTime() === periodCutoff.getTime();
+  }, [filters.period, filters.customStart, filters.customEnd, periodCutoff]);
+
+  // Aggregate revenue data from both sources, respecting period filter
   const revenueAgg = useMemo(() => {
     const dailyRows = Array.isArray(revenueQuery.data) ? revenueQuery.data : [];
     const metricsRows = Array.isArray(metricsQuery.data) ? metricsQuery.data : [];
@@ -102,14 +125,19 @@ export function useDashAdmin() {
     };
 
     for (const row of dailyRows) {
+      const inPeriod = isDateInPeriod(row.data);
       ensureUser(row.user_id);
       const a = agg[row.user_id];
       const val = Number(row.receita_paga || 0);
-      a.faturamento += val;
-      a.sessoes += Number(row.sessoes || 0);
-      a.investimento += Number(row.investimento || 0);
-      a.pedidos += Number(row.pedidos_pagos || 0);
 
+      if (inPeriod) {
+        a.faturamento += val;
+        a.sessoes += Number(row.sessoes || 0);
+        a.investimento += Number(row.investimento || 0);
+        a.pedidos += Number(row.pedidos_pagos || 0);
+      }
+
+      // Monthly trend is always calculated (independent of period filter)
       if (row.data) {
         const d = parseISO(String(row.data).slice(0, 10));
         if (!isBefore(d, thisMonthStart)) {
@@ -121,13 +149,17 @@ export function useDashAdmin() {
     }
 
     for (const row of metricsRows) {
+      const inPeriod = isDateInPeriod(row.data);
       ensureUser(row.user_id);
       const a = agg[row.user_id];
       const val = Number(row.faturamento || 0) + Number(row.vendas_valor || 0);
-      a.faturamento += val;
-      a.sessoes += Number(row.sessoes || 0);
-      a.investimento += Number(row.investimento_trafego || 0);
-      a.pedidos += Number(row.vendas_quantidade || 0);
+
+      if (inPeriod) {
+        a.faturamento += val;
+        a.sessoes += Number(row.sessoes || 0);
+        a.investimento += Number(row.investimento_trafego || 0);
+        a.pedidos += Number(row.vendas_quantidade || 0);
+      }
 
       if (row.data) {
         const d = parseISO(String(row.data).slice(0, 10));
@@ -140,7 +172,7 @@ export function useDashAdmin() {
     }
 
     return agg;
-  }, [revenueQuery.data, metricsQuery.data, thisMonthStart, lastMonthStart]);
+  }, [revenueQuery.data, metricsQuery.data, thisMonthStart, lastMonthStart, isDateInPeriod]);
 
   // Merge profiles with revenue
   const mentorados = useMemo(() => {
@@ -165,23 +197,9 @@ export function useDashAdmin() {
     return Object.keys(mentorados[0]).filter((k) => !exclude.includes(k));
   }, [mentorados]);
 
-  // Filter
+  // Filter mentorados for table (status, engagement, search — period affects revenue already)
   const filtered = useMemo(() => {
     let result = [...mentorados];
-
-    if (filters.period !== "all" && filters.period !== "custom") {
-      const days = parseInt(filters.period);
-      const cutoff = subDays(now, days);
-      result = result.filter((m) => isAfter(parseISO(m.created_at), cutoff));
-    }
-    if (filters.period === "custom" && filters.customStart) {
-      const start = parseISO(filters.customStart);
-      result = result.filter((m) => isAfter(parseISO(m.created_at), start));
-    }
-    if (filters.period === "custom" && filters.customEnd) {
-      const end = parseISO(filters.customEnd);
-      result = result.filter((m) => isBefore(parseISO(m.created_at), addDays(end, 1)));
-    }
 
     if (filters.status !== "all") {
       if (filters.status === "expiring") {
@@ -215,11 +233,11 @@ export function useDashAdmin() {
     return result;
   }, [mentorados, filters, now]);
 
-  // KPIs
+  // KPIs - computed from mentorados (which already has period-filtered revenue)
   const kpis = useMemo(() => {
+    const in7 = addDays(now, 7);
     const in30 = addDays(now, 30);
     const last30 = subDays(now, 30);
-    const in7 = addDays(now, 7);
     const d7 = subDays(now, 7);
     const d15 = subDays(now, 15);
 
@@ -282,7 +300,7 @@ export function useDashAdmin() {
     }));
   }, [revenueQuery.data, metricsQuery.data, now]);
 
-  // Top 5 mentorados by revenue - prioritize name over email
+  // Top 5 mentorados by revenue (uses period-filtered data)
   const top5 = useMemo(() => {
     return [...mentorados]
       .sort((a, b) => (b.total_faturamento || 0) - (a.total_faturamento || 0))
@@ -293,7 +311,6 @@ export function useDashAdmin() {
       }));
   }, [mentorados]);
 
-  // Pagination
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
 
