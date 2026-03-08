@@ -19,15 +19,15 @@ export function SidebarNavLink({
       {...props}
       className={({ isActive }) =>
         cn(
-          "relative flex items-center rounded-md text-sm transition-all duration-150",
-          isCollapsed ? "justify-center p-2.5" : "gap-3 px-3 py-2",
+          "relative flex items-center rounded-lg text-[13px] transition-all duration-150",
+          isCollapsed ? "justify-center p-2.5" : "gap-2.5 px-3 py-[7px]",
           isActive 
             ? "sidebar-item-active" 
-            : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
         )
       }
     >
-      <Icon className="h-4 w-4 shrink-0" />
+      <Icon className="h-[15px] w-[15px] shrink-0" />
       {!isCollapsed && (
         <span className="whitespace-nowrap">{label}</span>
       )}

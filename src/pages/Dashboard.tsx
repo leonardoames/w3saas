@@ -1,7 +1,6 @@
-import { AlertCircle, CheckCircle2, ArrowRight, Upload } from "lucide-react";
+import { AlertCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Card, CardContent } from "@/components/ui/card";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, parseISO, isWithinInterval, isValid, startOfDay, endOfDay, differenceInCalendarDays } from "date-fns";
@@ -67,9 +66,7 @@ export default function Dashboard() {
     
     setAllMetricsRaw(metricsData);
 
-    // Build merged data (used when platform = "todos")
     const dateMap: Record<string, DailyRow> = {};
-
     for (const d of dailyData) {
       if (!d.data) continue;
       const key = d.data.substring(0, 10);
@@ -79,7 +76,6 @@ export default function Dashboard() {
       dateMap[key].pedidos_pagos += Number(d.pedidos_pagos) || 0;
       dateMap[key].receita_paga += Number(d.receita_paga) || 0;
     }
-
     for (const d of metricsData) {
       if (!d.data) continue;
       const key = d.data.substring(0, 10);
@@ -103,15 +99,14 @@ export default function Dashboard() {
     setDateRange({ from: startOfDay(start), to: endOfDay(end) });
   };
 
-  // When a specific platform is selected, rebuild data from metricsRaw only
   const effectiveData = useMemo(() => {
     if (selectedPlatform === "todos") return allData;
     const dateMap: Record<string, DailyRow> = {};
     for (const d of allMetricsRaw) {
-    if (d.platform !== selectedPlatform) continue;
-    if (!d.data) continue;
-    const key = d.data.substring(0, 10);
-    if (!dateMap[key]) dateMap[key] = { data: key, investimento: 0, sessoes: 0, pedidos_pagos: 0, receita_paga: 0 };
+      if (d.platform !== selectedPlatform) continue;
+      if (!d.data) continue;
+      const key = d.data.substring(0, 10);
+      if (!dateMap[key]) dateMap[key] = { data: key, investimento: 0, sessoes: 0, pedidos_pagos: 0, receita_paga: 0 };
       dateMap[key].investimento += Number(d.investimento_trafego) || 0;
       dateMap[key].sessoes += Number(d.sessoes) || 0;
       dateMap[key].pedidos_pagos += Number(d.vendas_quantidade) || 0;
@@ -123,7 +118,6 @@ export default function Dashboard() {
   const filtered = useMemo(() => {
     const rangeStart = startOfDay(dateRange.from);
     const rangeEnd = endOfDay(dateRange.to);
-
     return effectiveData.filter((m) => {
       if (!m.data) return false;
       const date = parseISO(m.data.substring(0, 10));
@@ -135,7 +129,6 @@ export default function Dashboard() {
     const daysCount = differenceInCalendarDays(dateRange.to, dateRange.from) + 1;
     const prevEnd = subDays(startOfDay(dateRange.from), 1);
     const prevStart = subDays(prevEnd, daysCount - 1);
-
     return effectiveData.filter((m) => {
       if (!m.data) return false;
       const date = parseISO(m.data.substring(0, 10));
@@ -159,7 +152,6 @@ export default function Dashboard() {
 
   const pctChange = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : undefined);
 
-  // Chart data
   const chartData = filtered.map((d) => ({
     data: d.data,
     faturamento: d.receita_paga,
@@ -173,7 +165,10 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-muted-foreground animate-pulse">Carregando seus dados...</p>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <p className="text-sm text-muted-foreground">Carregando...</p>
+        </div>
       </div>
     );
   }
@@ -188,86 +183,78 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-10 space-y-8">
-        <div>
-          <h1 className="text-page-title text-foreground">Dashboard</h1>
-          <p className="text-caption text-muted-foreground mt-1">Visão consolidada dos seus resultados</p>
-        </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight" style={{ letterSpacing: '-0.025em' }}>Dashboard</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Visão consolidada dos seus resultados</p>
+      </div>
 
-        {/* Period Filter */}
-        <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <h3 className="text-xs uppercase tracking-wide text-muted-foreground font-medium opacity-60">Período de análise</h3>
-            <div className="flex items-center gap-3 flex-wrap">
-              <PlatformSelect 
-                value={selectedPlatform} 
-                onValueChange={setSelectedPlatform} 
-                className="w-[180px] h-8 text-xs"
-              />
-              <PeriodFilter
-                selectedPeriod={selectedPeriod}
-                onPeriodChange={handlePeriodChange}
-                customRange={customRange}
-                onCustomRangeChange={setCustomRange}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Revenue Goal */}
-        <RevenueGoalCard currentRevenue={faturamento} userId={user.id} />
-
-        {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard
-            title="Faturamento"
-            value={faturamento.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-            subtitle="Total do período"
-            dominant
-            change={pctChange(faturamento, prevFat)}
+      {/* Period Filter */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <PlatformSelect 
+            value={selectedPlatform} 
+            onValueChange={setSelectedPlatform} 
+            className="w-[180px] h-8 text-xs"
           />
-          <KPICard title="ROAS Médio" value={roas.toFixed(2)} subtitle="Receita / Investimento" />
-          <KPICard title="Vendas" value={vendas.toLocaleString("pt-BR")} change={pctChange(vendas, prevVendas)} />
-          <KPICard title="Sessões" value={sessoes.toLocaleString("pt-BR")} change={pctChange(sessoes, prevSessoes)} />
+          <PeriodFilter
+            selectedPeriod={selectedPeriod}
+            onPeriodChange={handlePeriodChange}
+            customRange={customRange}
+            onCustomRangeChange={setCustomRange}
+          />
         </div>
+      </div>
 
-        {roas < 2 && roas > 0 && (
-          <Alert variant="destructive" className="border-destructive/50">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>Atenção: O ROAS está abaixo de 2.</AlertDescription>
-          </Alert>
-        )}
+      {/* Revenue Goal */}
+      <RevenueGoalCard currentRevenue={faturamento} userId={user.id} />
 
-        {/* Chart + Side Metrics */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-card border border-border rounded-xl p-6 md:p-8 shadow-sm">
-            <h3 className="text-sm font-semibold text-foreground mb-1">Evolução de Faturamento</h3>
-            <p className="text-xs text-muted-foreground mb-4">Acompanhe a tendência no período selecionado</p>
-            <RevenueChart data={chartData} previousTotal={prevFat} />
-          </div>
-          <div className="space-y-4">
-            <MetricCard title="Ticket Médio" value={`R$ ${ticketMedio.toFixed(2)}`} />
-            <MetricCard title="Custo por Venda" value={`R$ ${custoVenda.toFixed(2)}`} />
-            <MetricCard title="Taxa de Conversão" value={`${taxaConversao.toFixed(2)}%`} />
-          </div>
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KPICard
+          title="Faturamento"
+          value={faturamento.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+          subtitle="Total do período"
+          dominant
+          change={pctChange(faturamento, prevFat)}
+        />
+        <KPICard title="ROAS Médio" value={roas.toFixed(2)} subtitle="Receita / Investimento" />
+        <KPICard title="Vendas" value={vendas.toLocaleString("pt-BR")} change={pctChange(vendas, prevVendas)} />
+        <KPICard title="Sessões" value={sessoes.toLocaleString("pt-BR")} change={pctChange(sessoes, prevSessoes)} />
+      </div>
+
+      {roas < 2 && roas > 0 && (
+        <Alert variant="destructive" className="border-destructive/30">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>Atenção: O ROAS está abaixo de 2.</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Chart + Side Metrics */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 rounded-xl border border-border bg-card p-5 md:p-6">
+          <h3 className="text-sm font-medium text-foreground mb-0.5">Evolução de Faturamento</h3>
+          <p className="text-[11px] text-muted-foreground mb-4">Tendência no período selecionado</p>
+          <RevenueChart data={chartData} previousTotal={prevFat} />
         </div>
+        <div className="space-y-3">
+          <MetricCard title="Ticket Médio" value={`R$ ${ticketMedio.toFixed(2)}`} />
+          <MetricCard title="Custo por Venda" value={`R$ ${custoVenda.toFixed(2)}`} />
+          <MetricCard title="Taxa de Conversão" value={`${taxaConversao.toFixed(2)}%`} />
+        </div>
+      </div>
 
-        {/* CTA Card */}
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div>
-              <p className="font-semibold text-foreground">Gerencie seus dados no Acompanhamento Diário</p>
-              <p className="text-sm text-muted-foreground mt-1">Adicione, edite ou importe seus resultados diários</p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => navigate("/app/acompanhamento")}>
-                <ArrowRight className="mr-2 h-4 w-4" />
-                Ir para Acompanhamento
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      {/* CTA Card */}
+      <div className="rounded-xl border border-primary/15 bg-primary/[0.03] p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-foreground">Gerencie seus dados no Acompanhamento Diário</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Adicione, edite ou importe seus resultados</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => navigate("/app/acompanhamento")} className="shrink-0 gap-2">
+          <ArrowRight className="h-3.5 w-3.5" />
+          Ir para Acompanhamento
+        </Button>
       </div>
     </div>
   );

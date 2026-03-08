@@ -5,9 +5,11 @@ interface MetricCardProps {
 
 export function MetricCard({ title, value }: MetricCardProps) {
   return (
-    <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium opacity-60 mb-1">{title}</p>
-      <p className="text-xl font-bold text-foreground">{value}</p>
+    <div className="rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:shadow-sm">
+      <p className="metric-label mb-2">{title}</p>
+      <p className="text-xl font-semibold text-foreground tabular-nums tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+        {value}
+      </p>
     </div>
   );
 }
