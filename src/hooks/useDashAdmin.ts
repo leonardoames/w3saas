@@ -269,6 +269,7 @@ export function useDashAdmin() {
   const monthlyRevenue = useMemo(() => {
     const dailyRows = Array.isArray(revenueQuery.data) ? revenueQuery.data : [];
     const metricsRows = Array.isArray(metricsQuery.data) ? metricsQuery.data : [];
+    const mentoradoIds = new Set(profilesQuery.data?.map(p => p.user_id) || []);
     const monthMap: Record<string, number> = {};
     const currentMonthKey = format(now, "yyyy-MM");
 
