@@ -95,8 +95,7 @@ Gere um código HTML que possa ser renderizado diretamente, contendo:
    - Media queries (@media) para responsividade mobile (max-width: 768px e 480px)
    - Tipografia responsiva com clamp() ou media queries
 2. **Estilos Inline como fallback:** Mantenha style="..." nos elementos principais para garantir renderização mesmo sem suporte a <style>.
-3. **Estrutura:** 
-   - Hero Section (Headline + Subheadline + CTA animado)
+3. **Estrutura:** - Hero Section (Headline + Subheadline + CTA animado)
    - Grid de Benefícios (Cards com hover effect)
    - Prova Social (Reviews com estrelas)
    - Tabela Técnica (Zebrada com hover nas linhas)
@@ -419,7 +418,10 @@ serve(async (req) => {
 
     const { userMessage, mode, chatHistory, images } = await req.json();
 
-    if ((!userMessage || typeof userMessage !== "string") && (!images || !Array.isArray(images) || images.length === 0)) {
+    if (
+      (!userMessage || typeof userMessage !== "string") &&
+      (!images || !Array.isArray(images) || images.length === 0)
+    ) {
       return new Response(JSON.stringify({ error: "userMessage ou images é obrigatório" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -438,19 +440,38 @@ serve(async (req) => {
     // ========== BUSCAR DOCUMENTOS DO CÉREBRO IA (COMPARTILHADO) ==========
     let knowledgeContext = "";
     try {
-      const serviceClient = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
+      const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-      const { data: documents } = await serviceClient
-        .from("ia_documents")
-        .select("file_name, content_text")
-        .eq("status", "ready")
-        .limit(10);
+      // Proteção contra null (caso venha só imagem) e limpeza de pontuação
+      const safeMessage = typeof userMessage === "string" ? userMessage : "";
+
+      // Extrai palavras-chave reais (ignora termos curtos e verbos genéricos comuns)
+      const ignoreWords = ["quero", "sobre", "ajuda", "como", "fazer", "preciso", "gostaria"];
+      const keywords = safeMessage
+        .toLowerCase()
+        .replace(/[^\w\sÀ-ÿ]/g, "") // Remove pontuação que atrapalha o split
+        .split(/\s+/)
+        .filter((w: string) => w.length > 4 && !ignoreWords.includes(w))
+        .slice(0, 3); // Pega as 3 mais fortes para não sobrecarregar a query
+
+      let query = serviceClient.from("ia_documents").select("file_name, content_text").eq("status", "ready");
+
+      // Filtra documentos que contenham QUALQUER UMA das palavras-chave
+      if (keywords.length > 0) {
+        // Monta a string no formato do Supabase: 'content_text.ilike.%termo1%,content_text.ilike.%termo2%'
+        const orConditions = keywords.map((kw) => `content_text.ilike.%${kw}%`).join(",");
+        query = query.or(orConditions);
+      }
+
+      // Aumentamos o limite para 15
+      const { data: documents, error: docError } = await query.limit(15);
+
+      if (docError) {
+        console.error("Erro na busca de documentos:", docError);
+      }
 
       if (documents && documents.length > 0) {
-        console.log(`Found ${documents.length} documents for context`);
+        console.log(`Found ${documents.length} contextual documents based on keywords:`, keywords);
         const MAX_CONTEXT_SIZE = 15000;
         let contextSize = 0;
         const contextParts: string[] = [];
@@ -477,10 +498,7 @@ serve(async (req) => {
     // ========== BUSCAR INSTRUÇÕES CUSTOMIZÁVEIS ==========
     let instructionsContext = "";
     try {
-      const serviceClient = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
+      const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
       const { data: instructions } = await serviceClient
         .from("ia_instructions")
@@ -491,9 +509,15 @@ serve(async (req) => {
       if (instructions && instructions.length > 0) {
         console.log(`Found ${instructions.length} active instructions`);
         const doItems = instructions.filter((i: any) => i.instruction_type === "do").map((i: any) => `- ${i.content}`);
-        const dontItems = instructions.filter((i: any) => i.instruction_type === "dont").map((i: any) => `- ${i.content}`);
-        const contextItems = instructions.filter((i: any) => i.instruction_type === "context").map((i: any) => `- ${i.content}`);
-        const personaItems = instructions.filter((i: any) => i.instruction_type === "persona").map((i: any) => `- ${i.content}`);
+        const dontItems = instructions
+          .filter((i: any) => i.instruction_type === "dont")
+          .map((i: any) => `- ${i.content}`);
+        const contextItems = instructions
+          .filter((i: any) => i.instruction_type === "context")
+          .map((i: any) => `- ${i.content}`);
+        const personaItems = instructions
+          .filter((i: any) => i.instruction_type === "persona")
+          .map((i: any) => `- ${i.content}`);
 
         const parts: string[] = [];
         if (doItems.length > 0) parts.push(`FAÇA:\n${doItems.join("\n")}`);
@@ -519,7 +543,7 @@ serve(async (req) => {
     // Build messages array with chat history
     const messages: Array<{ role: string; content: any }> = [{ role: "system", content: systemPrompt }];
 
-    // Add chat history if provided (last 10 turns)
+    // Add chat history if provided (last 10 turns = 20 messages roughly)
     if (chatHistory && Array.isArray(chatHistory)) {
       const recentHistory = chatHistory.slice(-20);
       for (const msg of recentHistory) {
@@ -611,8 +635,9 @@ serve(async (req) => {
 function generateFollowUpQuestions(mode: string | undefined, answer: string): string[] {
   const questions: string[] = [];
 
-  // Check if answer asks for metrics
-  if (answer.includes("métricas") || answer.includes("dados") || answer.includes("checklist")) {
+  // Check if answer asks for metrics safely
+  const safeAnswer = answer.toLowerCase();
+  if (safeAnswer.includes("métricas") || safeAnswer.includes("dados") || safeAnswer.includes("checklist")) {
     questions.push("Já tenho as métricas, vou enviar");
   }
 
@@ -648,5 +673,6 @@ function generateFollowUpQuestions(mode: string | undefined, answer: string): st
       questions.push("Como implementar isso?");
   }
 
+  // Se já tiver 3 ou mais, corta; se tiver menos, o slice resolve
   return questions.slice(0, 3);
 }
