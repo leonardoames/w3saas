@@ -104,7 +104,7 @@ export default function Produtos() {
                 <div className="absolute right-3 top-3 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                   <button
                     onClick={() => handleEdit(product)}
-                    className="rounded-lg bg-[#1A1A1A]/90 p-1.5 text-muted-foreground backdrop-blur-sm hover:text-foreground transition-colors"
+                    className="rounded-lg bg-card/90 p-1.5 text-muted-foreground backdrop-blur-sm hover:text-foreground transition-colors"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
