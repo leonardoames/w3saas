@@ -323,6 +323,19 @@ export default function AnalisePorCanal() {
               settings={channelSettings}
             />
           )}
+
+          {/* Period Comparison Section */}
+          {showComparison && (
+            <PeriodComparisonSection
+              connectedChannels={connectedChannels}
+              channelLogos={CHANNEL_LOGOS}
+              metricsData={metricsData}
+              mapPlatformToChannel={mapPlatformToChannel}
+              currentPeriodFrom={dateRange.from}
+              currentPeriodTo={dateRange.to}
+              onClose={() => setShowComparison(false)}
+            />
+          )}
         </>
       )}
 
