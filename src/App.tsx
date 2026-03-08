@@ -20,6 +20,7 @@ import AcessoBloqueado from "./pages/AcessoBloqueado";
 import Dashboard from "./pages/Dashboard";
 import AnalisePorCanal from "./pages/AnalisePorCanal";
 import AcompanhamentoDiario from "./pages/AcompanhamentoDiario";
+import DRE from "./pages/DRE";
 import Aulas from "./pages/Aulas";
 import Cursos from "./pages/Cursos";
 import PlanoAcao from "./pages/PlanoAcao";
@@ -76,6 +77,7 @@ const App = () => (
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/analise-por-canal" element={<AnalisePorCanal />} />
                         <Route path="/acompanhamento" element={<AcompanhamentoDiario />} />
+                        <Route path="/dre" element={<DRE />} />
                         <Route path="/aulas" element={<Cursos />} />
                         <Route path="/aulas/:slug" element={<Aulas />} />
                         <Route path="/plano-acao" element={<PlanoAcao />} />

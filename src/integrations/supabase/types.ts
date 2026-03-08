@@ -390,6 +390,138 @@ export type Database = {
         }
         Relationships: []
       }
+      dre_config: {
+        Row: {
+          cmv_pct: number
+          created_at: string
+          frete_liquido_pct: number
+          id: string
+          impostos_pct: number
+          taxas_plataforma_pct: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cmv_pct?: number
+          created_at?: string
+          frete_liquido_pct?: number
+          id?: string
+          impostos_pct?: number
+          taxas_plataforma_pct?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cmv_pct?: number
+          created_at?: string
+          frete_liquido_pct?: number
+          id?: string
+          impostos_pct?: number
+          taxas_plataforma_pct?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      dre_despesas_avulsas: {
+        Row: {
+          categoria: string
+          created_at: string
+          descricao: string
+          id: string
+          mes_referencia: string
+          updated_at: string
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          descricao: string
+          id?: string
+          mes_referencia: string
+          updated_at?: string
+          user_id: string
+          valor?: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          mes_referencia?: string
+          updated_at?: string
+          user_id?: string
+          valor?: number
+        }
+        Relationships: []
+      }
+      dre_despesas_fixas: {
+        Row: {
+          categoria: string
+          created_at: string
+          descricao: string
+          id: string
+          is_active: boolean
+          updated_at: string
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          descricao: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          user_id: string
+          valor?: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          user_id?: string
+          valor?: number
+        }
+        Relationships: []
+      }
+      dre_receitas_avulsas: {
+        Row: {
+          categoria: string
+          created_at: string
+          descricao: string
+          id: string
+          mes_referencia: string
+          updated_at: string
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          descricao: string
+          id?: string
+          mes_referencia: string
+          updated_at?: string
+          user_id: string
+          valor?: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          mes_referencia?: string
+          updated_at?: string
+          user_id?: string
+          valor?: number
+        }
+        Relationships: []
+      }
       ia_documents: {
         Row: {
           content_text: string | null
