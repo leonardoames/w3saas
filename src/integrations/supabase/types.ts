@@ -405,6 +405,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ia_instructions: {
+        Row: {
+          content: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          instruction_type: string
+          is_active: boolean | null
+          priority: number | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          instruction_type: string
+          is_active?: boolean | null
+          priority?: number | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          instruction_type?: string
+          is_active?: boolean | null
+          priority?: number | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       influenciador_contacts: {
         Row: {
           created_at: string
