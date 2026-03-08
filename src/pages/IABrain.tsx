@@ -25,7 +25,7 @@ interface IADocument {
 }
 
 export default function IABrain() {
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const [documents, setDocuments] = useState<IADocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [isReprocessing, setIsReprocessing] = useState(false);
