@@ -139,7 +139,7 @@ export default function DashAdmin() {
       </div>
 
       {/* Block 1: KPIs */}
-      <AdminKPIs kpis={kpis} isLoading={isLoading} dashPeriod={dashPeriod} />
+      <AdminKPIs kpis={kpis} isLoading={isLoading} />
 
       {/* Block 2: Smart Alerts */}
       <AdminAlerts
