@@ -346,6 +346,6 @@ export function useDashAdmin() {
     top5,
     allColumns,
     exportCSV,
-    isLoading: profilesQuery.isLoading || revenueQuery.isLoading,
+    isLoading: profilesQuery.isLoading || revenueQuery.isLoading || metricsQuery.isLoading,
   };
 }
