@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Copy, RotateCcw, Save, History, Eye, Target, DollarSign, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Copy, History, Save, TrendingUp, TrendingDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -10,19 +9,33 @@ import {
   calculateRevenue,
   formatCurrency,
 } from "@/components/simulacao/ScenarioCard";
-import { RevenueComparisonCard } from "@/components/simulacao/RevenueComparisonCard";
 import { SaveScenarioDialog } from "@/components/simulacao/SaveScenarioDialog";
 import { useNavigate, useLocation } from "react-router-dom";
-import { motion } from "motion/react";
+import {
+  Area,
+  AreaChart,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 16 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { delay: i * 0.08, duration: 0.45, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
-  }),
-};
+/* ── Formatting helpers ── */
+function fmtThousands(v: string): string {
+  const num = v.replace(/\D/g, "");
+  if (!num) return "";
+  return Number(num).toLocaleString("pt-BR");
+}
+
+function parseThousands(formatted: string): string {
+  return formatted.replace(/\./g, "").replace(/\s/g, "");
+}
+
+function fmtDecimal(v: string, decimals = 2): string {
+  const clean = v.replace(/[^\d,]/g, "");
+  return clean;
+}
 
 export default function SimulacaoCenarios() {
   const navigate = useNavigate();
@@ -45,21 +58,19 @@ export default function SimulacaoCenarios() {
     const monthlyDiff = newCalc.monthlyRevenue - currentCalc.monthlyRevenue;
     const monthlyDiffPercent = currentCalc.monthlyRevenue > 0 ? monthlyDiff / currentCalc.monthlyRevenue : 0;
     const yearlyDiff = newCalc.yearlyRevenue - currentCalc.yearlyRevenue;
-    const yearlyDiffPercent = currentCalc.yearlyRevenue > 0 ? yearlyDiff / currentCalc.yearlyRevenue : 0;
-    return { monthlyDiff, monthlyDiffPercent, yearlyDiff, yearlyDiffPercent };
+    return { monthlyDiff, monthlyDiffPercent, yearlyDiff };
   }, [currentCalc, newCalc]);
 
   const chartData = useMemo(() => {
     if (!currentCalc.isValid && !newCalc.isValid) return [];
     return Array.from({ length: 12 }, (_, i) => ({
-      month: `Mês ${i + 1}`,
+      month: `M${i + 1}`,
       atual: currentCalc.isValid ? currentCalc.monthlyRevenue * (i + 1) : undefined,
       novo: newCalc.isValid ? newCalc.monthlyRevenue * (i + 1) : undefined,
     }));
   }, [currentCalc, newCalc]);
 
   const copyFromCurrent = () => setNewScenario({ ...currentScenario });
-  const resetNewScenario = () => setNewScenario(defaultInputs);
 
   const handleInputChange = (
     setter: (v: ScenarioInputs) => void,
@@ -73,177 +84,151 @@ export default function SimulacaoCenarios() {
     setter({ ...current, [field]: value });
   };
 
-  const isCopyDisabled = !currentCalc.isValid;
   const hasAnyResult = currentCalc.isValid || newCalc.isValid;
 
   return (
-    <div className="space-y-10">
-      {/* ── HEADER ── */}
-      <motion.div
-        className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"
-        initial="hidden"
-        animate="visible"
-        variants={fadeUp}
-        custom={0}
-      >
+    <div className="h-full flex flex-col gap-3 min-h-0">
+      {/* HEADER — compact */}
+      <div className="flex items-center justify-between shrink-0">
         <div>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">
-            Simule seu Faturamento
-          </h1>
-          <p className="text-muted-foreground mt-1.5 text-base">
-            Preencha os campos abaixo e veja em tempo real quanto você pode faturar
-          </p>
+          <h1 className="text-xl font-bold text-foreground tracking-tight">Simule seu Faturamento</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Compare cenários e veja o impacto em tempo real</p>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => navigate("/app/simulacao/historico")}>
-            <History className="h-4 w-4 mr-1.5" />
+            <History className="h-3.5 w-3.5 mr-1" />
             Histórico
           </Button>
           <Button size="sm" onClick={() => setSaveDialogOpen(true)} disabled={!hasAnyResult}>
-            <Save className="h-4 w-4 mr-1.5" />
-            Salvar Cenário
+            <Save className="h-3.5 w-3.5 mr-1" />
+            Salvar
           </Button>
         </div>
-      </motion.div>
+      </div>
 
-      {/* ── ZONA 1 — ENTRADAS ── */}
-      <motion.div initial="hidden" animate="visible" variants={fadeUp} custom={1}>
-        <div className="flex items-center gap-2 mb-5">
-          <span className="text-xl">📊</span>
-          <h2 className="text-lg font-semibold text-foreground">Preencha seus números</h2>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-5 items-start">
-          {/* Cenário Atual */}
-          <ScenarioInputCard
+      {/* MAIN — 2 columns */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(320px,2fr)_3fr] gap-4 min-h-0 overflow-auto lg:overflow-hidden">
+        {/* LEFT — Inputs */}
+        <div className="flex flex-col gap-3 min-h-0 overflow-y-auto pr-1">
+          <CompactInputSection
             title="Cenário Atual"
             variant="neutral"
             inputs={currentScenario}
             onChange={(field, value) => handleInputChange(setCurrentScenario, currentScenario, field, value)}
           />
 
-          {/* Copy Button (center divider) */}
-          <div className="hidden lg:flex flex-col items-center justify-center gap-3 pt-16">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={copyFromCurrent}
-              disabled={isCopyDisabled}
-              className="flex flex-col items-center gap-1.5 h-auto py-3 px-4 border-dashed border-2 hover:border-primary hover:text-primary transition-colors"
-              title={isCopyDisabled ? "Preencha o cenário atual primeiro" : "Copiar valores do cenário atual"}
-            >
-              <Copy className="h-4 w-4" />
-              <span className="text-[11px] font-medium">Copiar</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={resetNewScenario}
-              className="flex flex-col items-center gap-1 h-auto py-2 px-3 text-muted-foreground hover:text-foreground"
-              title="Limpar novo cenário"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              <span className="text-[10px]">Limpar</span>
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={copyFromCurrent}
+            disabled={!currentCalc.isValid}
+            className="self-center text-[11px] text-muted-foreground hover:text-primary gap-1.5 h-7 px-3"
+          >
+            <Copy className="h-3 w-3" />
+            Copiar para Novo Cenário
+          </Button>
 
-          {/* Mobile copy/reset buttons */}
-          <div className="flex lg:hidden gap-2 justify-center -mt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={copyFromCurrent}
-              disabled={isCopyDisabled}
-              className="text-xs border-dashed"
-            >
-              <Copy className="h-3.5 w-3.5 mr-1.5" />
-              Copiar do Atual
-            </Button>
-            <Button variant="ghost" size="sm" onClick={resetNewScenario} className="text-xs text-muted-foreground">
-              <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-              Limpar Novo
-            </Button>
-          </div>
-
-          {/* Novo Cenário */}
-          <ScenarioInputCard
+          <CompactInputSection
             title="Novo Cenário"
             variant="primary"
             inputs={newScenario}
             onChange={(field, value) => handleInputChange(setNewScenario, newScenario, field, value)}
           />
         </div>
-      </motion.div>
 
-      {/* ── ZONA 2 — RESULTADOS ── */}
-      {hasAnyResult && (
-        <motion.div initial="hidden" animate="visible" variants={fadeUp} custom={2}>
-          <div className="flex items-center gap-2 mb-5">
-            <span className="text-xl">🎯</span>
-            <h2 className="text-lg font-semibold text-foreground">Resultado Projetado</h2>
+        {/* RIGHT — Results */}
+        <div className="flex flex-col gap-3 min-h-0 overflow-y-auto">
+          {/* North Star Metric */}
+          <NorthStarMetric comparison={comparison} />
+
+          {/* 2x2 Metrics Grid */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <MetricTile
+              label="Fat. Mensal Atual"
+              value={currentCalc.isValid ? formatCurrency(currentCalc.monthlyRevenue) : "—"}
+              active={currentCalc.isValid}
+            />
+            <MetricTile
+              label="Fat. Mensal Novo"
+              value={newCalc.isValid ? formatCurrency(newCalc.monthlyRevenue) : "—"}
+              active={newCalc.isValid}
+              highlight
+            />
+            <MetricTile
+              label="Fat. Anual Atual"
+              value={currentCalc.isValid ? formatCurrency(currentCalc.yearlyRevenue) : "—"}
+              active={currentCalc.isValid}
+            />
+            <MetricTile
+              label="Fat. Anual Novo"
+              value={newCalc.isValid ? formatCurrency(newCalc.yearlyRevenue) : "—"}
+              active={newCalc.isValid}
+              highlight
+            />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Current result */}
-            {currentCalc.isValid && (
-              <ResultCard
-                label="Cenário Atual"
-                monthly={currentCalc.monthlyRevenue}
-                yearly={currentCalc.yearlyRevenue}
-                variant="neutral"
-              />
-            )}
-
-            {/* New result */}
-            {newCalc.isValid && (
-              <ResultCard
-                label="Novo Cenário"
-                monthly={newCalc.monthlyRevenue}
-                yearly={newCalc.yearlyRevenue}
-                variant="primary"
-              />
-            )}
-          </div>
-
-          {/* Comparison delta */}
-          {comparison && (
-            <motion.div
-              className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-5"
-              initial="hidden"
-              animate="visible"
-              variants={fadeUp}
-              custom={0}
-            >
-              <DeltaCard
-                label="Diferença Mensal"
-                diff={comparison.monthlyDiff}
-                diffPercent={comparison.monthlyDiffPercent}
-              />
-              <DeltaCard
-                label="Diferença em 12 Meses"
-                diff={comparison.yearlyDiff}
-                diffPercent={comparison.yearlyDiffPercent}
-              />
-            </motion.div>
+          {/* Chart */}
+          {chartData.length > 0 && (
+            <div className="flex-1 min-h-[180px] rounded-xl border border-border bg-card p-3">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
+                Evolução em 12 meses
+              </p>
+              <ResponsiveContainer width="100%" height={170}>
+                <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="simAtual" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="hsl(var(--chart-4))" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="simNovo" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="month" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={50}
+                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                    }}
+                    formatter={(value: number) => [formatCurrency(value), undefined]}
+                  />
+                  {currentCalc.isValid && (
+                    <Area
+                      type="monotone"
+                      dataKey="atual"
+                      name="Atual"
+                      stroke="hsl(var(--chart-4))"
+                      fill="url(#simAtual)"
+                      strokeWidth={1.5}
+                    />
+                  )}
+                  {newCalc.isValid && (
+                    <Area
+                      type="monotone"
+                      dataKey="novo"
+                      name="Novo"
+                      stroke="hsl(var(--primary))"
+                      fill="url(#simNovo)"
+                      strokeWidth={2}
+                    />
+                  )}
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           )}
-        </motion.div>
-      )}
-
-      {/* ── ZONA 3 — GRÁFICO ── */}
-      {hasAnyResult && (
-        <motion.div initial="hidden" animate="visible" variants={fadeUp} custom={3}>
-          <div className="flex items-center gap-2 mb-5">
-            <span className="text-xl">📈</span>
-            <h2 className="text-lg font-semibold text-foreground">Evolução ao longo do tempo</h2>
-          </div>
-          <RevenueComparisonCard
-            chartData={chartData}
-            showCurrent={currentCalc.isValid}
-            showNew={newCalc.isValid}
-            comparison={null}
-          />
-        </motion.div>
-      )}
+        </div>
+      </div>
 
       <SaveScenarioDialog
         open={saveDialogOpen}
@@ -255,8 +240,8 @@ export default function SimulacaoCenarios() {
   );
 }
 
-/* ─── Scenario Input Card ─── */
-function ScenarioInputCard({
+/* ─── Compact Input Section ─── */
+function CompactInputSection({
   title,
   variant,
   inputs,
@@ -270,175 +255,175 @@ function ScenarioInputCard({
   const isPrimary = variant === "primary";
 
   return (
-    <Card className={`overflow-hidden ${isPrimary ? "border-primary/30" : ""}`}>
-      <div
-        className={`px-5 py-3.5 border-b ${
-          isPrimary
-            ? "bg-primary/5 border-primary/20"
-            : "bg-muted/50 border-border"
-        }`}
-      >
-        <h3 className={`text-sm font-semibold ${isPrimary ? "text-primary" : "text-muted-foreground"}`}>
-          {title}
-        </h3>
-      </div>
-      <CardContent className="p-5 space-y-5">
-        <InputField
-          icon={<Eye className="h-4 w-4" />}
+    <div className={`rounded-xl border p-3.5 ${isPrimary ? "border-primary/30 bg-primary/[0.02]" : "border-border bg-card"}`}>
+      <p className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isPrimary ? "text-primary" : "text-muted-foreground"}`}>
+        {title}
+      </p>
+      <div className="space-y-2.5">
+        <FormattedField
           label="Visitas Mensais"
-          placeholder="Ex: 10.000"
+          placeholder="10.000"
           value={inputs.monthlyVisits}
           onChange={(v) => onChange("monthlyVisits", v)}
-          isPrimary={isPrimary}
+          type="thousands"
         />
-        <InputField
-          icon={<Target className="h-4 w-4" />}
-          label="Taxa de Conversão (%)"
-          placeholder="Ex: 2.5"
+        <FormattedField
+          label="Taxa de Conversão"
+          placeholder="2,5"
           value={inputs.conversionRate}
           onChange={(v) => onChange("conversionRate", v)}
-          step="0.1"
-          max="100"
-          isPrimary={isPrimary}
+          type="percent"
         />
-        <InputField
-          icon={<DollarSign className="h-4 w-4" />}
-          label="Ticket Médio (R$)"
-          placeholder="Ex: 150,00"
+        <FormattedField
+          label="Ticket Médio"
+          placeholder="150,00"
           value={inputs.averageTicket}
           onChange={(v) => onChange("averageTicket", v)}
-          step="0.01"
-          isPrimary={isPrimary}
+          type="currency"
         />
-      </CardContent>
-    </Card>
-  );
-}
-
-/* ─── Input Field ─── */
-function InputField({
-  icon,
-  label,
-  placeholder,
-  value,
-  onChange,
-  step,
-  max,
-  isPrimary,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  placeholder: string;
-  value: string;
-  onChange: (v: string) => void;
-  step?: string;
-  max?: string;
-  isPrimary: boolean;
-}) {
-  return (
-    <div className="space-y-2">
-      <Label className="text-sm font-medium flex items-center gap-2">
-        <span className={isPrimary ? "text-primary" : "text-muted-foreground"}>{icon}</span>
-        {label}
-      </Label>
-      <Input
-        type="number"
-        min="0"
-        max={max}
-        step={step}
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`h-12 text-base bg-background ${isPrimary ? "focus-visible:ring-primary focus-visible:border-primary" : ""}`}
-      />
+      </div>
     </div>
   );
 }
 
-/* ─── Result Card ─── */
-function ResultCard({
+/* ─── Formatted Field ─── */
+function FormattedField({
   label,
-  monthly,
-  yearly,
-  variant,
+  placeholder,
+  value,
+  onChange,
+  type,
 }: {
   label: string;
-  monthly: number;
-  yearly: number;
-  variant: "neutral" | "primary";
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+  type: "thousands" | "percent" | "currency";
 }) {
-  const isPrimary = variant === "primary";
+  const prefix = type === "currency" ? "R$" : undefined;
+  const suffix = type === "percent" ? "%" : undefined;
+
+  const handleChange = (raw: string) => {
+    if (type === "thousands") {
+      // Only digits
+      const digits = raw.replace(/\D/g, "");
+      onChange(digits);
+    } else {
+      // Allow digits, dot, comma
+      const clean = raw.replace(/[^\d.,]/g, "").replace(",", ".");
+      const numValue = parseFloat(clean);
+      if (clean !== "" && numValue < 0) return;
+      if (type === "percent" && numValue > 100) return;
+      onChange(clean);
+    }
+  };
+
+  const displayValue = useMemo(() => {
+    if (!value) return "";
+    if (type === "thousands") {
+      const num = parseInt(value, 10);
+      return isNaN(num) ? "" : num.toLocaleString("pt-BR");
+    }
+    if (type === "percent" || type === "currency") {
+      return value.replace(".", ",");
+    }
+    return value;
+  }, [value, type]);
 
   return (
-    <Card
-      className={`overflow-hidden ${
-        isPrimary ? "border-primary/30 bg-primary/[0.03]" : ""
-      }`}
-    >
-      <CardContent className="p-5 space-y-4">
-        <p className={`text-xs font-semibold uppercase tracking-wider ${isPrimary ? "text-primary" : "text-muted-foreground"}`}>
-          {label}
-        </p>
-        <div>
-          <p className="text-xs text-muted-foreground mb-1">Faturamento Mensal</p>
-          <p className="text-[32px] font-bold text-foreground leading-tight tabular-nums" style={{ letterSpacing: "-0.02em" }}>
-            {formatCurrency(monthly)}
-          </p>
-        </div>
-        <div className="pt-3 border-t border-border">
-          <p className="text-xs text-muted-foreground mb-1">Faturamento em 12 Meses</p>
-          <p className="text-xl font-bold text-foreground tabular-nums" style={{ letterSpacing: "-0.02em" }}>
-            {formatCurrency(yearly)}
-          </p>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="space-y-1">
+      <Label className="text-[11px] font-medium text-muted-foreground">{label}</Label>
+      <div className="relative">
+        {prefix && (
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none select-none">
+            {prefix}
+          </span>
+        )}
+        <Input
+          type="text"
+          inputMode="decimal"
+          placeholder={placeholder}
+          value={displayValue}
+          onChange={(e) => handleChange(e.target.value)}
+          className={`h-10 text-sm bg-background ${prefix ? "pl-8" : ""} ${suffix ? "pr-7" : ""}`}
+        />
+        {suffix && (
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none select-none">
+            {suffix}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 
-/* ─── Delta Card ─── */
-function DeltaCard({
-  label,
-  diff,
-  diffPercent,
-}: {
-  label: string;
-  diff: number;
-  diffPercent: number;
-}) {
-  const isPositive = diff >= 0;
-  const Icon = isPositive ? TrendingUp : TrendingDown;
+/* ─── North Star Metric ─── */
+function NorthStarMetric({ comparison }: { comparison: { monthlyDiff: number; monthlyDiffPercent: number } | null }) {
+  if (!comparison) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-5 text-center">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1">
+          Potencial de Crescimento
+        </p>
+        <p className="text-muted-foreground/40 text-sm">Preencha ambos os cenários para comparar</p>
+      </div>
+    );
+  }
 
-  const absCurrency = Math.abs(diff).toLocaleString("pt-BR", {
+  const isPositive = comparison.monthlyDiff >= 0;
+  const Icon = isPositive ? TrendingUp : TrendingDown;
+  const absCurrency = Math.abs(comparison.monthlyDiff).toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
     minimumFractionDigits: 2,
   });
-  const absPercent = Math.abs(diffPercent).toLocaleString("pt-BR", {
-    style: "percent",
-    minimumFractionDigits: 2,
-  });
+  const absPercent = Math.abs(comparison.monthlyDiffPercent * 100).toFixed(1);
 
   return (
     <div
-      className={`rounded-xl p-5 flex items-center gap-4 ${
+      className={`rounded-xl border p-5 transition-colors ${
         isPositive
-          ? "bg-success/10 border border-success/25"
-          : "bg-destructive/10 border border-destructive/25"
+          ? "border-primary/25 bg-primary/[0.04]"
+          : "border-destructive/25 bg-destructive/[0.04]"
       }`}
     >
-      <div className={`shrink-0 rounded-full p-2.5 ${isPositive ? "bg-success/15" : "bg-destructive/15"}`}>
-        <Icon className={`h-5 w-5 ${isPositive ? "text-success" : "text-destructive"}`} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
-        <p className={`text-xl font-bold ${isPositive ? "text-success" : "text-destructive"}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1.5">
+        Potencial de Crescimento
+      </p>
+      <div className="flex items-baseline gap-3">
+        <p className={`text-[28px] font-bold leading-tight tabular-nums ${isPositive ? "text-foreground" : "text-destructive"}`} style={{ letterSpacing: "-0.02em" }}>
           {isPositive ? "+" : "-"}{absCurrency}
         </p>
-        <p className={`text-sm font-medium ${isPositive ? "text-success" : "text-destructive"}`}>
-          {isPositive ? "+" : "-"}{absPercent}
-        </p>
+        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
+          isPositive ? "text-success bg-success/10" : "text-destructive bg-destructive/10"
+        }`}>
+          <Icon className="h-3 w-3" />
+          {isPositive ? "+" : "-"}{absPercent}%
+        </span>
       </div>
+      <p className="text-[11px] text-muted-foreground/60 mt-1">diferença mensal entre cenários</p>
+    </div>
+  );
+}
+
+/* ─── Metric Tile ─── */
+function MetricTile({
+  label,
+  value,
+  active,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  active: boolean;
+  highlight?: boolean;
+}) {
+  return (
+    <div className={`rounded-xl border border-border bg-card p-3.5 transition-opacity ${!active ? "opacity-40" : ""}`}>
+      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1">{label}</p>
+      <p className={`text-lg font-bold tabular-nums leading-tight ${highlight && active ? "text-primary" : "text-foreground"}`} style={{ letterSpacing: "-0.01em" }}>
+        {value}
+      </p>
     </div>
   );
 }
