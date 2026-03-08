@@ -10,9 +10,10 @@ import { Target, Pencil, Check } from "lucide-react";
 interface RevenueGoalCardProps {
   currentRevenue: number;
   userId: string;
+  onGoalLoaded?: (goal: number | null) => void;
 }
 
-export function RevenueGoalCard({ currentRevenue, userId }: RevenueGoalCardProps) {
+export function RevenueGoalCard({ currentRevenue, userId, onGoalLoaded }: RevenueGoalCardProps) {
   const [goal, setGoal] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -26,13 +27,17 @@ export function RevenueGoalCard({ currentRevenue, userId }: RevenueGoalCardProps
         .eq("user_id", userId)
         .single();
       if (data && (data as any).revenue_goal != null) {
-        setGoal(Number((data as any).revenue_goal));
-        setInputValue(String((data as any).revenue_goal));
+        const g = Number((data as any).revenue_goal);
+        setGoal(g);
+        setInputValue(String(g));
+        onGoalLoaded?.(g);
+      } else {
+        onGoalLoaded?.(null);
       }
       setLoading(false);
     };
     load();
-  }, [userId]);
+  }, [userId, onGoalLoaded]);
 
   const handleSave = async () => {
     const value = parseFloat(inputValue);
@@ -48,6 +53,7 @@ export function RevenueGoalCard({ currentRevenue, userId }: RevenueGoalCardProps
       toast.error("Erro ao salvar meta");
     } else {
       setGoal(value);
+      onGoalLoaded?.(value);
       setEditing(false);
       toast.success("Meta atualizada!");
     }
