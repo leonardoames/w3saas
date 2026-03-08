@@ -279,7 +279,7 @@ export default function Aulas() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/app/cursos")} className="px-2">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/app/aulas")} className="px-2">
               ← Cursos
             </Button>
           </div>
