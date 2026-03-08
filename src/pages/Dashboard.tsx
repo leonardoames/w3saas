@@ -300,7 +300,7 @@ export default function Dashboard() {
             <BestDayBadge data={effectiveData} />
           </div>
           <p className="text-[11px] text-muted-foreground mb-3">Tendência no período selecionado</p>
-          <RevenueChart data={chartData} previousData={prevChartData} previousTotal={prevFat} />
+          <RevenueChart data={chartData} previousData={prevChartData} previousTotal={prevFat} goal={revenueGoal} />
         </div>
       )}
 
