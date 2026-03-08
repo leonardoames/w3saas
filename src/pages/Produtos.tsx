@@ -118,7 +118,7 @@ export default function Produtos() {
               )}
 
               {/* Image area */}
-              <div className="flex h-[160px] items-center justify-center bg-[#1A1A1A] rounded-t-2xl overflow-hidden">
+              <div className="flex h-[160px] items-center justify-center bg-muted rounded-t-xl overflow-hidden">
                 {product.image_url ? (
                   <img
                     src={product.image_url}
