@@ -438,7 +438,12 @@ serve(async (req) => {
     // ========== BUSCAR DOCUMENTOS DO CÉREBRO IA (COMPARTILHADO) ==========
     let knowledgeContext = "";
     try {
-      const { data: documents } = await supabase
+      const serviceClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+
+      const { data: documents } = await serviceClient
         .from("ia_documents")
         .select("file_name, content_text")
         .eq("status", "ready")
