@@ -1,9 +1,8 @@
-// Dash Admin - Admin-only dashboard for mentorados
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate } from "react-router-dom";
 import { useDashAdmin, MentoradoRow } from "@/hooks/useDashAdmin";
 import { AdminKPIs } from "@/components/dash-admin/AdminKPIs";
+import { AdminAlerts } from "@/components/dash-admin/AdminAlerts";
 import { AdminCharts } from "@/components/dash-admin/AdminCharts";
 import { AdminFilters } from "@/components/dash-admin/AdminFilters";
 import { AdminTable } from "@/components/dash-admin/AdminTable";
@@ -13,31 +12,18 @@ import { Button } from "@/components/ui/button";
 import { Download, Columns3, Loader2, ShieldAlert } from "lucide-react";
 
 const DEFAULT_COLUMNS = [
-  "full_name",
-  "email",
-  "access_status",
-  "plan_type",
-  "created_at",
-  "last_login_at",
-  "total_faturamento",
+  "full_name", "email", "access_status", "plan_type",
+  "created_at", "last_login_at", "total_faturamento",
 ];
 
 const COLUMN_LABELS: Record<string, string> = {
-  user_id: "ID",
-  email: "E-mail",
-  full_name: "Nome",
-  access_status: "Status",
-  plan_type: "Plano",
-  is_mentorado: "Mentorado",
-  is_w3_client: "Cliente W3",
-  access_expires_at: "Expiração",
-  created_at: "Cadastro",
-  last_login_at: "Último Login",
-  revenue_goal: "Meta Faturamento",
-  total_faturamento: "Faturamento Total",
-  total_sessoes: "Sessões Total",
-  total_investimento: "Investimento Total",
-  total_pedidos: "Pedidos Total",
+  user_id: "ID", email: "E-mail", full_name: "Nome",
+  access_status: "Status", plan_type: "Plano",
+  is_mentorado: "Mentorado", is_w3_client: "Cliente W3",
+  access_expires_at: "Expiração", created_at: "Cadastro",
+  last_login_at: "Último Login", revenue_goal: "Meta Faturamento",
+  total_faturamento: "Faturamento Total", total_sessoes: "Sessões Total",
+  total_investimento: "Investimento Total", total_pedidos: "Pedidos Total",
   updated_at: "Atualização",
 };
 
@@ -45,13 +31,13 @@ export default function DashAdmin() {
   const { isAdmin, isLoading: authLoading } = useAuth();
   const {
     paginated, page, setPage, totalPages, filters, setFilters,
-    kpis, chartData, allColumns, exportCSV, isLoading, mentorados,
+    kpis, monthlyRevenue, top5, allColumns, exportCSV, isLoading, mentorados, allMentorados,
   } = useDashAdmin();
 
   const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_COLUMNS);
   const [columnSelectorOpen, setColumnSelectorOpen] = useState(false);
   const [selectedMentorado, setSelectedMentorado] = useState<MentoradoRow | null>(null);
-  const [sortKey, setSortKey] = useState<string>("created_at");
+  const [sortKey, setSortKey] = useState<string>("total_faturamento");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   if (authLoading) {
@@ -72,7 +58,6 @@ export default function DashAdmin() {
     );
   }
 
-  // Sort paginated data
   const sorted = [...paginated].sort((a, b) => {
     const aVal = (a as any)[sortKey];
     const bVal = (b as any)[sortKey];
@@ -98,11 +83,12 @@ export default function DashAdmin() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
+      {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Dash Admin</h1>
           <p className="text-sm text-muted-foreground">
-            Painel de acompanhamento dos mentorados ({mentorados.length} registros)
+            Painel de acompanhamento · {allMentorados.length} mentorados
           </p>
         </div>
         <div className="flex gap-2">
@@ -115,16 +101,25 @@ export default function DashAdmin() {
         </div>
       </div>
 
+      {/* Block 1: KPIs */}
       <AdminKPIs kpis={kpis} isLoading={isLoading} />
 
-      <AdminFilters filters={filters} setFilters={setFilters} />
+      {/* Block 2: Smart Alerts */}
+      <AdminAlerts
+        expiring7d={kpis.expiring7d}
+        inactive15d={kpis.inactive15d}
+        neverRevenue={kpis.neverRevenue}
+        setFilters={setFilters}
+      />
 
-      <AdminCharts chartData={chartData} isLoading={isLoading} />
+      {/* Block 3: Charts */}
+      <AdminCharts monthlyRevenue={monthlyRevenue} top5={top5} isLoading={isLoading} />
+
+      {/* Block 4: Filters + Table */}
+      <AdminFilters filters={filters} setFilters={setFilters} />
 
       <AdminTable
         data={sorted}
-        visibleColumns={visibleColumns}
-        columnLabels={COLUMN_LABELS}
         page={page}
         totalPages={totalPages}
         onPageChange={setPage}

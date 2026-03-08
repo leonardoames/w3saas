@@ -10,8 +10,8 @@ interface Props {
 
 export function AdminFilters({ filters, setFilters }: Props) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <div className="relative flex-1 max-w-xs">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
+      <div className="relative flex-1 min-w-[200px] max-w-xs">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Buscar por nome ou e-mail..."
@@ -20,18 +20,6 @@ export function AdminFilters({ filters, setFilters }: Props) {
           className="pl-9 h-9 text-sm"
         />
       </div>
-
-      <Select value={filters.period} onValueChange={(v) => setFilters((f) => ({ ...f, period: v as any }))}>
-        <SelectTrigger className="w-40 h-9 text-sm">
-          <SelectValue placeholder="Período" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Todos</SelectItem>
-          <SelectItem value="7">Últimos 7 dias</SelectItem>
-          <SelectItem value="30">Últimos 30 dias</SelectItem>
-          <SelectItem value="90">Últimos 90 dias</SelectItem>
-        </SelectContent>
-      </Select>
 
       <Select value={filters.status} onValueChange={(v) => setFilters((f) => ({ ...f, status: v }))}>
         <SelectTrigger className="w-36 h-9 text-sm">
@@ -42,6 +30,31 @@ export function AdminFilters({ filters, setFilters }: Props) {
           <SelectItem value="active">Ativo</SelectItem>
           <SelectItem value="suspended">Suspenso</SelectItem>
           <SelectItem value="expired">Expirado</SelectItem>
+          <SelectItem value="expiring">Expirando</SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Select value={filters.engagement} onValueChange={(v) => setFilters((f) => ({ ...f, engagement: v as any }))}>
+        <SelectTrigger className="w-44 h-9 text-sm">
+          <SelectValue placeholder="Engajamento" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Todos</SelectItem>
+          <SelectItem value="active_recent">Ativos (7d)</SelectItem>
+          <SelectItem value="inactive_15d">Inativos 15d+</SelectItem>
+          <SelectItem value="never_logged">Nunca logaram</SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Select value={filters.period} onValueChange={(v) => setFilters((f) => ({ ...f, period: v as any }))}>
+        <SelectTrigger className="w-40 h-9 text-sm">
+          <SelectValue placeholder="Período" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Todos</SelectItem>
+          <SelectItem value="7">Últimos 7 dias</SelectItem>
+          <SelectItem value="30">Últimos 30 dias</SelectItem>
+          <SelectItem value="90">Últimos 90 dias</SelectItem>
         </SelectContent>
       </Select>
 

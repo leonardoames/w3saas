@@ -1,59 +1,98 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, UserCheck, UserPlus, Clock, DollarSign, TrendingUp } from "lucide-react";
+import { Users, DollarSign, TrendingUp, Activity, ArrowUpRight, ArrowDownRight } from "lucide-react";
 
 interface KPIs {
-  total: number;
   active: number;
   newRecent: number;
-  expiringSoon: number;
   totalRev: number;
   avgRev: number;
   hasRevenue: boolean;
+  engagementRate: number;
 }
 
 export function AdminKPIs({ kpis, isLoading }: { kpis: KPIs; isLoading: boolean }) {
-  const cards = [
-    { label: "Total Mentorados", value: kpis.total, icon: Users, show: true },
-    { label: "Ativos", value: kpis.active, icon: UserCheck, show: true },
-    { label: "Novos (30d)", value: kpis.newRecent, icon: UserPlus, show: true },
-    { label: "Encerrando (30d)", value: kpis.expiringSoon, icon: Clock, show: true },
-    {
-      label: "Faturamento Total",
-      value: `R$ ${kpis.totalRev.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-      icon: DollarSign,
-      show: kpis.hasRevenue,
-    },
-    {
-      label: "Fat. Médio/Mentorado",
-      value: `R$ ${kpis.avgRev.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-      icon: TrendingUp,
-      show: kpis.hasRevenue,
-    },
-  ].filter((c) => c.show);
-
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i}><CardContent className="p-4"><Skeleton className="h-16 w-full" /></CardContent></Card>
+          <Card key={i}><CardContent className="p-5"><Skeleton className="h-20 w-full" /></CardContent></Card>
         ))}
       </div>
     );
   }
 
+  const cards = [
+    {
+      label: "Mentorados Ativos",
+      value: kpis.active,
+      formatted: String(kpis.active),
+      delta: kpis.newRecent,
+      deltaLabel: `+${kpis.newRecent} este mês`,
+      icon: Users,
+      positive: kpis.newRecent > 0,
+    },
+    {
+      label: "Faturamento Total",
+      value: kpis.totalRev,
+      formatted: `R$ ${kpis.totalRev.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+      delta: null,
+      deltaLabel: null,
+      icon: DollarSign,
+      positive: true,
+      show: kpis.hasRevenue,
+    },
+    {
+      label: "Fat. Médio/Mentorado",
+      value: kpis.avgRev,
+      formatted: `R$ ${kpis.avgRev.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+      delta: null,
+      deltaLabel: null,
+      icon: TrendingUp,
+      positive: true,
+      show: kpis.hasRevenue,
+    },
+    {
+      label: "Taxa de Engajamento",
+      value: kpis.engagementRate,
+      formatted: `${kpis.engagementRate.toFixed(0)}%`,
+      delta: null,
+      deltaLabel: "últimos 7 dias",
+      icon: Activity,
+      positive: kpis.engagementRate >= 50,
+    },
+  ].filter((c) => c.show !== false);
+
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map((c) => {
         const Icon = c.icon;
         return (
-          <Card key={c.label} className="border-border/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <Icon className="h-4 w-4 shrink-0" />
-                <span className="text-xs font-medium truncate">{c.label}</span>
+          <Card key={c.label} className="border-border/50 overflow-hidden">
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">{c.label}</p>
+                  <p className="text-2xl font-bold tabular-nums tracking-tight">{c.formatted}</p>
+                </div>
+                <div className="rounded-lg bg-primary/10 p-2.5">
+                  <Icon className="h-5 w-5 text-primary" />
+                </div>
               </div>
-              <p className="text-xl font-bold tabular-nums">{c.value}</p>
+              {(c.deltaLabel) && (
+                <div className="mt-3 flex items-center gap-1.5">
+                  {c.delta !== null && c.delta !== undefined ? (
+                    c.positive ? (
+                      <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500" />
+                    ) : (
+                      <ArrowDownRight className="h-3.5 w-3.5 text-red-500" />
+                    )
+                  ) : null}
+                  <span className={`text-xs font-medium ${c.positive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                    {c.deltaLabel}
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
         );
