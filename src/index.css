@@ -159,9 +159,9 @@
   .dark body {
     background: radial-gradient(
       ellipse at 20% 0%,
-      hsla(24, 94%, 53%, 0.04) 0%,
-      transparent 60%
-    ), hsl(0 0% 5%);
+      hsla(24, 94%, 53%, 0.06) 0%,
+      transparent 50%
+    ), #0d0d0d;
   }
 
   h1 {

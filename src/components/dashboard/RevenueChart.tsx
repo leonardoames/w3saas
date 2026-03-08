@@ -84,8 +84,8 @@ export function RevenueChart({ data, previousTotal }: RevenueChartProps) {
           <Area
             type="monotone"
             dataKey="faturamento"
-            stroke="hsl(27, 92%, 52%)"
-            strokeWidth={2.5}
+            stroke="#F97316"
+            strokeWidth={2}
             fillOpacity={1}
             fill="url(#colorFaturamento)"
           />
