@@ -5,16 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, Check, X, CheckCircle2, AlertTriangle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Pencil, Check, X, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown } from "lucide-react";
 import { getDaysInMonth, getDate } from "date-fns";
 
 interface RevenueHeroCardProps {
   currentRevenue: number;
+  previousRevenue?: number;
   userId: string;
   onGoalLoaded?: (goal: number | null) => void;
 }
 
-export function RevenueHeroCard({ currentRevenue, userId, onGoalLoaded }: RevenueHeroCardProps) {
+export function RevenueHeroCard({ currentRevenue, previousRevenue, userId, onGoalLoaded }: RevenueHeroCardProps) {
   const [goal, setGoal] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -62,6 +64,12 @@ export function RevenueHeroCard({ currentRevenue, userId, onGoalLoaded }: Revenu
 
   if (loading) return null;
 
+  const revenueChange = previousRevenue !== undefined && previousRevenue > 0
+    ? ((currentRevenue - previousRevenue) / previousRevenue) * 100
+    : undefined;
+  const isRevenueUp = revenueChange !== undefined && revenueChange > 0;
+  const isRevenueDown = revenueChange !== undefined && revenueChange < 0;
+
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   // Projection logic
@@ -94,8 +102,21 @@ export function RevenueHeroCard({ currentRevenue, userId, onGoalLoaded }: Revenu
             <span className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground/40 font-medium">
               Faturamento
             </span>
-            <p className="text-4xl md:text-[48px] font-bold text-primary leading-tight mt-1">
+            <p className="text-4xl md:text-[48px] font-bold text-primary leading-tight mt-1 flex items-center gap-3">
               {fmt(currentRevenue)}
+              {revenueChange !== undefined && revenueChange !== 0 && (
+                <span className={cn(
+                  "text-sm font-semibold px-2 py-1 rounded-lg flex items-center gap-1 whitespace-nowrap",
+                  isRevenueUp
+                    ? "text-success bg-success/10"
+                    : isRevenueDown
+                    ? "text-destructive bg-destructive/10"
+                    : "text-muted-foreground bg-muted/50"
+                )}>
+                  {isRevenueUp ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                  {revenueChange > 0 ? '+' : ''}{revenueChange.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
+                </span>
+              )}
             </p>
             <span className="text-[13px] text-muted-foreground/50 mt-0.5">Total do período</span>
 

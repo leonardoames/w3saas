@@ -253,7 +253,7 @@ export default function Dashboard() {
 
       {/* Revenue Goal + Projection */}
       {dataLoading ? <GoalSkeleton /> : (
-        <RevenueHeroCard currentRevenue={faturamento} userId={user.id} onGoalLoaded={handleGoalLoaded} />
+        <RevenueHeroCard currentRevenue={faturamento} previousRevenue={prevFat} userId={user.id} onGoalLoaded={handleGoalLoaded} />
       )}
 
       {/* KPIs Row 1: Primary */}
@@ -261,12 +261,12 @@ export default function Dashboard() {
         <>
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <KPICard
-              title="Faturamento"
-              value={faturamento.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              title="Investimento em Mídia"
+              value={investimento.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               subtitle="Total do período"
               dominant
-              change={pctChange(faturamento, prevFat)}
-              tooltip={KPI_TOOLTIPS.faturamento}
+              change={pctChange(investimento, prevInv)}
+              tooltip="Soma do investimento em tráfego pago no período selecionado"
               isEmpty={!hasData}
             />
             <KPICard title="ROAS Médio" value={roas.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} subtitle="Receita / Investimento" change={pctChange(roas, prevRoas)} tooltip={KPI_TOOLTIPS.roas} isEmpty={!hasData} />
