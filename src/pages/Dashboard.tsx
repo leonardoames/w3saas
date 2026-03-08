@@ -7,7 +7,6 @@ import { format, subDays, parseISO, isWithinInterval, isValid, startOfDay, endOf
 import { DateRange } from "react-day-picker";
 import { useNavigate } from "react-router-dom";
 import { KPICard } from "@/components/dashboard/KPICard";
-import { MetricCard } from "@/components/dashboard/MetricCard";
 import { PeriodFilter } from "@/components/dashboard/PeriodFilter";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { RevenueGoalCard } from "@/components/dashboard/RevenueGoalCard";
