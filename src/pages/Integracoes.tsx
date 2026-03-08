@@ -373,15 +373,17 @@ export default function Integracoes() {
                 <div className="flex items-center gap-2">
                   {connected ? (
                     <>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => syncPlatform(platform.id)}
-                        disabled={syncing === platform.id}
-                      >
-                        <RefreshCw className={`h-4 w-4 mr-1 ${syncing === platform.id ? "animate-spin" : ""}`} />
-                        {syncing === platform.id ? "Sincronizando..." : "Sincronizar"}
-                      </Button>
+                      {SYNCABLE_PLATFORMS.has(platform.id) && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => syncPlatform(platform.id)}
+                          disabled={syncing === platform.id}
+                        >
+                          <RefreshCw className={`h-4 w-4 mr-1 ${syncing === platform.id ? "animate-spin" : ""}`} />
+                          {syncing === platform.id ? "Sincronizando..." : "Sincronizar"}
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
