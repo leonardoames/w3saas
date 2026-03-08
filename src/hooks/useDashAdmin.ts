@@ -79,7 +79,7 @@ export function useDashAdmin() {
 
   // Aggregate revenue data
   const revenueAgg = useMemo(() => {
-    const rows = revenueQuery.data || [];
+    const rows = Array.isArray(revenueQuery.data) ? revenueQuery.data : [];
     const agg: Record<string, {
       faturamento: number; sessoes: number; investimento: number; pedidos: number;
       revenueThisMonth: number; revenueLastMonth: number;
@@ -218,7 +218,7 @@ export function useDashAdmin() {
 
   // Monthly revenue chart (last 6 months)
   const monthlyRevenue = useMemo(() => {
-    const rows = revenueQuery.data || [];
+    const rows = Array.isArray(revenueQuery.data) ? revenueQuery.data : [];
     const monthMap: Record<string, number> = {};
 
     for (let i = 5; i >= 0; i--) {
