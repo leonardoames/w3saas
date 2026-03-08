@@ -301,7 +301,7 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
               </Button>
             )}
           </div>
-          <nav className="flex-1 space-y-1 overflow-y-auto scrollbar-thin p-2">
+          <nav className="flex-1 space-y-6 overflow-y-auto scrollbar-thin p-2">
             {isExpanded ? renderExpandedNav() : renderCollapsedNav()}
           </nav>
           <div className={cn("border-t border-sidebar-border", isExpanded ? "p-3" : "p-2")}>
