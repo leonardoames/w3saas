@@ -260,7 +260,7 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <nav className="flex-1 space-y-1 overflow-y-auto scrollbar-thin p-3">
+            <nav className="flex-1 space-y-6 overflow-y-auto scrollbar-thin p-3">
               {renderExpandedNav(handleNavClick)}
             </nav>
             <div className="border-t border-sidebar-border p-3">
