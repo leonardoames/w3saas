@@ -89,18 +89,24 @@ export function useDashAdmin() {
   const thisMonthStart = useMemo(() => startOfMonth(now), [now]);
   const lastMonthStart = useMemo(() => startOfMonth(subMonths(now, 1)), [now]);
 
-  // Aggregate revenue data
+  // Aggregate revenue data from both daily_results AND metrics_diarias
   const revenueAgg = useMemo(() => {
-    const rows = Array.isArray(revenueQuery.data) ? revenueQuery.data : [];
+    const dailyRows = Array.isArray(revenueQuery.data) ? revenueQuery.data : [];
+    const metricsRows = Array.isArray(metricsQuery.data) ? metricsQuery.data : [];
     const agg: Record<string, {
       faturamento: number; sessoes: number; investimento: number; pedidos: number;
       revenueThisMonth: number; revenueLastMonth: number;
     }> = {};
 
-    for (const row of rows) {
-      if (!agg[row.user_id]) {
-        agg[row.user_id] = { faturamento: 0, sessoes: 0, investimento: 0, pedidos: 0, revenueThisMonth: 0, revenueLastMonth: 0 };
+    const ensureUser = (uid: string) => {
+      if (!agg[uid]) {
+        agg[uid] = { faturamento: 0, sessoes: 0, investimento: 0, pedidos: 0, revenueThisMonth: 0, revenueLastMonth: 0 };
       }
+    };
+
+    // Process daily_results
+    for (const row of dailyRows) {
+      ensureUser(row.user_id);
       const a = agg[row.user_id];
       const val = Number(row.receita_paga || 0);
       a.faturamento += val;
@@ -117,6 +123,27 @@ export function useDashAdmin() {
         }
       }
     }
+
+    // Process metrics_diarias (integration data)
+    for (const row of metricsRows) {
+      ensureUser(row.user_id);
+      const a = agg[row.user_id];
+      const val = Number(row.faturamento || 0) + Number(row.vendas_valor || 0);
+      a.faturamento += val;
+      a.sessoes += Number(row.sessoes || 0);
+      a.investimento += Number(row.investimento_trafego || 0);
+      a.pedidos += Number(row.vendas_quantidade || 0);
+
+      if (row.data) {
+        const d = parseISO(String(row.data).slice(0, 10));
+        if (!isBefore(d, thisMonthStart)) {
+          a.revenueThisMonth += val;
+        } else if (!isBefore(d, lastMonthStart) && isBefore(d, thisMonthStart)) {
+          a.revenueLastMonth += val;
+        }
+      }
+    }
+
     return agg;
   }, [revenueQuery.data, thisMonthStart, lastMonthStart]);
 
