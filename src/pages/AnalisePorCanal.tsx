@@ -11,7 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { PeriodFilter } from "@/components/dashboard/PeriodFilter";
-import { Settings, ArrowUpRight, ArrowDownRight, Minus, Trophy, TrendingUp, Plug } from "lucide-react";
+import { Settings, ArrowUpRight, ArrowDownRight, Minus, Trophy, TrendingUp, Plug, GitCompare } from "lucide-react";
+import PeriodComparisonSection from "@/components/analise-canal/PeriodComparisonSection";
 import { format, subDays, parseISO, isWithinInterval, startOfDay, endOfDay, differenceInCalendarDays, startOfMonth } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { useNavigate } from "react-router-dom";
@@ -91,6 +92,7 @@ export default function AnalisePorCanal() {
   const [editingChannel, setEditingChannel] = useState<string | null>(null);
   const [minRoasInput, setMinRoasInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
 
   const handlePeriodChange = useCallback((period: string, from: Date, to: Date) => {
     setSelectedPeriod(period);
@@ -274,12 +276,23 @@ export default function AnalisePorCanal() {
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-bold">Análise por Canal</h1>
-        <PeriodFilter
-          selectedPeriod={selectedPeriod}
-          onPeriodChange={handlePeriodChange}
-          customRange={customRange}
-          onCustomRangeChange={setCustomRange}
-        />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setShowComparison((v) => !v)}
+          >
+            <GitCompare className="h-4 w-4" />
+            Comparar Períodos
+          </Button>
+          <PeriodFilter
+            selectedPeriod={selectedPeriod}
+            onPeriodChange={handlePeriodChange}
+            customRange={customRange}
+            onCustomRangeChange={setCustomRange}
+          />
+        </div>
       </div>
 
       {loading ? (
@@ -308,6 +321,19 @@ export default function AnalisePorCanal() {
             <ComparisonTable
               channels={channelsData}
               settings={channelSettings}
+            />
+          )}
+
+          {/* Period Comparison Section */}
+          {showComparison && (
+            <PeriodComparisonSection
+              connectedChannels={connectedChannels}
+              channelLogos={CHANNEL_LOGOS}
+              metricsData={metricsData}
+              mapPlatformToChannel={mapPlatformToChannel}
+              currentPeriodFrom={dateRange.from}
+              currentPeriodTo={dateRange.to}
+              onClose={() => setShowComparison(false)}
             />
           )}
         </>
