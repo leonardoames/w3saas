@@ -18,6 +18,7 @@ import AcessoBloqueado from "./pages/AcessoBloqueado";
 
 // App pages
 import Dashboard from "./pages/Dashboard";
+import AnalisePorCanal from "./pages/AnalisePorCanal";
 import AcompanhamentoDiario from "./pages/AcompanhamentoDiario";
 import Aulas from "./pages/Aulas";
 import Cursos from "./pages/Cursos";
@@ -73,6 +74,7 @@ const App = () => (
                     <MainLayout>
                       <Routes>
                         <Route path="/" element={<Dashboard />} />
+                        <Route path="/analise-por-canal" element={<AnalisePorCanal />} />
                         <Route path="/acompanhamento" element={<AcompanhamentoDiario />} />
                         <Route path="/aulas" element={<Cursos />} />
                         <Route path="/aulas/:slug" element={<Aulas />} />
