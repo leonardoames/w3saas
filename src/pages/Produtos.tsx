@@ -110,7 +110,7 @@ export default function Produtos() {
                   </button>
                   <button
                     onClick={() => handleDelete(product.id)}
-                    className="rounded-lg bg-[#1A1A1A]/90 p-1.5 text-muted-foreground backdrop-blur-sm hover:text-destructive transition-colors"
+                    className="rounded-lg bg-card/90 p-1.5 text-muted-foreground backdrop-blur-sm hover:text-destructive transition-colors"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
