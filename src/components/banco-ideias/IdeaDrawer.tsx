@@ -31,7 +31,6 @@ const emptyForm: IdeaFormData = {
 
 export function IdeaDrawer({ open, onOpenChange, idea, onSave, userId }: Props) {
   const [form, setForm] = useState<IdeaFormData>(emptyForm);
-  const [tagInput, setTagInput] = useState("");
   const [responsibles, setResponsibles] = useState<string[]>([]);
   const [showResponsibles, setShowResponsibles] = useState(false);
 
