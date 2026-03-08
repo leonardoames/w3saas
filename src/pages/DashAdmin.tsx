@@ -30,8 +30,6 @@ const COLUMN_LABELS: Record<string, string> = {
   updated_at: "Atualização",
 };
 
-type DashPeriod = "7" | "30" | "this_month" | "all";
-
 export default function DashAdmin() {
   const { isAdmin, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
@@ -45,7 +43,6 @@ export default function DashAdmin() {
   const [selectedMentorado, setSelectedMentorado] = useState<MentoradoRow | null>(null);
   const [sortKey, setSortKey] = useState<string>("total_faturamento");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [dashPeriod, setDashPeriod] = useState<DashPeriod>("all");
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [refreshing, setRefreshing] = useState(false);
 
@@ -124,15 +121,19 @@ export default function DashAdmin() {
           </span>
         </div>
         <div className="flex gap-2 items-center">
-          <Select value={dashPeriod} onValueChange={(v) => setDashPeriod(v as DashPeriod)}>
-            <SelectTrigger className="w-36 h-9 text-sm">
+          {/* Single unified period selector */}
+          <Select
+            value={filters.period}
+            onValueChange={(v) => setFilters((f) => ({ ...f, period: v as any }))}
+          >
+            <SelectTrigger className="w-40 h-9 text-sm">
               <SelectValue placeholder="Período" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">Todo período</SelectItem>
               <SelectItem value="7">Últimos 7 dias</SelectItem>
               <SelectItem value="30">Últimos 30 dias</SelectItem>
-              <SelectItem value="this_month">Este mês</SelectItem>
-              <SelectItem value="all">Todo período</SelectItem>
+              <SelectItem value="90">Últimos 90 dias</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -152,7 +153,7 @@ export default function DashAdmin() {
       {/* Block 3: Charts */}
       <AdminCharts monthlyRevenue={monthlyRevenue} top5={top5} isLoading={isLoading} />
 
-      {/* Block 4: Filters + Table */}
+      {/* Block 4: Table filters (search, status, engagement only — no period) */}
       <AdminFilters filters={filters} setFilters={setFilters} />
 
       {/* Table toolbar */}
