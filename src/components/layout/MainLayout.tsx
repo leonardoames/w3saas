@@ -42,7 +42,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
 
-  const firstName = profile?.full_name?.split(" ")[0] || "Usuário";
+  const firstName = profile?.full_name?.split(" ")[0] || "você";
 
   return (
     <div className="flex min-h-screen bg-background">

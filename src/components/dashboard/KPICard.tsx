@@ -1,7 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { LineChart, Line, ResponsiveContainer } from "recharts";
 
 interface KPICardProps {
   title: string;
@@ -12,29 +11,21 @@ interface KPICardProps {
   dominant?: boolean;
   invertChange?: boolean;
   tooltip?: string;
-  sparklineData?: number[];
   isEmpty?: boolean;
+  secondary?: boolean;
 }
 
-export function KPICard({ title, value, subtitle, change, onClick, dominant, invertChange, tooltip, sparklineData, isEmpty }: KPICardProps) {
+export function KPICard({ title, value, subtitle, change, onClick, dominant, invertChange, tooltip, isEmpty, secondary }: KPICardProps) {
   const isClickable = !!onClick;
   
   const isPositive = invertChange ? (change !== undefined && change < 0) : (change !== undefined && change > 0);
   const isNegative = invertChange ? (change !== undefined && change > 0) : (change !== undefined && change < 0);
 
-  // Sparkline trend color
-  const sparkTrend = sparklineData && sparklineData.length >= 2
-    ? sparklineData[sparklineData.length - 1] >= sparklineData[0]
-    : true;
-  const sparkColor = sparkTrend ? "hsl(24, 94%, 53%)" : "hsl(0, 84%, 60%)";
-
-  const sparkChartData = sparklineData?.map((v, i) => ({ v, i }));
-
   const cardContent = (
     <div 
       className={cn(
         "rounded-xl border border-border bg-card transition-all duration-200 ease-out relative overflow-hidden",
-        dominant ? "p-4 sm:p-6 md:p-7 col-span-2 sm:col-span-2 lg:col-span-1" : "p-4 sm:p-5 md:p-6",
+        secondary ? "p-3 sm:p-4" : dominant ? "p-4 sm:p-5" : "p-3 sm:p-4 md:p-5",
         isClickable 
           ? "cursor-pointer hover:shadow-md hover:border-primary/30 hover:-translate-y-px group" 
           : "hover:shadow-sm"
@@ -45,7 +36,7 @@ export function KPICard({ title, value, subtitle, change, onClick, dominant, inv
       tabIndex={isClickable ? 0 : undefined}
       onKeyDown={isClickable ? (e) => e.key === 'Enter' && onClick?.() : undefined}
     >
-      <div className="flex items-center justify-between mb-2 sm:mb-3">
+      <div className="flex items-center justify-between mb-1.5">
         <span className="metric-label">{title}</span>
         {isClickable && (
           <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -53,16 +44,16 @@ export function KPICard({ title, value, subtitle, change, onClick, dominant, inv
       </div>
       <div className={cn(
         "font-semibold text-foreground tabular-nums tracking-tight",
-        dominant ? "text-2xl sm:text-3xl md:text-[2.25rem]" : "text-xl sm:text-2xl md:text-[1.75rem]"
+        secondary ? "text-lg sm:text-xl" : dominant ? "text-xl sm:text-2xl" : "text-lg sm:text-xl md:text-2xl"
       )}
         style={{ letterSpacing: '-0.03em' }}
       >
         {isEmpty ? "—" : value}
       </div>
       {isEmpty && (
-        <p className="text-[10px] text-muted-foreground mt-1">Sem dados neste período</p>
+        <p className="text-[10px] text-muted-foreground mt-0.5">Sem dados neste período</p>
       )}
-      <div className="flex items-center gap-2 mt-2 sm:mt-2.5">
+      <div className="flex items-center gap-2 mt-1.5">
         {!isEmpty && change !== undefined && change !== 0 && (
           <span className={cn(
             "text-[11px] font-semibold px-1.5 py-0.5 rounded-md",
@@ -79,17 +70,6 @@ export function KPICard({ title, value, subtitle, change, onClick, dominant, inv
           <p className="text-[11px] text-muted-foreground">{subtitle}</p>
         )}
       </div>
-
-      {/* Sparkline */}
-      {sparkChartData && sparkChartData.length > 1 && !isEmpty && (
-        <div className="absolute bottom-2 right-2 w-16 h-10 opacity-60">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={sparkChartData}>
-              <Line type="monotone" dataKey="v" stroke={sparkColor} strokeWidth={1.5} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
     </div>
   );
 
