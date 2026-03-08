@@ -99,6 +99,7 @@ Deno.serve(async (req) => {
               is_mentorado: userData.is_mentorado || false,
               is_w3_client: userData.is_w3_client || false,
               access_status: "active",
+              must_change_password: true,
             })
             .eq("user_id", newUser.user.id);
 
