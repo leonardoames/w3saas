@@ -141,7 +141,7 @@ export default function Produtos() {
                   </span>
                 )}
                 {product.description && (
-                  <p className="mt-2 text-[13px] leading-snug text-[#A0A0A0] line-clamp-2">
+                  <p className="mt-2 text-[13px] leading-snug text-muted-foreground line-clamp-2">
                     {product.description}
                   </p>
                 )}
