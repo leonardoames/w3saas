@@ -42,9 +42,10 @@ const RoundedBar = (props: any) => {
   );
 };
 
-export function DailyRevenueBarChart({ data }: DailyBarChartProps) {
+export function DailyRevenueBarChart({ data, goal }: DailyBarChartProps) {
   const now = new Date();
   const totalDays = getDaysInMonth(now);
+  const dailyGoal = goal && goal > 0 ? goal / totalDays : 0;
   const currentDay = getDate(now);
   const currentMonth = now.getMonth();
 
