@@ -295,13 +295,14 @@ export default function IAW3() {
           </div>
         ) : (
           // Chat messages
-          <div className="max-w-5xl mx-auto space-y-6">
+          <div className="max-w-5xl mx-auto space-y-1">
             {chatHistory.map((message, idx) => (
               <div
                 key={idx}
                 className={cn(
-                  "flex gap-4",
-                  message.role === "user" ? "justify-end" : "justify-start"
+                  "flex gap-4 py-4",
+                  message.role === "user" ? "justify-end" : "justify-start",
+                  message.role === "assistant" && "border-b border-border/30"
                 )}
               >
                 {message.role === "assistant" && (
