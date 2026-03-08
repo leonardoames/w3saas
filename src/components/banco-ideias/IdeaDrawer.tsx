@@ -47,7 +47,17 @@ export function IdeaDrawer({ open, onOpenChange, idea, onSave, userId }: Props) 
     } else {
       setForm(emptyForm);
     }
-    setTagInput("");
+    setForm((prev) => {
+      const base = idea ? {
+        title: idea.title, type: idea.type, format: idea.format, channel: idea.channel,
+        objective: idea.objective, hook: idea.hook || "", description: idea.description || "",
+        reference_url: idea.reference_url || "", responsible: idea.responsible || "",
+        priority: idea.priority, potential_score: idea.potential_score || 3, status: idea.status,
+        published_url: idea.published_url || "", due_date: idea.due_date, publish_date: idea.publish_date,
+        tags: [],
+      } : emptyForm;
+      return { ...base, tags: buildAutoTags(base) };
+    });
   }, [idea, open]);
 
   useEffect(() => {
