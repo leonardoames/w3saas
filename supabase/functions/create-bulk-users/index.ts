@@ -16,7 +16,6 @@ interface UserToCreate {
 
 interface CreateUsersRequest {
   users: UserToCreate[];
-  default_password: string;
 }
 
 Deno.serve(async (req) => {
@@ -60,15 +59,14 @@ Deno.serve(async (req) => {
       throw new Error("Not authorized - admin only");
     }
 
-    const { users, default_password }: CreateUsersRequest = await req.json();
+    const { users }: CreateUsersRequest = await req.json();
 
     if (!users || users.length === 0) {
       throw new Error("No users provided");
     }
 
-    if (!default_password || default_password.length < 6) {
-      throw new Error("Password must be at least 6 characters");
-    }
+    // Generate a secure default password server-side
+    const default_password = crypto.randomUUID().slice(0, 12) + "A1!";
 
     const results = [];
 
@@ -101,6 +99,7 @@ Deno.serve(async (req) => {
               is_mentorado: userData.is_mentorado || false,
               is_w3_client: userData.is_w3_client || false,
               access_status: "active",
+              must_change_password: true,
             })
             .eq("user_id", newUser.user.id);
 
