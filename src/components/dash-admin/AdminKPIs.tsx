@@ -54,12 +54,12 @@ export function AdminKPIs({ kpis, isLoading }: { kpis: KPIs; isLoading: boolean 
     },
     {
       label: "Taxa de Engajamento",
-      value: kpis.engagementRate,
-      formatted: `${kpis.engagementRate.toFixed(0)}%`,
+      value: kpis.engagementRate ?? 0,
+      formatted: `${(kpis.engagementRate ?? 0).toFixed(0)}%`,
       delta: null,
       deltaLabel: "últimos 7 dias",
       icon: Activity,
-      positive: kpis.engagementRate >= 50,
+      positive: (kpis.engagementRate ?? 0) >= 50,
     },
   ].filter((c) => c.show !== false);
 
