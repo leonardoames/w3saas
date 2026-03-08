@@ -1,18 +1,45 @@
 
 
-## Fix: Normalize date keys and parsing in Dashboard
+## Auth Page Premium Redesign
 
-The root cause is a timezone mismatch: dates from the database may include time/timezone components, causing `parseISO` to shift dates when converting to local time. Additionally, date keys in `dateMap` may not group properly if they contain time components.
+### Current Problems
+- Left panel is visually empty and underutilized -- just logo, one line of text, and 3 plain bullet points
+- No social proof, no metrics, no visual impact
+- Feature list is flat and uninspiring -- no icons, no hierarchy, no descriptions
+- No testimonial or trust signal
+- The branding panel feels like wasted space rather than a selling point
+- Right panel form is functional but plain
 
-### Changes to `src/pages/Dashboard.tsx`
+### Redesign Plan
 
-**1. Normalize date keys in `loadData`** — Use `substring(0, 10)` on both `dailyData` and `metricsData` loops to extract only `YYYY-MM-DD`.
+**Left Panel -- Transform into a high-impact branding showcase:**
 
-**2. Normalize date keys in `effectiveData` useMemo** — Same `substring(0, 10)` fix for platform-specific filtering.
+1. **Hero stats bar** at the top -- 3 glowing metric pills showing social proof:
+   - "+500 e-commerces" | "R$50M+ gerenciados" | "4.9/5 satisfacao"
 
-**3. Normalize date parsing in `filtered` and `prevFiltered`** — Use `parseISO(m.data.substring(0, 10))` to ensure local timezone interpretation.
+2. **Richer feature cards** -- Replace flat bullet list with 3 feature cards, each with:
+   - Distinct icon (BarChart3, Calculator, Brain)
+   - Bold title
+   - One-line description
+   - Subtle glass card background with hover glow
 
-**4. Add null safety** — Guard against null `data` values before calling `substring`.
+3. **Testimonial block** at the bottom -- A quote from a user with name/role/avatar placeholder, adding credibility
 
-All changes are in a single file: `src/pages/Dashboard.tsx`. No database or backend changes needed.
+4. **Visual polish:**
+   - Animated gradient orb/glow behind the content for depth
+   - Staggered motion animations on each element
+   - Subtle radial gradient overlay for premium feel
+
+**Right Panel -- Elevate the form UX:**
+
+1. Add a subtle welcome icon/illustration above the heading
+2. Improve input styling with icons inside fields (Mail, Lock icons)
+3. Add subtle divider line and "ou" text before the signup CTA
+4. Polish spacing and typography hierarchy
+
+**Technical approach:**
+- Single file edit: `src/pages/Auth.tsx`
+- Uses existing dependencies: `motion/react`, `lucide-react`, existing UI components
+- No new dependencies needed
+- All changes are cosmetic/presentational -- zero logic changes
 
