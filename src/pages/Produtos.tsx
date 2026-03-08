@@ -132,7 +132,7 @@ export default function Produtos() {
 
               {/* Body */}
               <div className="flex flex-1 flex-col p-5">
-                <h3 className="text-[16px] font-bold leading-tight text-[#F5F5F5]">
+                <h3 className="text-base font-bold leading-tight text-foreground">
                   {product.title}
                 </h3>
                 {product.tagline && (
