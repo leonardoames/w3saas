@@ -228,20 +228,8 @@ export default function IAW3() {
 
   const selectedModeData = MODES.find(m => m.id === selectedMode);
 
-  // Sanitize HTML for messages
-  const sanitizeHtml = (html: string) => {
-    return DOMPurify.sanitize(html, {
-      ALLOWED_TAGS: [
-        'p', 'br', 'strong', 'em', 'ul', 'ol', 'li',
-        'h2', 'h3', 'h4', 'h5', 'h6',
-        'div', 'span', 'table', 'tr', 'td', 'th', 'tbody', 'thead',
-        'style', 'a', 'button'
-      ],
-      ALLOWED_ATTR: ['class', 'style', 'href'],
-      KEEP_CONTENT: true,
-      ALLOW_DATA_ATTR: false,
-    });
-  };
+
+
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)]">
