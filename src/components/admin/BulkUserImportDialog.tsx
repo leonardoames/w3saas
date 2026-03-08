@@ -149,7 +149,7 @@ export function BulkUserImportDialog({ open, onOpenChange, onSuccess }: BulkUser
             is_mentorado: u.is_mentorado ?? defaultMentorado,
             is_w3_client: u.is_w3_client ?? defaultW3Client,
           })),
-          default_password: "appw3acesso",
+          // Password is generated server-side in the edge function
         },
       });
 
