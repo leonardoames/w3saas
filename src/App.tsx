@@ -36,6 +36,7 @@ import ShopifyCallback from "./pages/ShopifyCallback";
 import ShopeeCallback from "./pages/ShopeeCallback";
 import ShopeeAdsCallback from "./pages/ShopeeAdsCallback";
 import DashAdmin from "./pages/DashAdmin";
+import BancoDeIdeias from "./pages/BancoDeIdeias";
 
 // Admin pages
 import AdminUsers from "./pages/admin/AdminUsers";
@@ -76,6 +77,7 @@ const App = () => (
                         <Route path="/aulas" element={<Cursos />} />
                         <Route path="/aulas/:slug" element={<Aulas />} />
                         <Route path="/plano-acao" element={<PlanoAcao />} />
+                        <Route path="/banco-de-ideias" element={<BancoDeIdeias />} />
                         <Route path="/calculadora" element={<Calculadora />} />
                         <Route path="/simulacao" element={<SimulacaoCenarios />} />
                         <Route path="/simulacao/historico" element={<SimulacaoHistorico />} />

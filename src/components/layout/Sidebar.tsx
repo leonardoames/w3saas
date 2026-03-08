@@ -2,7 +2,7 @@ import { SidebarNavLink } from "./SidebarNavLink";
 import {
   LayoutDashboard, GraduationCap, ListChecks, Calculator, GitCompare,
   Sparkles, Brain, Store, ShoppingBag, CalendarDays, ChevronLeft,
-  ChevronRight, X, Shield, ChevronDown, BarChart3, Activity,
+  ChevronRight, X, Shield, ChevronDown, BarChart3, Activity, Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,6 +34,7 @@ const menuGroups: MenuGroup[] = [
       { title: "Dashboard", icon: LayoutDashboard, path: "/app" },
       { title: "Acompanhamento Diário", icon: BarChart3, path: "/app/acompanhamento" },
       { title: "Plano de Ação", icon: ListChecks, path: "/app/plano-acao" },
+      { title: "Banco de Ideias", icon: Lightbulb, path: "/app/banco-de-ideias" },
       { title: "Integrações", icon: Activity, path: "/app/integracoes" },
       { title: "Dash Admin", icon: Activity, path: "/app/dash-admin", adminOnly: true },
     ],
