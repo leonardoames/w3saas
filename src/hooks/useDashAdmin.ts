@@ -73,6 +73,18 @@ export function useDashAdmin() {
     },
   });
 
+  // Fetch metrics_diarias (integration data) for complete revenue picture
+  const metricsQuery = useQuery({
+    queryKey: ["dash-admin-metrics-diarias"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("metrics_diarias")
+        .select("user_id, faturamento, sessoes, investimento_trafego, vendas_quantidade, vendas_valor, data");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const now = useMemo(() => new Date(), []);
   const thisMonthStart = useMemo(() => startOfMonth(now), [now]);
   const lastMonthStart = useMemo(() => startOfMonth(subMonths(now, 1)), [now]);
