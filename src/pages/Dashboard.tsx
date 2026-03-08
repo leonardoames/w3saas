@@ -10,10 +10,9 @@ import { KPICard } from "@/components/dashboard/KPICard";
 import { PeriodFilter } from "@/components/dashboard/PeriodFilter";
 import { DailyRevenueBarChart } from "@/components/dashboard/DailyRevenueBarChart";
 import { CumulativeRevenueChart } from "@/components/dashboard/CumulativeRevenueChart";
-import { RevenueGoalCard } from "@/components/dashboard/RevenueGoalCard";
+import { RevenueHeroCard } from "@/components/dashboard/RevenueHeroCard";
 import { PlatformSelect } from "@/components/dashboard/PlatformSelect";
 import { PlatformType } from "@/lib/platformConfig";
-import { MonthProjection } from "@/components/dashboard/MonthProjection";
 import { DailyAlert } from "@/components/dashboard/DailyAlert";
 import { BreakEvenCard } from "@/components/dashboard/BreakEvenCard";
 
