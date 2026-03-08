@@ -18,6 +18,7 @@ export const PLATFORMS_LIST: PlatformConfig[] = [
   { id: 'tray', label: 'Tray', color: 'bg-emerald-600' },
   { id: 'loja_integrada', label: 'Loja Integrada', color: 'bg-purple-600' },
   { id: 'olist_tiny', label: 'Olist Tiny', color: 'bg-indigo-600' },
+  { id: 'bagy', label: 'Bagy', color: 'bg-pink-600' },
   { id: 'outros', label: 'Outros', color: 'bg-muted-foreground' },
 ];
 
