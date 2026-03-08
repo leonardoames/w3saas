@@ -16,7 +16,7 @@ import { PlatformType } from "@/lib/platformConfig";
 import { MonthProjection } from "@/components/dashboard/MonthProjection";
 import { DailyAlert } from "@/components/dashboard/DailyAlert";
 import { BreakEvenCard } from "@/components/dashboard/BreakEvenCard";
-import { BestDayBadge } from "@/components/dashboard/BestDayBadge";
+
 import { KPISkeletonGrid, ChartSkeleton, GoalSkeleton } from "@/components/dashboard/DashboardSkeletons";
 import { EmptyChartState } from "@/components/dashboard/EmptyChartState";
 
