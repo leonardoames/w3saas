@@ -20,6 +20,7 @@ import AcessoBloqueado from "./pages/AcessoBloqueado";
 import Dashboard from "./pages/Dashboard";
 import AnalisePorCanal from "./pages/AnalisePorCanal";
 import AcompanhamentoDiario from "./pages/AcompanhamentoDiario";
+import DRE from "./pages/DRE";
 import Aulas from "./pages/Aulas";
 import Cursos from "./pages/Cursos";
 import PlanoAcao from "./pages/PlanoAcao";
