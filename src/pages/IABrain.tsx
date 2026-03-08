@@ -198,7 +198,7 @@ export default function IABrain() {
                   <DocumentList
                     documents={documents}
                     onDelete={handleDelete}
-                    onView={(doc) => setViewingDocument(doc)}
+                    onView={(doc) => setViewingDocument(doc as unknown as IADocument)}
                     deletingId={deletingId || undefined}
                     isLoading={isLoading}
                   />
