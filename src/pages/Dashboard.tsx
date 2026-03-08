@@ -27,7 +27,6 @@ interface DailyRow {
   receita_paga: number;
 }
 
-// KPI tooltip descriptions
 const KPI_TOOLTIPS = {
   faturamento: "Soma de todas as vendas no período selecionado",
   roas: "Faturamento ÷ Investimento em tráfego. Quanto você recebe para cada R$1 investido",
@@ -194,30 +193,14 @@ export default function Dashboard() {
   });
   const avg7d = last7.length > 0 ? last7.reduce((s, d) => s + d.receita_paga, 0) / last7.length : 0;
 
-  // Sparkline data (last 7 data points)
-  const getSparkline = (field: keyof DailyRow) => {
-    const recent = filtered.slice(-7);
-    return recent.map(d => Number(d[field]) || 0);
-  };
-  const sparkFaturamento = getSparkline("receita_paga");
-  const sparkVendas = getSparkline("pedidos_pagos");
-  const sparkSessoes = getSparkline("sessoes");
-  const sparkInvestimento = getSparkline("investimento");
-
-  // Derived sparklines
-  const sparkRoas = sparkFaturamento.map((f, i) => sparkInvestimento[i] > 0 ? f / sparkInvestimento[i] : 0);
-  const sparkTicket = sparkFaturamento.map((f, i) => sparkVendas[i] > 0 ? f / sparkVendas[i] : 0);
-  const sparkCusto = sparkInvestimento.map((inv, i) => sparkVendas[i] > 0 ? inv / sparkVendas[i] : 0);
-  const sparkConversao = sparkVendas.map((v, i) => sparkSessoes[i] > 0 ? (v / sparkSessoes[i]) * 100 : 0);
-
   const chartData = filtered.map((d) => ({
     data: d.data,
     faturamento: d.receita_paga,
-    platform: "agregado",
-    sessoes: d.sessoes,
-    investimento_trafego: d.investimento,
-    vendas_quantidade: d.pedidos_pagos,
-    vendas_valor: d.receita_paga,
+  }));
+
+  const prevChartData = prevFiltered.map((d) => ({
+    data: d.data,
+    faturamento: d.receita_paga,
   }));
 
   if (loading) {
@@ -241,7 +224,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold tracking-tight" style={{ letterSpacing: '-0.025em' }}>Dashboard</h1>
@@ -268,18 +251,15 @@ export default function Dashboard() {
       {/* Daily Alert */}
       <DailyAlert todayRevenue={todayRevenue} avgRevenue7d={avg7d} />
 
-      {/* Revenue Goal */}
+      {/* Revenue Goal + Projection */}
       {dataLoading ? <GoalSkeleton /> : (
         <RevenueGoalCard currentRevenue={faturamento} userId={user.id} onGoalLoaded={handleGoalLoaded} />
       )}
-
-      {/* Month Projection */}
       <MonthProjection currentRevenue={faturamento} goal={revenueGoal} />
 
-      {/* KPIs */}
+      {/* KPIs Row 1: Primary */}
       {dataLoading ? <KPISkeletonGrid /> : (
         <>
-          {/* Linha 1: Métricas principais */}
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <KPICard
               title="Faturamento"
@@ -288,19 +268,18 @@ export default function Dashboard() {
               dominant
               change={pctChange(faturamento, prevFat)}
               tooltip={KPI_TOOLTIPS.faturamento}
-              sparklineData={sparkFaturamento}
               isEmpty={!hasData}
             />
-            <KPICard title="ROAS Médio" value={roas.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} subtitle="Receita / Investimento" change={pctChange(roas, prevRoas)} tooltip={KPI_TOOLTIPS.roas} sparklineData={sparkRoas} isEmpty={!hasData} />
-            <KPICard title="Vendas" value={vendas.toLocaleString("pt-BR")} change={pctChange(vendas, prevVendas)} tooltip={KPI_TOOLTIPS.vendas} sparklineData={sparkVendas} isEmpty={!hasData} />
-            <KPICard title="Sessões" value={sessoes.toLocaleString("pt-BR")} change={pctChange(sessoes, prevSessoes)} tooltip={KPI_TOOLTIPS.sessoes} sparklineData={sparkSessoes} isEmpty={!hasData} />
+            <KPICard title="ROAS Médio" value={roas.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} subtitle="Receita / Investimento" change={pctChange(roas, prevRoas)} tooltip={KPI_TOOLTIPS.roas} isEmpty={!hasData} />
+            <KPICard title="Vendas" value={vendas.toLocaleString("pt-BR")} change={pctChange(vendas, prevVendas)} tooltip={KPI_TOOLTIPS.vendas} isEmpty={!hasData} />
+            <KPICard title="Sessões" value={sessoes.toLocaleString("pt-BR")} change={pctChange(sessoes, prevSessoes)} tooltip={KPI_TOOLTIPS.sessoes} isEmpty={!hasData} />
           </div>
 
-          {/* Linha 2: Métricas secundárias + Break-even */}
+          {/* KPIs Row 2: Secondary (smaller) */}
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <KPICard title="Ticket Médio" value={`R$ ${ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} change={pctChange(ticketMedio, prevTicket)} tooltip={KPI_TOOLTIPS.ticket} sparklineData={sparkTicket} isEmpty={!hasData} />
-            <KPICard title="Custo por Venda" value={`R$ ${custoVenda.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} change={pctChange(custoVenda, prevCusto)} invertChange tooltip={KPI_TOOLTIPS.custo} sparklineData={sparkCusto} isEmpty={!hasData} />
-            <KPICard title="Taxa de Conversão" value={`${taxaConversao.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`} change={pctChange(taxaConversao, prevConversao)} tooltip={KPI_TOOLTIPS.conversao} sparklineData={sparkConversao} isEmpty={!hasData} />
+            <KPICard secondary title="Ticket Médio" value={`R$ ${ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} change={pctChange(ticketMedio, prevTicket)} tooltip={KPI_TOOLTIPS.ticket} isEmpty={!hasData} />
+            <KPICard secondary title="Custo por Venda" value={`R$ ${custoVenda.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} change={pctChange(custoVenda, prevCusto)} invertChange tooltip={KPI_TOOLTIPS.custo} isEmpty={!hasData} />
+            <KPICard secondary title="Taxa de Conversão" value={`${taxaConversao.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`} change={pctChange(taxaConversao, prevConversao)} tooltip={KPI_TOOLTIPS.conversao} isEmpty={!hasData} />
             <BreakEvenCard investimento={investimento} faturamento={faturamento} days={daysInPeriod} />
           </div>
         </>
@@ -313,20 +292,20 @@ export default function Dashboard() {
         </Alert>
       )}
 
-      {/* Gráfico */}
+      {/* Chart */}
       {dataLoading ? <ChartSkeleton /> : !hasData ? <EmptyChartState /> : (
-        <div className="rounded-xl border bg-card p-5 md:p-6" style={{ borderColor: 'hsla(24, 94%, 53%, 0.15)', boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+        <div className="rounded-xl border bg-card p-4 md:p-5" style={{ borderColor: 'hsla(24, 94%, 53%, 0.15)', boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
           <div className="flex items-center justify-between mb-0.5">
             <h3 className="text-sm font-medium text-foreground">Evolução de Faturamento</h3>
             <BestDayBadge data={effectiveData} />
           </div>
-          <p className="text-[11px] text-muted-foreground mb-4">Tendência no período selecionado</p>
-          <RevenueChart data={chartData} previousTotal={prevFat} />
+          <p className="text-[11px] text-muted-foreground mb-3">Tendência no período selecionado</p>
+          <RevenueChart data={chartData} previousData={prevChartData} previousTotal={prevFat} />
         </div>
       )}
 
       {/* CTA sutil */}
-      <div className="rounded-lg border border-primary/10 bg-primary/[0.02] px-4 py-2.5 flex items-center justify-between gap-3">
+      <div className="rounded-lg border border-primary/10 bg-primary/[0.02] px-4 py-2 flex items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">Gerencie seus dados no <span className="text-foreground font-medium">Acompanhamento Diário</span></p>
         <Button variant="ghost" size="sm" onClick={() => navigate("/app/acompanhamento")} className="shrink-0 gap-1.5 h-7 text-xs text-muted-foreground hover:text-foreground">
           Ir para Acompanhamento

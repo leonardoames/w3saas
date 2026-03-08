@@ -19,12 +19,12 @@ export function BreakEvenCard({ investimento, faturamento, days }: BreakEvenCard
         <TooltipTrigger asChild>
           <div
             className={cn(
-              "rounded-xl border bg-card p-4 sm:p-5 md:p-6 transition-all duration-200 hover:shadow-sm",
+              "rounded-xl border bg-card p-3 sm:p-4 transition-all duration-200 hover:shadow-sm",
               isHealthy 
                 ? "border-success/30" 
                 : "border-destructive/30"
             )}
-            style={{ borderColor: isHealthy ? undefined : undefined, boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)' }}
+            style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)' }}
           >
             <div className="flex items-center justify-between mb-2 sm:mb-3">
               <span className="metric-label">Break-even Diário</span>
