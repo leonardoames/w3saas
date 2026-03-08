@@ -92,6 +92,7 @@ export default function AnalisePorCanal() {
   const [editingChannel, setEditingChannel] = useState<string | null>(null);
   const [minRoasInput, setMinRoasInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
 
   const handlePeriodChange = useCallback((period: string, from: Date, to: Date) => {
     setSelectedPeriod(period);
