@@ -63,6 +63,12 @@ export function RevenueHeroCard({ currentRevenue, previousRevenue, userId, onGoa
 
   if (loading) return null;
 
+  const revenueChange = previousRevenue !== undefined && previousRevenue > 0
+    ? ((currentRevenue - previousRevenue) / previousRevenue) * 100
+    : undefined;
+  const isRevenueUp = revenueChange !== undefined && revenueChange > 0;
+  const isRevenueDown = revenueChange !== undefined && revenueChange < 0;
+
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   // Projection logic
