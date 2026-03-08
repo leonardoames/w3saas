@@ -126,6 +126,16 @@ const platforms: PlatformInfo[] = [
     ],
     docsUrl: "https://lojaintegrada.docs.apiary.io/",
   },
+  {
+    id: "bagy",
+    name: "Bagy",
+    description: "Conecte sua loja Bagy para importar pedidos, produtos e métricas de vendas automaticamente.",
+    color: "bg-pink-600",
+    fields: [
+      { key: "api_key", label: "Chave da API", placeholder: "Cole sua chave da API da Bagy aqui", type: "password" },
+    ],
+    docsUrl: "https://bagypro.com/desenvolvedores",
+  },
 ];
 
 // Platforms that have a working sync edge function
