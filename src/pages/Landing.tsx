@@ -50,9 +50,9 @@ const features = [
 ];
 
 const stats = [
-  { value: "+500", label: "e-commerces", icon: Users },
-  { value: "R$50M+", label: "gerenciados", icon: TrendingUp },
-  { value: "4.9★", label: "satisfação", icon: Star },
+  { value: "+???", label: "e-commerces", icon: Users },
+  { value: "R$??M+", label: "gerenciados", icon: TrendingUp },
+  { value: "?.?★", label: "satisfação", icon: Star },
 ];
 
 const resultMetrics = [
