@@ -213,6 +213,13 @@
     background: hsl(24, 94%, 53%);
   }
 
+  /* Sidebar system item active (no left border) */
+  .sidebar-item-system-active {
+    @apply relative font-medium;
+    background: hsla(var(--accent) / 0.4);
+    color: hsl(var(--foreground));
+  }
+
   /* Stat card */
   .stat-card {
     @apply bg-card rounded-xl border p-6 transition-all;
