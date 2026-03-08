@@ -30,29 +30,29 @@ const buttonVariants = cva("inline-flex items-center justify-center gap-2 whites
 });
 const variantCurtainStyles = {
   default: {
-    curtain: "bg-primary-foreground",
+    curtain: "bg-gradient-to-r from-[hsl(27,92%,46%)] to-[hsl(45,95%,55%)]",
     textInitial: "text-primary-foreground",
-    textHover: "text-primary"
-  },
-  destructive: {
-    curtain: "bg-destructive-foreground",
-    textInitial: "text-destructive-foreground",
-    textHover: "text-destructive"
-  },
-  outline: {
-    curtain: "bg-primary",
-    textInitial: "text-primary",
     textHover: "text-primary-foreground"
   },
+  destructive: {
+    curtain: "bg-destructive/80",
+    textInitial: "text-destructive-foreground",
+    textHover: "text-destructive-foreground"
+  },
+  outline: {
+    curtain: "bg-gradient-to-r from-primary/10 to-[hsl(45,95%,55%)]/10",
+    textInitial: "text-foreground",
+    textHover: "text-primary"
+  },
   secondary: {
-    curtain: "bg-secondary-foreground",
+    curtain: "bg-gradient-to-r from-primary/10 to-[hsl(45,95%,55%)]/10",
     textInitial: "text-secondary-foreground",
-    textHover: "text-secondary"
+    textHover: "text-primary"
   },
   ghost: {
-    curtain: "bg-accent",
+    curtain: "bg-gradient-to-r from-primary/10 to-[hsl(45,95%,55%)]/10",
     textInitial: "text-foreground",
-    textHover: "text-accent-foreground"
+    textHover: "text-primary"
   },
   link: {
     curtain: "bg-transparent",
