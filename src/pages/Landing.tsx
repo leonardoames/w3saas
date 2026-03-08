@@ -125,7 +125,7 @@ export default function Landing() {
             {/* Badge */}
             <motion.div variants={fadeUp}>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-medium text-primary">
-                🚀 Plataforma #1 para e-commerces
+                Plataforma Feita 100% Completa para seu Ecommerce
               </span>
             </motion.div>
 
