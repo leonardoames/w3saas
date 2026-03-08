@@ -287,7 +287,7 @@ export function useDashAdmin() {
     }
 
     for (const row of metricsRows) {
-      if (!row.data) continue;
+      if (!row.data || !mentoradoIds.has(row.user_id)) continue;
       const month = String(row.data).slice(0, 7);
       if (month in monthMap) {
         monthMap[month] += Number(row.faturamento || 0) + Number(row.vendas_valor || 0);
