@@ -1,8 +1,9 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, ReferenceLine } from "recharts";
 import { getDaysInMonth, getDate } from "date-fns";
 
 interface DailyBarChartProps {
   data: { data: string; faturamento: number }[];
+  goal?: number | null;
 }
 
 const formatYAxis = (value: number) => {
