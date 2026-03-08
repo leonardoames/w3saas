@@ -293,15 +293,11 @@ export default function Dashboard() {
         </Alert>
       )}
 
-      {/* Chart */}
+      {/* Charts */}
       {dataLoading ? <ChartSkeleton /> : !hasData ? <EmptyChartState /> : (
-        <div className="rounded-xl border bg-card p-4 md:p-5" style={{ borderColor: 'hsla(24, 94%, 53%, 0.15)', boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
-          <div className="flex items-center justify-between mb-0.5">
-            <h3 className="text-sm font-medium text-foreground">Evolução de Faturamento</h3>
-            <BestDayBadge data={effectiveData} />
-          </div>
-          <p className="text-[11px] text-muted-foreground mb-3">Tendência no período selecionado</p>
-          <RevenueChart data={chartData} previousData={prevChartData} previousTotal={prevFat} goal={revenueGoal} />
+        <div className="space-y-4">
+          <DailyRevenueBarChart data={chartData} />
+          <CumulativeRevenueChart data={chartData} previousData={prevChartData} goal={revenueGoal} />
         </div>
       )}
 
