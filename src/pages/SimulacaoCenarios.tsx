@@ -139,7 +139,7 @@ export default function SimulacaoCenarios() {
       {/* HEADER */}
       <div className="flex items-center justify-between shrink-0">
         <div>
-          <h1 className="text-xl font-bold text-foreground tracking-tight">Simule seu Faturamento</h1>
+          <h1 className="page-title text-xl">Simule seu Faturamento</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Compare cenários e veja o impacto em tempo real</p>
         </div>
         <div className="flex gap-2">

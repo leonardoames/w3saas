@@ -6,26 +6,26 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 0 0% 0%;
+    --foreground: 0 0% 4%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
+    --card-foreground: 0 0% 4%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
+    --popover-foreground: 0 0% 4%;
 
     --primary: 27 92% 52%;
     --primary-foreground: 0 0% 100%;
     --primary-hover: 27 90% 46%;
 
     --secondary: 27 99% 70%;
-    --secondary-foreground: 0 0% 0%;
+    --secondary-foreground: 0 0% 4%;
 
     --muted: 0 0% 93%;
     --muted-foreground: 0 0% 40%;
 
     --accent: 27 100% 86%;
-    --accent-foreground: 0 0% 0%;
+    --accent-foreground: 0 0% 4%;
 
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
@@ -34,20 +34,20 @@
     --success-foreground: 0 0% 100%;
 
     --warning: 45 95% 55%;
-    --warning-foreground: 0 0% 0%;
+    --warning-foreground: 0 0% 4%;
 
     --border: 0 0% 88%;
     --input: 0 0% 88%;
     --ring: 27 92% 52%;
 
-    --radius: 1rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 0 0% 0%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 0 0% 4%;
     --sidebar-primary: 27 92% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 27 100% 86%;
-    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-accent-foreground: 0 0% 4%;
     --sidebar-border: 0 0% 90%;
     --sidebar-ring: 27 92% 52%;
 
@@ -57,7 +57,7 @@
     --chart-4: 0 0% 30%;
     --chart-5: 0 0% 60%;
 
-    --sidebar: 0 0% 100%;
+    --sidebar: 0 0% 98%;
     --cta-background: 0 0% 93%;
 
     --font-sans: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
@@ -78,13 +78,13 @@
 
   .dark {
     --background: 0 0% 5%;
-    --foreground: 0 0% 100%;
+    --foreground: 0 0% 96%;
 
     --card: 0 0% 10%;
-    --card-foreground: 0 0% 100%;
+    --card-foreground: 0 0% 96%;
 
     --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 100%;
+    --popover-foreground: 0 0% 96%;
 
     --primary: 24 94% 53%;
     --primary-foreground: 0 0% 0%;
@@ -109,7 +109,7 @@
     --warning-foreground: 0 0% 0%;
 
     --border: 0 0% 14%;
-    --input: 0 0% 14%;
+    --input: 0 0% 17%;
     --ring: 24 94% 53%;
 
     --sidebar-background: 0 0% 7%;
@@ -165,8 +165,9 @@
   }
 
   h1 {
-    @apply text-2xl font-semibold tracking-tight;
+    @apply text-2xl font-bold tracking-tight;
     letter-spacing: -0.025em;
+    color: hsl(var(--foreground));
   }
   h2 {
     @apply text-xl font-semibold tracking-tight;
@@ -178,6 +179,27 @@
 }
 
 @layer components {
+  /* ── Page header ── */
+  .page-title {
+    @apply text-2xl font-bold tracking-tight;
+    letter-spacing: -0.025em;
+    color: hsl(var(--foreground));
+  }
+  .page-subtitle {
+    @apply text-sm font-normal;
+    color: hsla(0, 0%, 100%, 0.4);
+  }
+  .dark .page-subtitle {
+    color: hsla(0, 0%, 100%, 0.4);
+  }
+
+  /* ── Card section title ── */
+  .card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: hsl(var(--foreground));
+  }
+
   /* Sidebar active item */
   .sidebar-item-active {
     @apply relative font-medium;
@@ -193,7 +215,7 @@
 
   /* Stat card */
   .stat-card {
-    @apply bg-card rounded-2xl border p-6 transition-all;
+    @apply bg-card rounded-xl border p-6 transition-all;
     border-color: hsla(24, 94%, 53%, 0.12);
     box-shadow: 0 4px 24px hsla(0, 0%, 0%, 0.4), inset 0 1px 0 hsla(0, 0%, 100%, 0.04);
     min-height: 120px;
@@ -255,25 +277,48 @@
 
   /* Metric label */
   .metric-label {
-    @apply text-[11px] uppercase tracking-[0.08em] text-muted-foreground font-medium;
+    @apply text-[11px] uppercase tracking-[0.08em] font-medium;
+    color: hsla(0, 0%, 100%, 0.4);
   }
 
-  /* Status badges */
-  .badge-ativo {
+  /* ── Status badges (uniform across app) ── */
+  .badge-ativo,
+  .badge-success {
     background: rgba(34,197,94,0.15);
     color: #22C55E;
+    @apply rounded-full px-2.5 py-0.5 text-xs font-semibold;
   }
-  .badge-suspenso {
+  .badge-suspenso,
+  .badge-error {
     background: rgba(239,68,68,0.15);
     color: #EF4444;
+    @apply rounded-full px-2.5 py-0.5 text-xs font-semibold;
   }
-  .badge-expirando {
+  .badge-expirando,
+  .badge-warning {
     background: rgba(251,191,36,0.15);
     color: #FBBF24;
+    @apply rounded-full px-2.5 py-0.5 text-xs font-semibold;
   }
-  .badge-manual {
+  .badge-manual,
+  .badge-primary {
     background: rgba(249,115,22,0.15);
     color: #F97316;
+    @apply rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .badge-neutral {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.6);
+    @apply rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+
+  /* ── Table header ── */
+  .table-header-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: hsla(0, 0%, 100%, 0.4);
   }
 
   /* Smooth scrollbar */

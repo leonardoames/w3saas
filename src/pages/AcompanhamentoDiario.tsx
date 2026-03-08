@@ -284,10 +284,9 @@ export default function AcompanhamentoDiario() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-10 space-y-6">
+    <div className="space-y-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Acompanhamento Diário</h1>
+          <h1 className="page-title">Acompanhamento Diário</h1>
           <p className="text-sm text-muted-foreground mt-1">Gerencie seus resultados diários</p>
         </div>
 
@@ -363,7 +362,6 @@ export default function AcompanhamentoDiario() {
           importing={importing}
           result={importResult}
         />
-      </div>
     </div>
   );
 }

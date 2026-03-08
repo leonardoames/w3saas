@@ -243,7 +243,7 @@ export default function Calculadora() {
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Precificadora</h1>
+            <h1 className="page-title">Precificadora</h1>
             <p className="text-muted-foreground text-sm">
               Descubra se o seu preço cobre todos os custos e gera lucro.
             </p>

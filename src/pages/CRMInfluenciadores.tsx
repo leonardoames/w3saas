@@ -422,7 +422,7 @@ const CRMInfluenciadores = () => {
       <div className="flex flex-col gap-4 pb-4 shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground truncate">CRM de Influenciadores</h1>
+            <h1 className="page-title truncate">CRM de Influenciadores</h1>
             <p className="text-muted-foreground mt-1 text-sm">Gerencie suas parcerias com influenciadores</p>
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>

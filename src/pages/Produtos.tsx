@@ -84,33 +84,33 @@ export default function Produtos() {
       {loading ? (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-[340px] animate-pulse rounded-2xl bg-[#111111] border border-[#222222]" />
+            <div key={i} className="h-[340px] animate-pulse rounded-xl bg-card border border-border" />
           ))}
         </div>
       ) : products.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-[#222222] bg-[#111111] py-20">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card py-20">
           <Package className="mb-4 h-12 w-12 text-muted-foreground" />
-          <p className="text-section-title text-muted-foreground">Nenhuma solução cadastrada</p>
+          <p className="text-base font-semibold text-muted-foreground">Nenhuma solução cadastrada</p>
         </div>
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((product) => (
             <div
               key={product.id}
-              className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#222222] bg-[#111111] transition-colors hover:border-[#333333]"
+              className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-muted-foreground/20"
             >
               {/* Admin controls */}
               {isAdmin && (
                 <div className="absolute right-3 top-3 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                   <button
                     onClick={() => handleEdit(product)}
-                    className="rounded-lg bg-[#1A1A1A]/90 p-1.5 text-muted-foreground backdrop-blur-sm hover:text-foreground transition-colors"
+                    className="rounded-lg bg-card/90 p-1.5 text-muted-foreground backdrop-blur-sm hover:text-foreground transition-colors"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
                   <button
                     onClick={() => handleDelete(product.id)}
-                    className="rounded-lg bg-[#1A1A1A]/90 p-1.5 text-muted-foreground backdrop-blur-sm hover:text-destructive transition-colors"
+                    className="rounded-lg bg-card/90 p-1.5 text-muted-foreground backdrop-blur-sm hover:text-destructive transition-colors"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -118,7 +118,7 @@ export default function Produtos() {
               )}
 
               {/* Image area */}
-              <div className="flex h-[160px] items-center justify-center bg-[#1A1A1A] rounded-t-2xl overflow-hidden">
+              <div className="flex h-[160px] items-center justify-center bg-muted rounded-t-xl overflow-hidden">
                 {product.image_url ? (
                   <img
                     src={product.image_url}
@@ -132,7 +132,7 @@ export default function Produtos() {
 
               {/* Body */}
               <div className="flex flex-1 flex-col p-5">
-                <h3 className="text-[16px] font-bold leading-tight text-[#F5F5F5]">
+                <h3 className="text-base font-bold leading-tight text-foreground">
                   {product.title}
                 </h3>
                 {product.tagline && (
@@ -141,7 +141,7 @@ export default function Produtos() {
                   </span>
                 )}
                 {product.description && (
-                  <p className="mt-2 text-[13px] leading-snug text-[#A0A0A0] line-clamp-2">
+                  <p className="mt-2 text-[13px] leading-snug text-muted-foreground line-clamp-2">
                     {product.description}
                   </p>
                 )}
