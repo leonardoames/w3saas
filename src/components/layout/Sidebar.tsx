@@ -227,9 +227,6 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
             <nav className="flex-1 space-y-6 overflow-y-auto scrollbar-thin p-3">
               {renderExpandedNav(handleNavClick)}
             </nav>
-            <div className="border-t border-sidebar-border p-3">
-              {renderUserInfo(true)}
-            </div>
           </div>
         </aside>
       </>
