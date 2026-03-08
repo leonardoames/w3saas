@@ -12,7 +12,7 @@ import { DocumentList } from "@/components/ia-brain/DocumentList";
 import { DocumentViewerDialog } from "@/components/ia-brain/DocumentViewerDialog";
 import { InstructionsManager } from "@/components/ia-brain/InstructionsManager";
 
-interface Document {
+interface IADocument {
   id: string;
   file_name: string;
   file_path: string;
