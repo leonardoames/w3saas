@@ -276,12 +276,23 @@ export default function AnalisePorCanal() {
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-bold">Análise por Canal</h1>
-        <PeriodFilter
-          selectedPeriod={selectedPeriod}
-          onPeriodChange={handlePeriodChange}
-          customRange={customRange}
-          onCustomRangeChange={setCustomRange}
-        />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setShowComparison((v) => !v)}
+          >
+            <GitCompare className="h-4 w-4" />
+            Comparar Períodos
+          </Button>
+          <PeriodFilter
+            selectedPeriod={selectedPeriod}
+            onPeriodChange={handlePeriodChange}
+            customRange={customRange}
+            onCustomRangeChange={setCustomRange}
+          />
+        </div>
       </div>
 
       {loading ? (
