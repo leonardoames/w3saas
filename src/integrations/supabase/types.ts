@@ -253,6 +253,33 @@ export type Database = {
         }
         Relationships: []
       }
+      channel_settings: {
+        Row: {
+          channel_key: string
+          created_at: string
+          id: string
+          min_roas: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel_key: string
+          created_at?: string
+          id?: string
+          min_roas?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel_key?: string
+          created_at?: string
+          id?: string
+          min_roas?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       course_modules: {
         Row: {
           course_id: string | null
