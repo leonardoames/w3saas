@@ -40,7 +40,7 @@ export function IdeasKanbanView({ ideas, onEdit, onStatusChange }: Props) {
   };
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1" style={{ minHeight: 400 }}>
+    <div className="flex gap-3 overflow-x-auto pb-4" style={{ minHeight: 400 }}>
       {KANBAN_COLUMNS.map((status) => {
         const columnIdeas = ideas.filter((i) => i.status === status);
         const label = getLabel(STATUS_OPTIONS, status);
@@ -74,7 +74,8 @@ function KanbanCard({ idea, onEdit, onDragStart }: { idea: Idea; onEdit: (i: Ide
       onDragStart={() => onDragStart(idea.id, idea.status)}
       onClick={() => onEdit(idea)}
       className={cn(
-        "rounded-[10px] p-3.5 cursor-pointer transition-colors border border-[#222222] border-l-[3px] bg-[#111111] hover:border-primary/30",
+        "rounded-[10px] p-3.5 cursor-pointer transition-colors border border-border/50 border-l-[3px]",
+        "bg-card hover:border-primary/30",
         PRIORITY_BORDER[idea.priority]
       )}
     >
