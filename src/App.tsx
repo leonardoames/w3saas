@@ -18,6 +18,7 @@ import AcessoBloqueado from "./pages/AcessoBloqueado";
 
 // App pages
 import Dashboard from "./pages/Dashboard";
+import AnalisePorCanal from "./pages/AnalisePorCanal";
 import AcompanhamentoDiario from "./pages/AcompanhamentoDiario";
 import Aulas from "./pages/Aulas";
 import Cursos from "./pages/Cursos";
