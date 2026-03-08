@@ -32,6 +32,7 @@ const menuGroups: MenuGroup[] = [
     icon: LayoutDashboard,
     items: [
       { title: "Dashboard", icon: LayoutDashboard, path: "/app" },
+      { title: "Análise por Canal", icon: BarChart2, path: "/app/analise-por-canal" },
       { title: "Acompanhamento Diário", icon: BarChart3, path: "/app/acompanhamento" },
       { title: "Plano de Ação", icon: ListChecks, path: "/app/plano-acao" },
       { title: "Banco de Ideias", icon: Lightbulb, path: "/app/banco-de-ideias" },
