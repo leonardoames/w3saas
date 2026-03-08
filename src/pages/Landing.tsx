@@ -91,7 +91,7 @@ export default function Landing() {
               transition={{ duration: 0.4, delay: i * 0.06 }}
               className="group relative rounded-xl border border-border bg-card p-6 card-hover"
             >
-              <div className="w-10 h-10 rounded-lg bg-primary/8 flex items-center justify-center mb-4 group-hover:bg-primary/12 transition-colors">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/15 transition-colors">
                 <feature.icon className="h-5 w-5 text-primary" />
               </div>
               <h3 className="text-[15px] font-semibold text-foreground mb-1.5">{feature.title}</h3>

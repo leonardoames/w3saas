@@ -174,7 +174,7 @@
 @layer components {
   /* Stripe-style active sidebar item */
   .sidebar-item-active {
-    @apply relative bg-primary/8 text-primary font-medium;
+    @apply relative bg-primary/10 text-primary font-medium;
   }
   .sidebar-item-active::before {
     content: "";
