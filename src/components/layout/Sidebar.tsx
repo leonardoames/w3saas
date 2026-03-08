@@ -196,27 +196,7 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
     </>
   );
 
-  // User info: text only (no avatar) — avatar lives in header
-  const renderUserInfo = (expanded: boolean) =>
-    expanded ? (
-      <div className="rounded-lg px-3 py-2.5 bg-accent/50">
-        <p className="text-[13px] font-medium text-foreground truncate">{getUserName()}</p>
-        <p className="text-[11px] text-muted-foreground truncate">{getUserEmail()}</p>
-        <p className="text-[10px] text-muted-foreground/70 mt-0.5">{getPlanLabel()}</p>
-      </div>
-    ) : (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="flex items-center justify-center px-2 py-2">
-            <span className="text-[10px] font-semibold text-muted-foreground">{getUserName().charAt(0).toUpperCase()}</span>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent side="right">
-          <p className="font-medium text-xs">{getUserName()}</p>
-          <p className="text-[11px] text-muted-foreground">{getPlanLabel()}</p>
-        </TooltipContent>
-      </Tooltip>
-    );
+  // No user info block in sidebar — handled by header
 
   // Mobile drawer
   if (isMobile) {
