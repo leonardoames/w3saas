@@ -16,7 +16,6 @@ interface UserToCreate {
 
 interface CreateUsersRequest {
   users: UserToCreate[];
-  default_password: string;
 }
 
 Deno.serve(async (req) => {
