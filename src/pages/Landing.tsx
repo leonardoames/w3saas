@@ -56,9 +56,9 @@ const stats = [
 ];
 
 const resultMetrics = [
-  { value: "+18%", label: "margem média", description: "Aumento médio na margem de lucro dos mentorados", icon: TrendingUp },
+  { value: "+?%", label: "margem média", description: "Aumento médio na margem de lucro dos mentorados", icon: TrendingUp },
   { value: "2h/dia", label: "economizados", description: "Tempo médio economizado com automações e dashboards", icon: Clock },
-  { value: "3.5x", label: "ROAS médio", description: "Retorno sobre investimento em mídia paga dos clientes", icon: Target },
+  { value: "?x", label: "ROAS médio", description: "Retorno sobre investimento em mídia paga dos clientes", icon: Target },
 ];
 
 const platformLogos = [
