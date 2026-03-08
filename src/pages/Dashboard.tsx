@@ -12,6 +12,10 @@ import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { RevenueGoalCard } from "@/components/dashboard/RevenueGoalCard";
 import { PlatformSelect } from "@/components/dashboard/PlatformSelect";
 import { PlatformType } from "@/lib/platformConfig";
+import { MonthProjection } from "@/components/dashboard/MonthProjection";
+import { DailyAlert } from "@/components/dashboard/DailyAlert";
+import { BreakEvenCard } from "@/components/dashboard/BreakEvenCard";
+import { BestDayBadge } from "@/components/dashboard/BestDayBadge";
 
 interface DailyRow {
   data: string;
@@ -27,6 +31,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [allData, setAllData] = useState<DailyRow[]>([]);
   const [allMetricsRaw, setAllMetricsRaw] = useState<any[]>([]);
+  const [revenueGoal, setRevenueGoal] = useState<number | null>(null);
 
   const [selectedPeriod, setSelectedPeriod] = useState("7d");
   const [dateRange, setDateRange] = useState({ from: startOfDay(subDays(new Date(), 7)), to: endOfDay(new Date()) });
@@ -98,6 +103,10 @@ export default function Dashboard() {
     setDateRange({ from: startOfDay(start), to: endOfDay(end) });
   };
 
+  const handleGoalLoaded = useCallback((goal: number | null) => {
+    setRevenueGoal(goal);
+  }, []);
+
   const effectiveData = useMemo(() => {
     if (selectedPlatform === "todos") return allData;
     const dateMap: Record<string, DailyRow> = {};
@@ -146,10 +155,27 @@ export default function Dashboard() {
   const taxaConversao = sessoes > 0 ? (vendas / sessoes) * 100 : 0;
 
   const prevFat = prevFiltered.reduce((s, m) => s + m.receita_paga, 0);
+  const prevInv = prevFiltered.reduce((s, m) => s + m.investimento, 0);
   const prevVendas = prevFiltered.reduce((s, m) => s + m.pedidos_pagos, 0);
   const prevSessoes = prevFiltered.reduce((s, m) => s + m.sessoes, 0);
+  const prevRoas = prevInv > 0 ? prevFat / prevInv : 0;
+  const prevTicket = prevVendas > 0 ? prevFat / prevVendas : 0;
+  const prevCusto = prevVendas > 0 ? prevInv / prevVendas : 0;
+  const prevConversao = prevSessoes > 0 ? (prevVendas / prevSessoes) * 100 : 0;
 
   const pctChange = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : undefined);
+  const daysInPeriod = differenceInCalendarDays(dateRange.to, dateRange.from) + 1;
+
+  // Daily alert: today vs avg last 7 days
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const todayData = effectiveData.find(d => d.data === todayStr);
+  const todayRevenue = todayData?.receita_paga ?? 0;
+  const last7 = effectiveData.filter(d => {
+    const date = parseISO(d.data);
+    const sevenAgo = subDays(new Date(), 7);
+    return isValid(date) && date >= startOfDay(sevenAgo) && d.data !== todayStr;
+  });
+  const avg7d = last7.length > 0 ? last7.reduce((s, d) => s + d.receita_paga, 0) / last7.length : 0;
 
   const chartData = filtered.map((d) => ({
     data: d.data,
@@ -206,11 +232,17 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Daily Alert */}
+      <DailyAlert todayRevenue={todayRevenue} avgRevenue7d={avg7d} />
+
       {/* Revenue Goal */}
-      <RevenueGoalCard currentRevenue={faturamento} userId={user.id} />
+      <RevenueGoalCard currentRevenue={faturamento} userId={user.id} onGoalLoaded={handleGoalLoaded} />
+
+      {/* Month Projection */}
+      <MonthProjection currentRevenue={faturamento} goal={revenueGoal} />
 
       {/* KPIs — Linha 1: Métricas principais */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <KPICard
           title="Faturamento"
           value={faturamento.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
@@ -218,16 +250,17 @@ export default function Dashboard() {
           dominant
           change={pctChange(faturamento, prevFat)}
         />
-        <KPICard title="ROAS Médio" value={roas.toFixed(2)} subtitle="Receita / Investimento" />
+        <KPICard title="ROAS Médio" value={roas.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} subtitle="Receita / Investimento" change={pctChange(roas, prevRoas)} />
         <KPICard title="Vendas" value={vendas.toLocaleString("pt-BR")} change={pctChange(vendas, prevVendas)} />
         <KPICard title="Sessões" value={sessoes.toLocaleString("pt-BR")} change={pctChange(sessoes, prevSessoes)} />
       </div>
 
-      {/* KPIs — Linha 2: Métricas secundárias */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        <KPICard title="Ticket Médio" value={`R$ ${ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
-        <KPICard title="Custo por Venda" value={`R$ ${custoVenda.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
-        <KPICard title="Taxa de Conversão" value={`${taxaConversao.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`} />
+      {/* KPIs — Linha 2: Métricas secundárias + Break-even */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <KPICard title="Ticket Médio" value={`R$ ${ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} change={pctChange(ticketMedio, prevTicket)} />
+        <KPICard title="Custo por Venda" value={`R$ ${custoVenda.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} change={pctChange(custoVenda, prevCusto)} invertChange />
+        <KPICard title="Taxa de Conversão" value={`${taxaConversao.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`} change={pctChange(taxaConversao, prevConversao)} />
+        <BreakEvenCard investimento={investimento} faturamento={faturamento} days={daysInPeriod} />
       </div>
 
       {roas < 2 && roas > 0 && (
@@ -239,7 +272,10 @@ export default function Dashboard() {
 
       {/* Gráfico — Full width */}
       <div className="rounded-xl border bg-card p-5 md:p-6" style={{ borderColor: 'hsla(24, 94%, 53%, 0.15)', boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
-        <h3 className="text-sm font-medium text-foreground mb-0.5">Evolução de Faturamento</h3>
+        <div className="flex items-center justify-between mb-0.5">
+          <h3 className="text-sm font-medium text-foreground">Evolução de Faturamento</h3>
+          <BestDayBadge data={effectiveData} />
+        </div>
         <p className="text-[11px] text-muted-foreground mb-4">Tendência no período selecionado</p>
         <RevenueChart data={chartData} previousTotal={prevFat} />
       </div>
