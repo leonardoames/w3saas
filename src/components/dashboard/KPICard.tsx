@@ -42,21 +42,18 @@ export function KPICard({ title, value, subtitle, change, onClick, dominant, inv
           <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
         )}
       </div>
-      <div className={cn(
-        "font-semibold text-foreground tabular-nums tracking-tight",
-        secondary ? "text-lg sm:text-xl" : dominant ? "text-xl sm:text-2xl" : "text-lg sm:text-xl md:text-2xl"
-      )}
-        style={{ letterSpacing: '-0.03em' }}
-      >
-        {isEmpty ? "—" : value}
-      </div>
-      {isEmpty && (
-        <p className="text-[10px] text-muted-foreground mt-0.5">Sem dados neste período</p>
-      )}
-      <div className="flex items-center gap-2 mt-1.5">
+      <div className="flex items-center gap-2">
+        <span className={cn(
+          "font-semibold text-foreground tabular-nums tracking-tight",
+          secondary ? "text-lg sm:text-xl" : dominant ? "text-xl sm:text-2xl" : "text-lg sm:text-xl md:text-2xl"
+        )}
+          style={{ letterSpacing: '-0.03em' }}
+        >
+          {isEmpty ? "—" : value}
+        </span>
         {!isEmpty && change !== undefined && change !== 0 && (
           <span className={cn(
-            "text-[11px] font-semibold px-1.5 py-0.5 rounded-md",
+            "text-[11px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap",
             isPositive
               ? "text-success bg-success/10" 
               : isNegative
@@ -66,10 +63,13 @@ export function KPICard({ title, value, subtitle, change, onClick, dominant, inv
             {change > 0 ? '↑' : '↓'} {Math.abs(change).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
           </span>
         )}
-        {subtitle && !isEmpty && (
-          <p className="text-[11px] text-muted-foreground">{subtitle}</p>
-        )}
       </div>
+      {isEmpty && (
+        <p className="text-[10px] text-muted-foreground mt-0.5">Sem dados neste período</p>
+      )}
+      {subtitle && !isEmpty && (
+        <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>
+      )}
     </div>
   );
 
