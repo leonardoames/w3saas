@@ -73,22 +73,40 @@ export function useDashAdmin() {
     },
   });
 
+  // Fetch metrics_diarias (integration data) for complete revenue picture
+  const metricsQuery = useQuery({
+    queryKey: ["dash-admin-metrics-diarias"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("metrics_diarias")
+        .select("user_id, faturamento, sessoes, investimento_trafego, vendas_quantidade, vendas_valor, data");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const now = useMemo(() => new Date(), []);
   const thisMonthStart = useMemo(() => startOfMonth(now), [now]);
   const lastMonthStart = useMemo(() => startOfMonth(subMonths(now, 1)), [now]);
 
-  // Aggregate revenue data
+  // Aggregate revenue data from both daily_results AND metrics_diarias
   const revenueAgg = useMemo(() => {
-    const rows = Array.isArray(revenueQuery.data) ? revenueQuery.data : [];
+    const dailyRows = Array.isArray(revenueQuery.data) ? revenueQuery.data : [];
+    const metricsRows = Array.isArray(metricsQuery.data) ? metricsQuery.data : [];
     const agg: Record<string, {
       faturamento: number; sessoes: number; investimento: number; pedidos: number;
       revenueThisMonth: number; revenueLastMonth: number;
     }> = {};
 
-    for (const row of rows) {
-      if (!agg[row.user_id]) {
-        agg[row.user_id] = { faturamento: 0, sessoes: 0, investimento: 0, pedidos: 0, revenueThisMonth: 0, revenueLastMonth: 0 };
+    const ensureUser = (uid: string) => {
+      if (!agg[uid]) {
+        agg[uid] = { faturamento: 0, sessoes: 0, investimento: 0, pedidos: 0, revenueThisMonth: 0, revenueLastMonth: 0 };
       }
+    };
+
+    // Process daily_results
+    for (const row of dailyRows) {
+      ensureUser(row.user_id);
       const a = agg[row.user_id];
       const val = Number(row.receita_paga || 0);
       a.faturamento += val;
@@ -105,8 +123,29 @@ export function useDashAdmin() {
         }
       }
     }
+
+    // Process metrics_diarias (integration data)
+    for (const row of metricsRows) {
+      ensureUser(row.user_id);
+      const a = agg[row.user_id];
+      const val = Number(row.faturamento || 0) + Number(row.vendas_valor || 0);
+      a.faturamento += val;
+      a.sessoes += Number(row.sessoes || 0);
+      a.investimento += Number(row.investimento_trafego || 0);
+      a.pedidos += Number(row.vendas_quantidade || 0);
+
+      if (row.data) {
+        const d = parseISO(String(row.data).slice(0, 10));
+        if (!isBefore(d, thisMonthStart)) {
+          a.revenueThisMonth += val;
+        } else if (!isBefore(d, lastMonthStart) && isBefore(d, thisMonthStart)) {
+          a.revenueLastMonth += val;
+        }
+      }
+    }
+
     return agg;
-  }, [revenueQuery.data, thisMonthStart, lastMonthStart]);
+  }, [revenueQuery.data, metricsQuery.data, thisMonthStart, lastMonthStart]);
 
   // Merge profiles with revenue
   const mentorados = useMemo(() => {
@@ -216,9 +255,10 @@ export function useDashAdmin() {
     };
   }, [mentorados, now]);
 
-  // Monthly revenue chart (last 6 months)
+  // Monthly revenue chart (last 6 months) - combining both sources
   const monthlyRevenue = useMemo(() => {
-    const rows = Array.isArray(revenueQuery.data) ? revenueQuery.data : [];
+    const dailyRows = Array.isArray(revenueQuery.data) ? revenueQuery.data : [];
+    const metricsRows = Array.isArray(metricsQuery.data) ? metricsQuery.data : [];
     const monthMap: Record<string, number> = {};
 
     for (let i = 5; i >= 0; i--) {
@@ -226,7 +266,7 @@ export function useDashAdmin() {
       monthMap[m] = 0;
     }
 
-    for (const row of rows) {
+    for (const row of dailyRows) {
       if (!row.data) continue;
       const month = String(row.data).slice(0, 7);
       if (month in monthMap) {
@@ -234,11 +274,19 @@ export function useDashAdmin() {
       }
     }
 
+    for (const row of metricsRows) {
+      if (!row.data) continue;
+      const month = String(row.data).slice(0, 7);
+      if (month in monthMap) {
+        monthMap[month] += Number(row.faturamento || 0) + Number(row.vendas_valor || 0);
+      }
+    }
+
     return Object.entries(monthMap).map(([month, total]) => ({
       month: format(parseISO(month + "-01"), "MMM/yy"),
       total,
     }));
-  }, [revenueQuery.data, now]);
+  }, [revenueQuery.data, metricsQuery.data, now]);
 
   // Top 5 mentorados by revenue
   const top5 = useMemo(() => {
@@ -298,6 +346,6 @@ export function useDashAdmin() {
     top5,
     allColumns,
     exportCSV,
-    isLoading: profilesQuery.isLoading || revenueQuery.isLoading,
+    isLoading: profilesQuery.isLoading || revenueQuery.isLoading || metricsQuery.isLoading,
   };
 }

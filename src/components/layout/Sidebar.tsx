@@ -170,10 +170,16 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
     ...standaloneItems,
   ];
 
+  // For collapsed sidebar, show only group-level icons + standalone items
+  const collapsedItems: MenuItem[] = [
+    ...allGroups.map((g) => ({ title: g.title, icon: g.icon, path: g.items[0]?.path || "/app" })),
+    ...standaloneItems,
+  ];
+
   const renderCollapsedNav = () => (
     <>
-      {allItemsFlat.map((item) => (
-        <Tooltip key={item.path}>
+      {collapsedItems.map((item) => (
+        <Tooltip key={item.title}>
           <TooltipTrigger asChild>
             <div>
               <SidebarNavLink to={item.path} end={item.path === "/app"} icon={item.icon} label={item.title} isCollapsed />

@@ -52,7 +52,11 @@ export function AdminCharts({ monthlyRevenue, top5, isLoading }: Props) {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="month" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
                 <YAxis tick={{ fontSize: 10 }} className="fill-muted-foreground" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v: number) => [formatBRL(v), "Faturamento"]} />
+                <Tooltip
+                  formatter={(v: number) => [formatBRL(v), "Faturamento"]}
+                  contentStyle={{ backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--popover-foreground))" }}
+                  labelStyle={{ color: "hsl(var(--muted-foreground))" }}
+                />
                 <Line
                   type="monotone"
                   dataKey="total"
@@ -80,7 +84,11 @@ export function AdminCharts({ monthlyRevenue, top5, isLoading }: Props) {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10 }} className="fill-muted-foreground" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} className="fill-muted-foreground" width={100} />
-                <Tooltip formatter={(v: number) => [formatBRL(v), "Faturamento"]} />
+                <Tooltip
+                  formatter={(v: number) => [formatBRL(v), "Faturamento"]}
+                  contentStyle={{ backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--popover-foreground))" }}
+                  labelStyle={{ color: "hsl(var(--muted-foreground))" }}
+                />
                 <Bar dataKey="revenue" radius={[0, 4, 4, 0]} name="Faturamento">
                   {top5.map((_, idx) => (
                     <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
