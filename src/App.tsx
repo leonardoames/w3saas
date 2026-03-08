@@ -77,6 +77,7 @@ const App = () => (
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/analise-por-canal" element={<AnalisePorCanal />} />
                         <Route path="/acompanhamento" element={<AcompanhamentoDiario />} />
+                        <Route path="/dre" element={<DRE />} />
                         <Route path="/aulas" element={<Cursos />} />
                         <Route path="/aulas/:slug" element={<Aulas />} />
                         <Route path="/plano-acao" element={<PlanoAcao />} />
