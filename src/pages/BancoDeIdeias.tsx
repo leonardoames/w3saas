@@ -71,7 +71,7 @@ export default function BancoDeIdeias() {
   const [filterResponsible, setFilterResponsible] = useState("todos");
   const [filterStatus, setFilterStatus] = useState("todos");
 
-  const hasFilters = search || filterType !== "todos" || filterChannel !== "todos" || filterObjective !== "todos" || filterPriority !== "todos" || filterResponsible !== "todos" || filterStatus !== "todos";
+  const hasFilters = !!(search || filterType !== "todos" || filterChannel !== "todos" || filterObjective !== "todos" || filterPriority !== "todos" || filterResponsible !== "todos" || filterStatus !== "todos");
 
   const loadIdeas = useCallback(async () => {
     if (!user) return;
