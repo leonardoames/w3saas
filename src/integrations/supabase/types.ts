@@ -441,6 +441,96 @@ export type Database = {
         }
         Relationships: []
       }
+      idea_responsibles: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ideas: {
+        Row: {
+          channel: Database["public"]["Enums"]["idea_channel"]
+          created_at: string
+          description: string | null
+          due_date: string | null
+          format: Database["public"]["Enums"]["idea_format"]
+          hook: string | null
+          id: string
+          objective: Database["public"]["Enums"]["idea_objective"]
+          potential_score: number | null
+          priority: Database["public"]["Enums"]["idea_priority"]
+          publish_date: string | null
+          published_url: string | null
+          reference_url: string | null
+          responsible: string | null
+          status: Database["public"]["Enums"]["idea_status"]
+          tags: string[] | null
+          title: string
+          type: Database["public"]["Enums"]["idea_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel: Database["public"]["Enums"]["idea_channel"]
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          format: Database["public"]["Enums"]["idea_format"]
+          hook?: string | null
+          id?: string
+          objective: Database["public"]["Enums"]["idea_objective"]
+          potential_score?: number | null
+          priority?: Database["public"]["Enums"]["idea_priority"]
+          publish_date?: string | null
+          published_url?: string | null
+          reference_url?: string | null
+          responsible?: string | null
+          status?: Database["public"]["Enums"]["idea_status"]
+          tags?: string[] | null
+          title: string
+          type: Database["public"]["Enums"]["idea_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: Database["public"]["Enums"]["idea_channel"]
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          format?: Database["public"]["Enums"]["idea_format"]
+          hook?: string | null
+          id?: string
+          objective?: Database["public"]["Enums"]["idea_objective"]
+          potential_score?: number | null
+          priority?: Database["public"]["Enums"]["idea_priority"]
+          publish_date?: string | null
+          published_url?: string | null
+          reference_url?: string | null
+          responsible?: string | null
+          status?: Database["public"]["Enums"]["idea_status"]
+          tags?: string[] | null
+          title?: string
+          type?: Database["public"]["Enums"]["idea_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       influenciador_contacts: {
         Row: {
           created_at: string
@@ -1329,6 +1419,36 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      idea_channel:
+        | "instagram"
+        | "tiktok"
+        | "youtube"
+        | "facebook"
+        | "google"
+        | "outro"
+      idea_format:
+        | "video_curto"
+        | "carrossel"
+        | "imagem_estatica"
+        | "post_blog"
+        | "stories"
+        | "influenciador"
+        | "video_longo"
+      idea_objective:
+        | "vendas_normal"
+        | "acao_promocional"
+        | "liveshop"
+        | "branding"
+        | "remarketing"
+      idea_priority: "alta" | "media" | "baixa"
+      idea_status:
+        | "ideia"
+        | "em_producao"
+        | "aprovacao"
+        | "agendado"
+        | "publicado"
+        | "arquivado"
+      idea_type: "criativo_pago" | "organico" | "ambos"
       plan_type: "global" | "individual" | "admin_personalizado"
       task_origin: "sistema" | "admin" | "mentorado"
       task_status: "a_fazer" | "em_andamento" | "concluida" | "cancelada"
@@ -1460,6 +1580,40 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      idea_channel: [
+        "instagram",
+        "tiktok",
+        "youtube",
+        "facebook",
+        "google",
+        "outro",
+      ],
+      idea_format: [
+        "video_curto",
+        "carrossel",
+        "imagem_estatica",
+        "post_blog",
+        "stories",
+        "influenciador",
+        "video_longo",
+      ],
+      idea_objective: [
+        "vendas_normal",
+        "acao_promocional",
+        "liveshop",
+        "branding",
+        "remarketing",
+      ],
+      idea_priority: ["alta", "media", "baixa"],
+      idea_status: [
+        "ideia",
+        "em_producao",
+        "aprovacao",
+        "agendado",
+        "publicado",
+        "arquivado",
+      ],
+      idea_type: ["criativo_pago", "organico", "ambos"],
       plan_type: ["global", "individual", "admin_personalizado"],
       task_origin: ["sistema", "admin", "mentorado"],
       task_status: ["a_fazer", "em_andamento", "concluida", "cancelada"],
