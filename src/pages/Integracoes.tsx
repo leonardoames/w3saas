@@ -28,6 +28,7 @@ const platformLogos: Record<string, string> = {
   olist_tiny: olistTinyLogo,
   tray: trayLogo,
   loja_integrada: lojaIntegradaLogo,
+  bagy: bagyLogo,
 };
 
 interface PlatformInfo {
