@@ -105,7 +105,7 @@ export default function Aulas() {
         .single();
       
       if (courseError || !courseData) {
-        navigate("/app/cursos");
+        navigate("/app/aulas");
         return;
       }
 
