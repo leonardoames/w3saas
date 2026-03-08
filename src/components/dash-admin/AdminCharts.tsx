@@ -52,7 +52,11 @@ export function AdminCharts({ monthlyRevenue, top5, isLoading }: Props) {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="month" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
                 <YAxis tick={{ fontSize: 10 }} className="fill-muted-foreground" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v: number) => [formatBRL(v), "Faturamento"]} />
+                <Tooltip
+                  formatter={(v: number) => [formatBRL(v), "Faturamento"]}
+                  contentStyle={{ backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--popover-foreground))" }}
+                  labelStyle={{ color: "hsl(var(--muted-foreground))" }}
+                />
                 <Line
                   type="monotone"
                   dataKey="total"
