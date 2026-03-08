@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDashAdmin, MentoradoRow } from "@/hooks/useDashAdmin";
 import { AdminKPIs } from "@/components/dash-admin/AdminKPIs";
@@ -9,7 +9,10 @@ import { AdminTable } from "@/components/dash-admin/AdminTable";
 import { MentoradoDetailModal } from "@/components/dash-admin/MentoradoDetailModal";
 import { ColumnSelector } from "@/components/dash-admin/ColumnSelector";
 import { Button } from "@/components/ui/button";
-import { Download, Columns3, Loader2, ShieldAlert } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Download, Columns3, Loader2, ShieldAlert, RefreshCw } from "lucide-react";
+import { format } from "date-fns";
+import { useQueryClient } from "@tanstack/react-query";
 
 const DEFAULT_COLUMNS = [
   "full_name", "email", "access_status", "plan_type",
@@ -27,8 +30,11 @@ const COLUMN_LABELS: Record<string, string> = {
   updated_at: "Atualização",
 };
 
+type DashPeriod = "7" | "30" | "this_month" | "all";
+
 export default function DashAdmin() {
   const { isAdmin, isLoading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
   const {
     paginated, page, setPage, totalPages, filters, setFilters,
     kpis, monthlyRevenue, top5, allColumns, exportCSV, isLoading, mentorados, allMentorados,
@@ -39,6 +45,18 @@ export default function DashAdmin() {
   const [selectedMentorado, setSelectedMentorado] = useState<MentoradoRow | null>(null);
   const [sortKey, setSortKey] = useState<string>("total_faturamento");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [dashPeriod, setDashPeriod] = useState<DashPeriod>("all");
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await queryClient.invalidateQueries({ queryKey: ["dash-admin-profiles"] });
+    await queryClient.invalidateQueries({ queryKey: ["dash-admin-revenue"] });
+    await queryClient.invalidateQueries({ queryKey: ["dash-admin-metrics-diarias"] });
+    setLastRefresh(new Date());
+    setRefreshing(false);
+  }, [queryClient]);
 
   if (authLoading) {
     return (
@@ -85,24 +103,43 @@ export default function DashAdmin() {
     <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Dash Admin</h1>
-          <p className="text-sm text-muted-foreground">
-            Painel de acompanhamento · {allMentorados.length} mentorados
-          </p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Dash Admin</h1>
+            <p className="text-sm text-muted-foreground">
+              Painel de acompanhamento · {allMentorados.length} mentorados
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+          </Button>
+          <span className="text-[11px] text-muted-foreground whitespace-nowrap hidden sm:inline">
+            Atualizado às {format(lastRefresh, "HH:mm")}
+          </span>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setColumnSelectorOpen(true)}>
-            <Columns3 className="mr-2 h-4 w-4" /> Colunas
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => exportCSV(visibleColumns)}>
-            <Download className="mr-2 h-4 w-4" /> Exportar CSV
-          </Button>
+        <div className="flex gap-2 items-center">
+          <Select value={dashPeriod} onValueChange={(v) => setDashPeriod(v as DashPeriod)}>
+            <SelectTrigger className="w-36 h-9 text-sm">
+              <SelectValue placeholder="Período" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">Últimos 7 dias</SelectItem>
+              <SelectItem value="30">Últimos 30 dias</SelectItem>
+              <SelectItem value="this_month">Este mês</SelectItem>
+              <SelectItem value="all">Todo período</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
       {/* Block 1: KPIs */}
-      <AdminKPIs kpis={kpis} isLoading={isLoading} />
+      <AdminKPIs kpis={kpis} isLoading={isLoading} dashPeriod={dashPeriod} />
 
       {/* Block 2: Smart Alerts */}
       <AdminAlerts
@@ -117,6 +154,16 @@ export default function DashAdmin() {
 
       {/* Block 4: Filters + Table */}
       <AdminFilters filters={filters} setFilters={setFilters} />
+
+      {/* Table toolbar */}
+      <div className="flex items-center justify-end gap-2">
+        <Button variant="outline" size="sm" onClick={() => setColumnSelectorOpen(true)}>
+          <Columns3 className="mr-2 h-4 w-4" /> Colunas
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => exportCSV(visibleColumns)}>
+          <Download className="mr-2 h-4 w-4" /> Exportar CSV
+        </Button>
+      </div>
 
       <AdminTable
         data={sorted}

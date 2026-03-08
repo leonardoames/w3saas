@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronUp, ChevronDown, TrendingUp, TrendingDown, Minus, Eye } from "lucide-react";
-import { differenceInDays, parseISO } from "date-fns";
+import { differenceInDays, parseISO, format } from "date-fns";
 import type { MentoradoRow } from "@/hooks/useDashAdmin";
 
 interface Props {
@@ -48,6 +48,10 @@ function formatLastLogin(dateStr: string | null) {
   return <span className={color}>{days}d atrás</span>;
 }
 
+function formatCreatedAt(dateStr: string) {
+  return format(parseISO(dateStr), "dd/MM/yy");
+}
+
 function getInitials(name: string | null) {
   if (!name) return "?";
   return name.split(" ").map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
@@ -55,6 +59,7 @@ function getInitials(name: string | null) {
 
 function TrendIcon({ thisMonth, lastMonth }: { thisMonth: number; lastMonth: number }) {
   if (lastMonth === 0 && thisMonth === 0) return <Minus className="h-3.5 w-3.5 text-muted-foreground" />;
+  if (lastMonth === 0 && thisMonth > 0) return <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />;
   if (thisMonth >= lastMonth) return <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />;
   return <TrendingDown className="h-3.5 w-3.5 text-red-500" />;
 }
@@ -63,6 +68,7 @@ const SORT_COLS = [
   { key: "full_name", label: "Nome" },
   { key: "access_status", label: "Status" },
   { key: "plan_type", label: "Plano" },
+  { key: "created_at", label: "Cadastro" },
   { key: "last_login_at", label: "Último Login" },
   { key: "total_faturamento", label: "Faturamento" },
   { key: "trend", label: "Tend." },
@@ -130,6 +136,7 @@ export function AdminTable({
                     </TableCell>
                     <TableCell>{getStatusBadge(m.access_status, m.access_expires_at)}</TableCell>
                     <TableCell className="text-sm whitespace-nowrap">{m.plan_type}</TableCell>
+                    <TableCell className="text-sm whitespace-nowrap text-muted-foreground">{formatCreatedAt(m.created_at)}</TableCell>
                     <TableCell className="text-sm whitespace-nowrap">{formatLastLogin(m.last_login_at)}</TableCell>
                     <TableCell className="text-sm whitespace-nowrap tabular-nums font-medium">
                       R$ {(m.total_faturamento || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}

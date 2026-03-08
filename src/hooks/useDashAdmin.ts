@@ -20,7 +20,6 @@ export interface MentoradoRow {
   total_sessoes?: number;
   total_investimento?: number;
   total_pedidos?: number;
-  // monthly revenue for trend
   revenue_this_month?: number;
   revenue_last_month?: number;
 }
@@ -61,7 +60,6 @@ export function useDashAdmin() {
     },
   });
 
-  // Fetch daily_results with date for monthly breakdown
   const revenueQuery = useQuery({
     queryKey: ["dash-admin-revenue"],
     queryFn: async () => {
@@ -73,7 +71,6 @@ export function useDashAdmin() {
     },
   });
 
-  // Fetch metrics_diarias (integration data) for complete revenue picture
   const metricsQuery = useQuery({
     queryKey: ["dash-admin-metrics-diarias"],
     queryFn: async () => {
@@ -89,7 +86,7 @@ export function useDashAdmin() {
   const thisMonthStart = useMemo(() => startOfMonth(now), [now]);
   const lastMonthStart = useMemo(() => startOfMonth(subMonths(now, 1)), [now]);
 
-  // Aggregate revenue data from both daily_results AND metrics_diarias
+  // Aggregate revenue data from both sources
   const revenueAgg = useMemo(() => {
     const dailyRows = Array.isArray(revenueQuery.data) ? revenueQuery.data : [];
     const metricsRows = Array.isArray(metricsQuery.data) ? metricsQuery.data : [];
@@ -104,7 +101,6 @@ export function useDashAdmin() {
       }
     };
 
-    // Process daily_results
     for (const row of dailyRows) {
       ensureUser(row.user_id);
       const a = agg[row.user_id];
@@ -124,7 +120,6 @@ export function useDashAdmin() {
       }
     }
 
-    // Process metrics_diarias (integration data)
     for (const row of metricsRows) {
       ensureUser(row.user_id);
       const a = agg[row.user_id];
@@ -197,7 +192,6 @@ export function useDashAdmin() {
       }
     }
 
-    // Engagement filter
     if (filters.engagement === "active_recent") {
       const d7 = subDays(now, 7);
       result = result.filter((m) => m.last_login_at && isAfter(parseISO(m.last_login_at), d7));
@@ -241,11 +235,9 @@ export function useDashAdmin() {
     const totalRev = mentorados.reduce((s, m) => s + (m.total_faturamento || 0), 0);
     const avgRev = active > 0 ? totalRev / active : 0;
 
-    // Engagement: logged in last 7 days
     const activeRecent = mentorados.filter((m) => m.last_login_at && isAfter(parseISO(m.last_login_at), d7)).length;
     const engagementRate = active > 0 ? (activeRecent / active) * 100 : 0;
 
-    // Alerts
     const inactive15d = mentorados.filter((m) => m.last_login_at && isBefore(parseISO(m.last_login_at), d15) && m.access_status === "active").length;
     const neverRevenue = mentorados.filter((m) => (m.total_faturamento || 0) === 0 && m.access_status === "active").length;
 
@@ -255,11 +247,12 @@ export function useDashAdmin() {
     };
   }, [mentorados, now]);
 
-  // Monthly revenue chart (last 6 months) - combining both sources
+  // Monthly revenue chart (last 6 months) with isCurrent flag
   const monthlyRevenue = useMemo(() => {
     const dailyRows = Array.isArray(revenueQuery.data) ? revenueQuery.data : [];
     const metricsRows = Array.isArray(metricsQuery.data) ? metricsQuery.data : [];
     const monthMap: Record<string, number> = {};
+    const currentMonthKey = format(now, "yyyy-MM");
 
     for (let i = 5; i >= 0; i--) {
       const m = format(subMonths(now, i), "yyyy-MM");
@@ -285,10 +278,11 @@ export function useDashAdmin() {
     return Object.entries(monthMap).map(([month, total]) => ({
       month: format(parseISO(month + "-01"), "MMM/yy"),
       total,
+      isCurrent: month === currentMonthKey,
     }));
   }, [revenueQuery.data, metricsQuery.data, now]);
 
-  // Top 5 mentorados by revenue
+  // Top 5 mentorados by revenue - prioritize name over email
   const top5 = useMemo(() => {
     return [...mentorados]
       .sort((a, b) => (b.total_faturamento || 0) - (a.total_faturamento || 0))
@@ -303,7 +297,6 @@ export function useDashAdmin() {
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
 
-  // Keep chartData for backward compat but we won't use it
   const chartData = useMemo(() => ({ entries: [], expirations: [], statusDistribution: [] }), []);
 
   const exportCSV = useCallback(
