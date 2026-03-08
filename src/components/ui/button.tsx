@@ -116,11 +116,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
     scale: 0.98
   } : undefined} disabled={isDisabled}>
         <motion.div className={cn("absolute inset-0 z-0", currentStyle.curtain)} initial={{
-      y: "100%"
+      x: "100%"
     }} animate={isHovered ? {
-      y: 0
+      x: 0
     } : {
-      y: "100%"
+      x: "100%"
     }} transition={transition} />
 
         <AnimatePresence mode="popLayout">
