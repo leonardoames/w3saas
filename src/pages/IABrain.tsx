@@ -30,7 +30,7 @@ export default function IABrain() {
   const [isUploading, setIsUploading] = useState(false);
   const [isReprocessing, setIsReprocessing] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
+  const [viewingDocument, setViewingDocument] = useState<IADocument | null>(null);
   const { toast } = useToast();
   const { user, isAdmin } = useAuth();
 
