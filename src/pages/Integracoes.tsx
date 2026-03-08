@@ -17,6 +17,7 @@ import shopifyLogo from "@/assets/platforms/shopify.png";
 import olistTinyLogo from "@/assets/platforms/olist-tiny.png";
 import trayLogo from "@/assets/platforms/tray.png";
 import lojaIntegradaLogo from "@/assets/platforms/loja-integrada.png";
+import bagyLogo from "@/assets/platforms/bagy.png";
 
 const platformLogos: Record<string, string> = {
   nuvemshop: nuvemshopLogo,
