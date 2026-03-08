@@ -90,6 +90,12 @@ export function DailyRevenueBarChart({ data, goal }: DailyBarChartProps) {
             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#FBBF24' }} />
             <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>Melhor dia</span>
           </div>
+          {dailyGoal > 0 && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-0.5 rounded-full" style={{ backgroundColor: '#22C55E' }} />
+              <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>Meta/dia</span>
+            </div>
+          )}
         </div>
       </div>
 
