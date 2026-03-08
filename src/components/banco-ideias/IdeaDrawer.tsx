@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Idea, IdeaFormData } from "@/pages/BancoDeIdeias";
 import {
   TYPE_OPTIONS, FORMAT_OPTIONS, CHANNEL_OPTIONS, OBJECTIVE_OPTIONS,
-  PRIORITY_OPTIONS, STATUS_OPTIONS,
+  PRIORITY_OPTIONS, STATUS_OPTIONS, getLabel,
 } from "./ideaConstants";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +29,15 @@ const emptyForm: IdeaFormData = {
   published_url: "", due_date: null, publish_date: null, tags: [],
 };
 
+function buildAutoTags(form: IdeaFormData): string[] {
+  return [
+    getLabel(TYPE_OPTIONS, form.type),
+    getLabel(FORMAT_OPTIONS, form.format),
+    getLabel(CHANNEL_OPTIONS, form.channel),
+    getLabel(OBJECTIVE_OPTIONS, form.objective),
+  ];
+}
+
 export function IdeaDrawer({ open, onOpenChange, idea, onSave, userId }: Props) {
   const [form, setForm] = useState<IdeaFormData>(emptyForm);
   const [responsibles, setResponsibles] = useState<string[]>([]);
@@ -42,22 +51,11 @@ export function IdeaDrawer({ open, onOpenChange, idea, onSave, userId }: Props) 
         reference_url: idea.reference_url || "", responsible: idea.responsible || "",
         priority: idea.priority, potential_score: idea.potential_score || 3, status: idea.status,
         published_url: idea.published_url || "", due_date: idea.due_date, publish_date: idea.publish_date,
-        tags: idea.tags || [],
+        tags: [],
       });
     } else {
       setForm(emptyForm);
     }
-    setForm((prev) => {
-      const base = idea ? {
-        title: idea.title, type: idea.type, format: idea.format, channel: idea.channel,
-        objective: idea.objective, hook: idea.hook || "", description: idea.description || "",
-        reference_url: idea.reference_url || "", responsible: idea.responsible || "",
-        priority: idea.priority, potential_score: idea.potential_score || 3, status: idea.status,
-        published_url: idea.published_url || "", due_date: idea.due_date, publish_date: idea.publish_date,
-        tags: [],
-      } : emptyForm;
-      return { ...base, tags: buildAutoTags(base) };
-    });
   }, [idea, open]);
 
   useEffect(() => {
@@ -70,19 +68,11 @@ export function IdeaDrawer({ open, onOpenChange, idea, onSave, userId }: Props) 
 
   const set = (key: keyof IdeaFormData, value: any) => setForm((p) => ({ ...p, [key]: value }));
 
-  const addTag = () => {
-    const t = tagInput.trim();
-    if (t && !(form.tags || []).includes(t)) {
-      set("tags", [...(form.tags || []), t]);
-    }
-    setTagInput("");
-  };
-
-  const removeTag = (tag: string) => set("tags", (form.tags || []).filter((t) => t !== tag));
+  const autoTags = useMemo(() => buildAutoTags(form), [form.type, form.format, form.channel, form.objective]);
 
   const handleSubmit = () => {
     if (!form.title.trim()) return;
-    onSave(form);
+    onSave({ ...form, tags: autoTags });
   };
 
   const filteredResponsibles = responsibles.filter(
@@ -220,7 +210,7 @@ export function IdeaDrawer({ open, onOpenChange, idea, onSave, userId }: Props) 
               <div className="flex gap-1 mt-1">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button key={n} onClick={() => set("potential_score", n)} className="p-0.5">
-                    <Star className={cn("h-5 w-5 transition-colors", n <= (form.potential_score || 0) ? "fill-yellow-400 text-yellow-400" : "text-zinc-600 hover:text-zinc-400")} />
+                    <Star className={cn("h-5 w-5 transition-colors", n <= (form.potential_score || 0) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30 hover:text-muted-foreground/50")} />
                   </button>
                 ))}
               </div>
@@ -236,22 +226,14 @@ export function IdeaDrawer({ open, onOpenChange, idea, onSave, userId }: Props) 
               </div>
             </div>
             <div>
-              <Label className="text-xs">Tags</Label>
-              <div className="flex flex-wrap gap-1 mt-1 mb-1">
-                {(form.tags || []).map((tag) => (
-                  <span key={tag} className="inline-flex items-center gap-1 bg-primary/10 text-primary text-[10px] px-2 py-0.5 rounded-full">
+              <Label className="text-xs">Tags (automáticas)</Label>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {autoTags.map((tag) => (
+                  <span key={tag} className="inline-flex items-center bg-primary/10 text-primary text-[10px] px-2 py-0.5 rounded-full">
                     {tag}
-                    <button onClick={() => removeTag(tag)}><X className="h-2.5 w-2.5" /></button>
                   </span>
                 ))}
               </div>
-              <Input
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
-                placeholder="Digitar e pressionar Enter..."
-                className="text-xs"
-              />
             </div>
             <div>
               <Label className="text-xs">Status</Label>
