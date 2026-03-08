@@ -438,7 +438,6 @@ serve(async (req) => {
     // ========== BUSCAR DOCUMENTOS DO CÉREBRO IA (COMPARTILHADO) ==========
     let knowledgeContext = "";
     try {
-      // Busca todos os documentos prontos (gerenciados por admins, compartilhados com todos)
       const { data: documents } = await supabase
         .from("ia_documents")
         .select("file_name, content_text")
@@ -447,9 +446,7 @@ serve(async (req) => {
 
       if (documents && documents.length > 0) {
         console.log(`Found ${documents.length} documents for context`);
-
-        // Build context from documents (limit total size)
-        const MAX_CONTEXT_SIZE = 15000; // ~15KB of context
+        const MAX_CONTEXT_SIZE = 15000;
         let contextSize = 0;
         const contextParts: string[] = [];
 
@@ -464,7 +461,7 @@ serve(async (req) => {
         }
 
         if (contextParts.length > 0) {
-          knowledgeContext = `\n\n=== BASE DE CONHECIMENTO DO USUÁRIO ===\nO usuário tem os seguintes documentos em sua base de conhecimento. Use essas informações para personalizar suas respostas quando relevante:\n${contextParts.join("")}\n=== FIM DA BASE DE CONHECIMENTO ===\n`;
+          knowledgeContext = `\n\n=== BASE DE CONHECIMENTO ===\n${contextParts.join("")}\n=== FIM DA BASE DE CONHECIMENTO ===\n`;
         }
       }
     } catch (docError) {
@@ -472,8 +469,44 @@ serve(async (req) => {
     }
     // ========== FIM BUSCA DOCUMENTOS ==========
 
-    // Build system prompt with optional mode and knowledge base
-    let systemPrompt = SYSTEM_PROMPT + knowledgeContext;
+    // ========== BUSCAR INSTRUÇÕES CUSTOMIZÁVEIS ==========
+    let instructionsContext = "";
+    try {
+      const serviceClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+
+      const { data: instructions } = await serviceClient
+        .from("ia_instructions")
+        .select("instruction_type, content")
+        .eq("is_active", true)
+        .order("priority", { ascending: false });
+
+      if (instructions && instructions.length > 0) {
+        console.log(`Found ${instructions.length} active instructions`);
+        const doItems = instructions.filter((i: any) => i.instruction_type === "do").map((i: any) => `- ${i.content}`);
+        const dontItems = instructions.filter((i: any) => i.instruction_type === "dont").map((i: any) => `- ${i.content}`);
+        const contextItems = instructions.filter((i: any) => i.instruction_type === "context").map((i: any) => `- ${i.content}`);
+        const personaItems = instructions.filter((i: any) => i.instruction_type === "persona").map((i: any) => `- ${i.content}`);
+
+        const parts: string[] = [];
+        if (doItems.length > 0) parts.push(`FAÇA:\n${doItems.join("\n")}`);
+        if (dontItems.length > 0) parts.push(`NÃO FAÇA:\n${dontItems.join("\n")}`);
+        if (contextItems.length > 0) parts.push(`CONTEXTO DO NEGÓCIO:\n${contextItems.join("\n")}`);
+        if (personaItems.length > 0) parts.push(`PERSONA E TOM:\n${personaItems.join("\n")}`);
+
+        if (parts.length > 0) {
+          instructionsContext = `\n\n=== REGRAS DO NEGÓCIO (PRIORIDADE ALTA) ===\n${parts.join("\n\n")}\n=== FIM DAS REGRAS ===\n`;
+        }
+      }
+    } catch (instrError) {
+      console.log("Error fetching instructions (non-critical):", instrError);
+    }
+    // ========== FIM INSTRUÇÕES ==========
+
+    // Build system prompt with knowledge base + instructions + mode
+    let systemPrompt = SYSTEM_PROMPT + knowledgeContext + instructionsContext;
     if (mode && MODE_INSTRUCTIONS[mode]) {
       systemPrompt += MODE_INSTRUCTIONS[mode];
     }
