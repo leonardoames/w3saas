@@ -1,10 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { Sparkles, Copy, Loader2, FileText, ShoppingBag, Search, BarChart3, Megaphone, Video, Plus, Mic, Send, X, Trash2, ImagePlus } from "lucide-react";
+import { Sparkles, Loader2, FileText, ShoppingBag, Search, BarChart3, Megaphone, Video, Plus, Mic, Send, X, Trash2, ImagePlus } from "lucide-react";
 import HtmlPreviewMessage, { hasHtmlContent } from "@/components/ia-w3/HtmlPreviewMessage";
-import { useState, useRef, useEffect, useMemo } from "react";
+import AiMessage from "@/components/ia-w3/AiMessage";
+import { useState, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import DOMPurify from "dompurify";
 import {
   DropdownMenu,
   DropdownMenuContent,
