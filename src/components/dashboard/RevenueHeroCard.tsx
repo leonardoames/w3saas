@@ -101,8 +101,21 @@ export function RevenueHeroCard({ currentRevenue, previousRevenue, userId, onGoa
             <span className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground/40 font-medium">
               Faturamento
             </span>
-            <p className="text-4xl md:text-[48px] font-bold text-primary leading-tight mt-1">
+            <p className="text-4xl md:text-[48px] font-bold text-primary leading-tight mt-1 flex items-center gap-3">
               {fmt(currentRevenue)}
+              {revenueChange !== undefined && revenueChange !== 0 && (
+                <span className={cn(
+                  "text-sm font-semibold px-2 py-1 rounded-lg flex items-center gap-1 whitespace-nowrap",
+                  isRevenueUp
+                    ? "text-success bg-success/10"
+                    : isRevenueDown
+                    ? "text-destructive bg-destructive/10"
+                    : "text-muted-foreground bg-muted/50"
+                )}>
+                  {isRevenueUp ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                  {revenueChange > 0 ? '+' : ''}{revenueChange.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
+                </span>
+              )}
             </p>
             <span className="text-[13px] text-muted-foreground/50 mt-0.5">Total do período</span>
 
