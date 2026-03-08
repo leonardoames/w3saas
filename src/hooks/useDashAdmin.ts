@@ -145,7 +145,7 @@ export function useDashAdmin() {
     }
 
     return agg;
-  }, [revenueQuery.data, thisMonthStart, lastMonthStart]);
+  }, [revenueQuery.data, metricsQuery.data, thisMonthStart, lastMonthStart]);
 
   // Merge profiles with revenue
   const mentorados = useMemo(() => {
