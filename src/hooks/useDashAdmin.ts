@@ -299,7 +299,7 @@ export function useDashAdmin() {
       total,
       isCurrent: month === currentMonthKey,
     }));
-  }, [revenueQuery.data, metricsQuery.data, now]);
+  }, [revenueQuery.data, metricsQuery.data, profilesQuery.data, now]);
 
   // Top 5 mentorados by revenue (uses period-filtered data)
   const top5 = useMemo(() => {
