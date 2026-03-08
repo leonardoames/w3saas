@@ -1,112 +1,133 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
-import { BarChart3, Calculator, Calendar, Brain, Users, GraduationCap, CheckCircle, ArrowRight } from "lucide-react";
-const features = [{
-  icon: BarChart3,
-  title: "Dashboard de Métricas",
-  description: "Acompanhe suas métricas diárias de e-commerce"
-}, {
-  icon: Calculator,
-  title: "Calculadora",
-  description: "Calcule preços, margens e projeções"
-}, {
-  icon: Calendar,
-  title: "Calendário Comercial",
-  description: "Planeje suas campanhas com datas importantes"
-}, {
-  icon: Brain,
-  title: "IA W3",
-  description: "Assistente de IA para copies e estratégias"
-}, {
-  icon: Users,
-  title: "CRM Influenciadores",
-  description: "Gerencie parcerias com influenciadores"
-}, {
-  icon: GraduationCap,
-  title: "Aulas da Mentoria",
-  description: "Acesso exclusivo a conteúdo educacional"
-}];
+import { BarChart3, Calculator, Calendar, Brain, Users, GraduationCap, ArrowRight, CheckCircle2 } from "lucide-react";
+import { motion } from "motion/react";
+
+const features = [
+  { icon: BarChart3, title: "Dashboard de Métricas", description: "Acompanhe seus KPIs diários com gráficos interativos e visão consolidada" },
+  { icon: Calculator, title: "Precificadora", description: "Calcule preços, margens e projeções com precisão profissional" },
+  { icon: Calendar, title: "Calendário Comercial", description: "Planeje suas campanhas com datas importantes do e-commerce" },
+  { icon: Brain, title: "IA W3", description: "Assistente inteligente treinado para otimizar seu e-commerce" },
+  { icon: Users, title: "CRM Influenciadores", description: "Gerencie parcerias com influenciadores de forma organizada" },
+  { icon: GraduationCap, title: "Mentoria AMES", description: "Acesso exclusivo a conteúdo educacional e hotseats" },
+];
+
+const fadeUp = {
+  initial: { opacity: 0, y: 24 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+};
+
 export default function Landing() {
   const navigate = useNavigate();
-  const {
-    user,
-    hasAccess,
-    isLoading
-  } = useAuth();
+  const { user, hasAccess, isLoading } = useAuth();
+
   useEffect(() => {
-    if (!isLoading && user && hasAccess) {
-      navigate("/app");
-    }
+    if (!isLoading && user && hasAccess) navigate("/app");
   }, [user, hasAccess, isLoading, navigate]);
-  const handleCheckout = () => {
-    navigate("/checkout");
-  };
-  const handleLogin = () => {
-    navigate("/auth");
-  };
-  return <div className="min-h-screen bg-background">
+
+  return (
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <h1 className="text-xl font-bold text-primary"> ​W3 App   </h1>
-          <Button variant="outline" onClick={handleLogin}>
+      <header className="sticky top-0 z-50 glass">
+        <div className="container mx-auto flex h-14 items-center justify-between px-4 sm:px-6">
+          <span className="text-lg font-semibold tracking-tight">
+            W3 <span className="text-gradient">SaaS</span>
+          </span>
+          <Button variant="outline" size="sm" onClick={() => navigate("/auth")} className="text-xs">
             Já tenho conta
           </Button>
         </div>
       </header>
 
       {/* Hero */}
-      <section className="container mx-auto px-4 py-16 text-center">
-        <h2 className="text-4xl font-bold tracking-tight sm:text-5xl">
-          Plataforma completa para
-          <span className="text-primary"> e-commerce</span>
-        </h2>
-        <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-          Ferramentas exclusivas para donos de e-commerce que faturam acima de R$30.000/mês. 
-          Dashboard, calculadoras, IA e muito mais.
-        </p>
-        <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-          <Button size="lg" onClick={handleCheckout} className="gap-2">
-            Começar agora <ArrowRight className="h-4 w-4" />
-          </Button>
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 dot-pattern opacity-40" />
+        <div className="relative container mx-auto px-4 sm:px-6 py-24 sm:py-32 text-center">
+          <motion.div {...fadeUp} className="max-w-2xl mx-auto space-y-6">
+            <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight" style={{ letterSpacing: '-0.035em' }}>
+              Plataforma completa para{" "}
+              <span className="text-gradient">e-commerce</span>
+            </h1>
+            <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
+              Ferramentas exclusivas para donos de e-commerce que faturam acima de R$30.000/mês.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <Button size="lg" onClick={() => navigate("/checkout")} className="gap-2 px-8">
+                Começar agora <ArrowRight className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="lg" onClick={() => navigate("/auth")} className="px-8">
+                Fazer login
+              </Button>
+            </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Features */}
-      <section className="container mx-auto px-4 py-16">
-        <h3 className="mb-8 text-center text-2xl font-bold text-secondary">O que você terá acesso</h3>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {features.map(feature => <Card key={feature.title} className="bg-card">
-              <CardHeader>
-                <feature.icon className="h-8 w-8 text-primary" />
-                <CardTitle className="mt-4">{feature.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>{feature.description}</CardDescription>
-              </CardContent>
-            </Card>)}
+      <section className="container mx-auto px-4 sm:px-6 py-20">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-12"
+        >
+          <p className="metric-label text-primary mb-2">Ferramentas</p>
+          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+            O que você terá acesso
+          </h2>
+        </motion.div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {features.map((feature, i) => (
+            <motion.div
+              key={feature.title}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: i * 0.06 }}
+              className="group relative rounded-xl border border-border bg-card p-6 card-hover"
+            >
+              <div className="w-10 h-10 rounded-lg bg-primary/8 flex items-center justify-center mb-4 group-hover:bg-primary/12 transition-colors">
+                <feature.icon className="h-5 w-5 text-primary" />
+              </div>
+              <h3 className="text-[15px] font-semibold text-foreground mb-1.5">{feature.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+            </motion.div>
+          ))}
         </div>
       </section>
 
       {/* CTA */}
-      <section className="border-t py-16 bg-[hsl(var(--cta-background))]">
-        <div className="container mx-auto px-4 text-center">
-          <h3 className="text-2xl font-bold text-secondary-foreground">Pronto para escalar seu e-commerce?</h3>
-          <p className="mt-2 text-muted-foreground">
-            Acesse agora todas as ferramentas exclusivas da W3.
-          </p>
-          <Button size="lg" onClick={handleCheckout} className="mt-6">
-            Assinar agora
-          </Button>
+      <section className="border-t border-border">
+        <div className="container mx-auto px-4 sm:px-6 py-20 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="max-w-md mx-auto space-y-6"
+          >
+            <h2 className="text-2xl font-semibold tracking-tight">Pronto para escalar?</h2>
+            <p className="text-muted-foreground">
+              Acesse agora todas as ferramentas exclusivas da W3.
+            </p>
+            <Button size="lg" onClick={() => navigate("/checkout")} className="px-8">
+              Assinar agora
+            </Button>
+          </motion.div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-8">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">© 2026 W3 App. Todos os direitos reservados.</div>
+      <footer className="border-t border-border py-8">
+        <div className="container mx-auto px-4 text-center text-xs text-muted-foreground">
+          © 2026 W3 SaaS. Todos os direitos reservados.
+        </div>
       </footer>
-    </div>;
+    </div>
+  );
 }
