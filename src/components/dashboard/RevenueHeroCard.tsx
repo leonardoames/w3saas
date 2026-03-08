@@ -10,6 +10,7 @@ import { getDaysInMonth, getDate } from "date-fns";
 
 interface RevenueHeroCardProps {
   currentRevenue: number;
+  previousRevenue?: number;
   userId: string;
   onGoalLoaded?: (goal: number | null) => void;
 }
