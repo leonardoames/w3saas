@@ -26,7 +26,7 @@ export function BreakEvenCard({ investimento, faturamento, days }: BreakEvenCard
             )}
             style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)' }}
           >
-            <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="flex items-center justify-between mb-1.5">
               <span className="metric-label">Break-even Diário</span>
               <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
             </div>
