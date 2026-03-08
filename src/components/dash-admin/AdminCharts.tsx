@@ -2,11 +2,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  BarChart, Bar, CartesianGrid, Cell,
+  BarChart, Bar, CartesianGrid, Cell, ReferenceDot, Label,
 } from "recharts";
 
 interface Props {
-  monthlyRevenue: { month: string; total: number }[];
+  monthlyRevenue: { month: string; total: number; isCurrent?: boolean }[];
   top5: { name: string; revenue: number }[];
   isLoading: boolean;
 }
@@ -21,6 +21,26 @@ const COLORS = [
 
 const formatBRL = (v: number) =>
   `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+
+// Custom tooltip that marks current month
+function CustomLineTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  const entry = payload[0]?.payload;
+  return (
+    <div style={{
+      backgroundColor: "hsl(var(--popover))",
+      border: "1px solid hsl(var(--border))",
+      borderRadius: "8px",
+      color: "hsl(var(--popover-foreground))",
+      padding: "8px 12px",
+    }}>
+      <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 12, marginBottom: 2 }}>
+        {label} {entry?.isCurrent ? "(mês em andamento)" : ""}
+      </p>
+      <p style={{ fontWeight: 600, fontSize: 13 }}>{formatBRL(payload[0]?.value ?? 0)}</p>
+    </div>
+  );
+}
 
 export function AdminCharts({ monthlyRevenue, top5, isLoading }: Props) {
   if (isLoading) {
@@ -37,6 +57,14 @@ export function AdminCharts({ monthlyRevenue, top5, isLoading }: Props) {
 
   if (!hasRevenue && !hasTop5) return null;
 
+  // Split data into completed and current month segments for dashed line
+  const lastIdx = monthlyRevenue.length - 1;
+  const completedData = monthlyRevenue.map((d, i) => ({
+    ...d,
+    completed: i < lastIdx ? d.total : undefined,
+    current: i >= lastIdx - 1 ? d.total : undefined,
+  }));
+
   return (
     <div className="grid gap-4 lg:grid-cols-5">
       {hasRevenue && (
@@ -48,22 +76,31 @@ export function AdminCharts({ monthlyRevenue, top5, isLoading }: Props) {
           </CardHeader>
           <CardContent className="h-60 pr-2">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={monthlyRevenue}>
+              <LineChart data={completedData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="month" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
                 <YAxis tick={{ fontSize: 10 }} className="fill-muted-foreground" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                <Tooltip
-                  formatter={(v: number) => [formatBRL(v), "Faturamento"]}
-                  contentStyle={{ backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--popover-foreground))" }}
-                  labelStyle={{ color: "hsl(var(--muted-foreground))" }}
-                />
+                <Tooltip content={<CustomLineTooltip />} />
+                {/* Solid line for completed months */}
                 <Line
                   type="monotone"
-                  dataKey="total"
+                  dataKey="completed"
                   stroke="hsl(27, 92%, 52%)"
                   strokeWidth={2.5}
                   dot={{ r: 4, fill: "hsl(27, 92%, 52%)" }}
                   activeDot={{ r: 6 }}
+                  connectNulls={false}
+                />
+                {/* Dashed line for current month segment */}
+                <Line
+                  type="monotone"
+                  dataKey="current"
+                  stroke="hsl(27, 92%, 52%)"
+                  strokeWidth={2.5}
+                  strokeDasharray="6 4"
+                  dot={{ r: 4, fill: "hsl(27, 92%, 52%)", strokeDasharray: "" }}
+                  activeDot={{ r: 6 }}
+                  connectNulls={false}
                 />
               </LineChart>
             </ResponsiveContainer>
