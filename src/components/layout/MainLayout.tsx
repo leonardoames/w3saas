@@ -45,7 +45,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   const firstName = profile?.full_name?.split(" ")[0] || "você";
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen" style={{ background: 'radial-gradient(ellipse at 15% 0%, rgba(249,115,22,0.05) 0%, transparent 55%), hsl(var(--background))' }}>
       <Sidebar
         isCollapsed={isSidebarCollapsed}
         onToggle={toggleSidebar}
