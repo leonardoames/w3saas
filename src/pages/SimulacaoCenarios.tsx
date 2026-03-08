@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Copy, History, Save, TrendingUp, TrendingDown } from "lucide-react";
+import { Copy, History, Save, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -21,29 +21,47 @@ import {
   CartesianGrid,
 } from "recharts";
 
-/* ── Formatting helpers ── */
-function fmtThousands(v: string): string {
-  const num = v.replace(/\D/g, "");
-  if (!num) return "";
-  return Number(num).toLocaleString("pt-BR");
+const STORAGE_KEY = "simulacao_cenarios_state";
+
+function loadPersistedState(): { current: ScenarioInputs; new_: ScenarioInputs } | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return { current: parsed.current, new_: parsed.new_ };
+  } catch {
+    return null;
+  }
 }
 
-function parseThousands(formatted: string): string {
-  return formatted.replace(/\./g, "").replace(/\s/g, "");
-}
-
-function fmtDecimal(v: string, decimals = 2): string {
-  const clean = v.replace(/[^\d,]/g, "");
-  return clean;
+function persistState(current: ScenarioInputs, new_: ScenarioInputs) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ current, new_ }));
 }
 
 export default function SimulacaoCenarios() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [currentScenario, setCurrentScenario] = useState<ScenarioInputs>(defaultInputs);
-  const [newScenario, setNewScenario] = useState<ScenarioInputs>(defaultInputs);
+
+  const [currentScenario, setCurrentScenario] = useState<ScenarioInputs>(() => {
+    const state = (location.state as any);
+    if (state?.currentScenario) return state.currentScenario;
+    return loadPersistedState()?.current || defaultInputs;
+  });
+
+  const [newScenario, setNewScenario] = useState<ScenarioInputs>(() => {
+    const state = (location.state as any);
+    if (state?.newScenario) return state.newScenario;
+    return loadPersistedState()?.new_ || defaultInputs;
+  });
+
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
+  // Persist on every change
+  useEffect(() => {
+    persistState(currentScenario, newScenario);
+  }, [currentScenario, newScenario]);
+
+  // Handle navigation state override
   useEffect(() => {
     const state = location.state as any;
     if (state?.currentScenario) setCurrentScenario(state.currentScenario);
@@ -60,6 +78,36 @@ export default function SimulacaoCenarios() {
     const yearlyDiff = newCalc.yearlyRevenue - currentCalc.yearlyRevenue;
     return { monthlyDiff, monthlyDiffPercent, yearlyDiff };
   }, [currentCalc, newCalc]);
+
+  // Effort anchor: what changed between scenarios
+  const changedFields = useMemo(() => {
+    if (!currentCalc.isValid || !newCalc.isValid) return [];
+    const changes: string[] = [];
+    const cv = parseFloat(currentScenario.monthlyVisits) || 0;
+    const nv = parseFloat(newScenario.monthlyVisits) || 0;
+    if (cv !== nv) {
+      changes.push(`visitas de ${cv.toLocaleString("pt-BR")} → ${nv.toLocaleString("pt-BR")}`);
+    }
+    const cr = parseFloat(currentScenario.conversionRate) || 0;
+    const nr = parseFloat(newScenario.conversionRate) || 0;
+    if (cr !== nr) {
+      changes.push(`conversão de ${cr.toLocaleString("pt-BR", { minimumFractionDigits: 1 })}% → ${nr.toLocaleString("pt-BR", { minimumFractionDigits: 1 })}%`);
+    }
+    const ct = parseFloat(currentScenario.averageTicket) || 0;
+    const nt = parseFloat(newScenario.averageTicket) || 0;
+    if (ct !== nt) {
+      changes.push(`ticket de R$${ct.toLocaleString("pt-BR", { minimumFractionDigits: 0 })} → R$${nt.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`);
+    }
+    return changes;
+  }, [currentScenario, newScenario, currentCalc.isValid, newCalc.isValid]);
+
+  const formulaText = useMemo(() => {
+    if (!newCalc.isValid) return null;
+    const v = parseFloat(newScenario.monthlyVisits) || 0;
+    const r = parseFloat(newScenario.conversionRate) || 0;
+    const t = parseFloat(newScenario.averageTicket) || 0;
+    return `${v.toLocaleString("pt-BR")} visitas × ${r.toLocaleString("pt-BR", { minimumFractionDigits: 1 })}% conversão × R$ ${t.toLocaleString("pt-BR", { minimumFractionDigits: 0 })} ticket`;
+  }, [newScenario, newCalc.isValid]);
 
   const chartData = useMemo(() => {
     if (!currentCalc.isValid && !newCalc.isValid) return [];
@@ -88,7 +136,7 @@ export default function SimulacaoCenarios() {
 
   return (
     <div className="h-full flex flex-col gap-3 min-h-0">
-      {/* HEADER — compact */}
+      {/* HEADER */}
       <div className="flex items-center justify-between shrink-0">
         <div>
           <h1 className="text-xl font-bold text-foreground tracking-tight">Simule seu Faturamento</h1>
@@ -139,31 +187,53 @@ export default function SimulacaoCenarios() {
         {/* RIGHT — Results */}
         <div className="flex flex-col gap-3 min-h-0 overflow-y-auto">
           {/* North Star Metric */}
-          <NorthStarMetric comparison={comparison} />
+          <NorthStarMetric comparison={comparison} formulaText={formulaText} changedFields={changedFields} />
 
-          {/* 2x2 Metrics Grid */}
-          <div className="grid grid-cols-2 gap-2.5">
+          {/* Monthly metrics row with arrow */}
+          <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
             <MetricTile
               label="Fat. Mensal Atual"
               value={currentCalc.isValid ? formatCurrency(currentCalc.monthlyRevenue) : "—"}
               active={currentCalc.isValid}
+              size="large"
             />
+            <div className="flex items-center justify-center">
+              {currentCalc.isValid && newCalc.isValid ? (
+                <ArrowRight className={`h-5 w-5 ${comparison && comparison.monthlyDiff >= 0 ? "text-[hsl(var(--success))]" : "text-destructive"}`} />
+              ) : (
+                <ArrowRight className="h-5 w-5 text-muted-foreground/30" />
+              )}
+            </div>
             <MetricTile
               label="Fat. Mensal Novo"
               value={newCalc.isValid ? formatCurrency(newCalc.monthlyRevenue) : "—"}
               active={newCalc.isValid}
               highlight
+              size="large"
             />
+          </div>
+
+          {/* Yearly metrics row (smaller) with arrow */}
+          <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
             <MetricTile
               label="Fat. Anual Atual"
               value={currentCalc.isValid ? formatCurrency(currentCalc.yearlyRevenue) : "—"}
               active={currentCalc.isValid}
+              size="small"
             />
+            <div className="flex items-center justify-center">
+              {currentCalc.isValid && newCalc.isValid ? (
+                <ArrowRight className={`h-4 w-4 ${comparison && comparison.monthlyDiff >= 0 ? "text-[hsl(var(--success))]" : "text-destructive"}`} />
+              ) : (
+                <ArrowRight className="h-4 w-4 text-muted-foreground/30" />
+              )}
+            </div>
             <MetricTile
               label="Fat. Anual Novo"
               value={newCalc.isValid ? formatCurrency(newCalc.yearlyRevenue) : "—"}
               active={newCalc.isValid}
               highlight
+              size="small"
             />
           </div>
 
@@ -255,8 +325,18 @@ function CompactInputSection({
   const isPrimary = variant === "primary";
 
   return (
-    <div className={`rounded-xl border p-3.5 ${isPrimary ? "border-primary/30 bg-primary/[0.02]" : "border-border bg-card"}`}>
-      <p className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isPrimary ? "text-primary" : "text-muted-foreground"}`}>
+    <div
+      className={`rounded-xl border p-3.5 ${
+        isPrimary
+          ? "border-orange-400/40 bg-orange-500/[0.03]"
+          : "border-muted-foreground/20 bg-card"
+      }`}
+    >
+      <p
+        className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${
+          isPrimary ? "text-orange-500" : "text-muted-foreground/60"
+        }`}
+      >
         {title}
       </p>
       <div className="space-y-2.5">
@@ -305,11 +385,9 @@ function FormattedField({
 
   const handleChange = (raw: string) => {
     if (type === "thousands") {
-      // Only digits
       const digits = raw.replace(/\D/g, "");
       onChange(digits);
     } else {
-      // Allow digits, dot, comma
       const clean = raw.replace(/[^\d.,]/g, "").replace(",", ".");
       const numValue = parseFloat(clean);
       if (clean !== "" && numValue < 0) return;
@@ -358,12 +436,20 @@ function FormattedField({
 }
 
 /* ─── North Star Metric ─── */
-function NorthStarMetric({ comparison }: { comparison: { monthlyDiff: number; monthlyDiffPercent: number } | null }) {
+function NorthStarMetric({
+  comparison,
+  formulaText,
+  changedFields,
+}: {
+  comparison: { monthlyDiff: number; monthlyDiffPercent: number } | null;
+  formulaText: string | null;
+  changedFields: string[];
+}) {
   if (!comparison) {
     return (
       <div className="rounded-xl border border-border bg-card p-5 text-center">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1">
-          Potencial de Crescimento
+          Receita Adicional por Mês
         </p>
         <p className="text-muted-foreground/40 text-sm">Preencha ambos os cenários para comparar</p>
       </div>
@@ -383,24 +469,42 @@ function NorthStarMetric({ comparison }: { comparison: { monthlyDiff: number; mo
     <div
       className={`rounded-xl border p-5 transition-colors ${
         isPositive
-          ? "border-primary/25 bg-primary/[0.04]"
+          ? "border-orange-400/25 bg-orange-500/[0.04]"
           : "border-destructive/25 bg-destructive/[0.04]"
       }`}
     >
       <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1.5">
-        Potencial de Crescimento
+        Receita Adicional por Mês
       </p>
       <div className="flex items-baseline gap-3">
-        <p className={`text-[28px] font-bold leading-tight tabular-nums ${isPositive ? "text-foreground" : "text-destructive"}`} style={{ letterSpacing: "-0.02em" }}>
+        <p
+          className={`text-[28px] font-bold leading-tight tabular-nums ${isPositive ? "text-foreground" : "text-destructive"}`}
+          style={{ letterSpacing: "-0.02em" }}
+        >
           {isPositive ? "+" : "-"}{absCurrency}
         </p>
-        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
-          isPositive ? "text-success bg-success/10" : "text-destructive bg-destructive/10"
-        }`}>
+        <span
+          className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
+            isPositive ? "text-[hsl(var(--success))] bg-[hsl(var(--success))]/10" : "text-destructive bg-destructive/10"
+          }`}
+        >
           <Icon className="h-3 w-3" />
           {isPositive ? "+" : "-"}{absPercent}%
         </span>
       </div>
+
+      {/* Formula transparency */}
+      {formulaText && (
+        <p className="text-xs text-muted-foreground/50 mt-1.5">{formulaText}</p>
+      )}
+
+      {/* Effort anchor */}
+      {changedFields.length > 0 && (
+        <p className="text-xs text-orange-500 mt-1">
+          Mudando apenas: {changedFields.join(" e ")}
+        </p>
+      )}
+
       <p className="text-[11px] text-muted-foreground/60 mt-1">diferença mensal entre cenários</p>
     </div>
   );
@@ -412,16 +516,35 @@ function MetricTile({
   value,
   active,
   highlight,
+  size = "large",
 }: {
   label: string;
   value: string;
   active: boolean;
   highlight?: boolean;
+  size?: "large" | "small";
 }) {
+  const isSmall = size === "small";
+
   return (
-    <div className={`rounded-xl border border-border bg-card p-3.5 transition-opacity ${!active ? "opacity-40" : ""}`}>
-      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1">{label}</p>
-      <p className={`text-lg font-bold tabular-nums leading-tight ${highlight && active ? "text-primary" : "text-foreground"}`} style={{ letterSpacing: "-0.01em" }}>
+    <div
+      className={`rounded-xl border border-border bg-card transition-opacity ${
+        !active ? "opacity-40" : ""
+      } ${isSmall ? "p-2.5" : "p-3.5"}`}
+    >
+      <p
+        className={`font-medium uppercase tracking-wider text-muted-foreground/60 mb-1 ${
+          isSmall ? "text-[10px]" : "text-[11px]"
+        }`}
+      >
+        {label}
+      </p>
+      <p
+        className={`font-bold tabular-nums leading-tight ${
+          highlight && active ? "text-primary" : "text-foreground"
+        } ${isSmall ? "text-sm" : "text-lg"}`}
+        style={{ letterSpacing: "-0.01em" }}
+      >
         {value}
       </p>
     </div>
