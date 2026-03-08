@@ -42,7 +42,7 @@ export default function IABrain() {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      setDocuments((data as Document[]) || []);
+      setDocuments((data as IADocument[]) || []);
     } catch (error) {
       console.error("Error fetching documents:", error);
       toast({ title: "Erro", description: "Não foi possível carregar os documentos", variant: "destructive" });
