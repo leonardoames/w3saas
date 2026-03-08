@@ -253,9 +253,8 @@ export default function Dashboard() {
 
       {/* Revenue Goal + Projection */}
       {dataLoading ? <GoalSkeleton /> : (
-        <RevenueGoalCard currentRevenue={faturamento} userId={user.id} onGoalLoaded={handleGoalLoaded} />
+        <RevenueHeroCard currentRevenue={faturamento} userId={user.id} onGoalLoaded={handleGoalLoaded} />
       )}
-      <MonthProjection currentRevenue={faturamento} goal={revenueGoal} />
 
       {/* KPIs Row 1: Primary */}
       {dataLoading ? <KPISkeletonGrid /> : (
