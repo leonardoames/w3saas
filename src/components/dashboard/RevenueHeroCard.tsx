@@ -15,7 +15,7 @@ interface RevenueHeroCardProps {
   onGoalLoaded?: (goal: number | null) => void;
 }
 
-export function RevenueHeroCard({ currentRevenue, userId, onGoalLoaded }: RevenueHeroCardProps) {
+export function RevenueHeroCard({ currentRevenue, previousRevenue, userId, onGoalLoaded }: RevenueHeroCardProps) {
   const [goal, setGoal] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
   const [inputValue, setInputValue] = useState("");
