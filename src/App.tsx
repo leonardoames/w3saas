@@ -36,6 +36,7 @@ import ShopifyCallback from "./pages/ShopifyCallback";
 import ShopeeCallback from "./pages/ShopeeCallback";
 import ShopeeAdsCallback from "./pages/ShopeeAdsCallback";
 import DashAdmin from "./pages/DashAdmin";
+import BancoDeIdeias from "./pages/BancoDeIdeias";
 
 // Admin pages
 import AdminUsers from "./pages/admin/AdminUsers";
