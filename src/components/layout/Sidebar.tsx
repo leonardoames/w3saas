@@ -97,7 +97,7 @@ function SidebarGroup({
 
   return (
     <Collapsible defaultOpen={active}>
-      <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground/60 hover:text-muted-foreground transition-colors">
+      <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 section-label-text text-muted-foreground/50 hover:text-muted-foreground transition-colors">
         <GroupIcon className="h-3.5 w-3.5 shrink-0 opacity-50" />
         <span className="flex-1 text-left">{group.title}</span>
         <ChevronDown className="h-3 w-3 shrink-0 opacity-40 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
@@ -260,7 +260,7 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <nav className="flex-1 space-y-1 overflow-y-auto scrollbar-thin p-3">
+            <nav className="flex-1 space-y-6 overflow-y-auto scrollbar-thin p-3">
               {renderExpandedNav(handleNavClick)}
             </nav>
             <div className="border-t border-sidebar-border p-3">
@@ -301,7 +301,7 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
               </Button>
             )}
           </div>
-          <nav className="flex-1 space-y-1 overflow-y-auto scrollbar-thin p-2">
+          <nav className="flex-1 space-y-6 overflow-y-auto scrollbar-thin p-2">
             {isExpanded ? renderExpandedNav() : renderCollapsedNav()}
           </nav>
           <div className={cn("border-t border-sidebar-border", isExpanded ? "p-3" : "p-2")}>
