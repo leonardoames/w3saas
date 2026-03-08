@@ -8,9 +8,17 @@ import { UserMenu } from "@/components/layout/UserMenu";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { WhatsAppFloatingButton } from "./WhatsAppFloatingButton";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface MainLayoutProps {
   children: React.ReactNode;
+}
+
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h >= 6 && h < 12) return "Bom dia";
+  if (h >= 12 && h < 18) return "Boa tarde";
+  return "Boa noite";
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
@@ -18,6 +26,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
+  const { profile } = useAuth();
 
   useEffect(() => {
     const checkUser = async () => {
@@ -32,6 +41,8 @@ export function MainLayout({ children }: MainLayoutProps) {
   }, []);
 
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
+
+  const firstName = profile?.full_name?.split(" ")[0] || "Usuário";
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -55,7 +66,10 @@ export function MainLayout({ children }: MainLayoutProps) {
                   </Button>
                 )}
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground hidden sm:block">
+                  {getGreeting()}, <span className="text-foreground font-medium">{firstName}</span>
+                </span>
                 <ThemeToggle />
                 <UserMenu />
               </div>

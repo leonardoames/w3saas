@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Settings } from "lucide-react";
+import { LogOut, Settings, Upload } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -34,13 +34,27 @@ export function UserMenu() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync fullName when profile changes
   useEffect(() => {
     if (profile?.full_name) {
       setFullName(profile.full_name);
     }
   }, [profile?.full_name]);
+
+  // Load avatar URL
+  useEffect(() => {
+    if (!user?.id) return;
+    const { data } = supabase.storage.from("avatars").getPublicUrl(`${user.id}/avatar`);
+    // Check if file exists by trying to fetch with cache bust
+    const url = `${data.publicUrl}?t=${Date.now()}`;
+    fetch(url, { method: "HEAD" }).then(res => {
+      if (res.ok) setAvatarUrl(url);
+      else setAvatarUrl(null);
+    }).catch(() => setAvatarUrl(null));
+  }, [user?.id, uploadingAvatar]);
 
   const handleLogout = async () => {
     await signOut();
@@ -70,65 +84,66 @@ export function UserMenu() {
     return "U";
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.id) return;
+
+    // Validate
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "Erro", description: "A imagem deve ter no máximo 2MB", variant: "destructive" });
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast({ title: "Erro", description: "Formato aceito: JPG, PNG ou WebP", variant: "destructive" });
+      return;
+    }
+
+    setUploadingAvatar(true);
+    const { error } = await supabase.storage
+      .from("avatars")
+      .upload(`${user.id}/avatar`, file, { upsert: true });
+
+    if (error) {
+      toast({ title: "Erro", description: "Erro ao enviar foto", variant: "destructive" });
+    } else {
+      toast({ title: "Sucesso", description: "Foto atualizada!" });
+    }
+    setUploadingAvatar(false);
+  };
+
   const handleSaveAccount = async () => {
     setIsLoading(true);
     try {
-      // Update full name in profile
       if (fullName !== profile?.full_name) {
         const { error: profileError } = await supabase
           .from("profiles")
           .update({ full_name: fullName })
           .eq("user_id", user?.id);
-
         if (profileError) throw profileError;
       }
 
-      // Update password if provided
       if (newPassword) {
         if (newPassword !== confirmPassword) {
-          toast({
-            title: "Erro",
-            description: "As senhas não coincidem",
-            variant: "destructive",
-          });
+          toast({ title: "Erro", description: "As senhas não coincidem", variant: "destructive" });
           setIsLoading(false);
           return;
         }
-
         if (newPassword.length < 6) {
-          toast({
-            title: "Erro",
-            description: "A senha deve ter pelo menos 6 caracteres",
-            variant: "destructive",
-          });
+          toast({ title: "Erro", description: "A senha deve ter pelo menos 6 caracteres", variant: "destructive" });
           setIsLoading(false);
           return;
         }
-
-        const { error: passwordError } = await supabase.auth.updateUser({
-          password: newPassword,
-        });
-
+        const { error: passwordError } = await supabase.auth.updateUser({ password: newPassword });
         if (passwordError) throw passwordError;
       }
 
-      toast({
-        title: "Sucesso",
-        description: "Informações atualizadas com sucesso",
-      });
-
-      // Refresh profile to get updated data
+      toast({ title: "Sucesso", description: "Informações atualizadas com sucesso" });
       await refreshProfile();
-
       setAccountDialogOpen(false);
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao atualizar informações",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: error.message || "Erro ao atualizar informações", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -143,7 +158,7 @@ export function UserMenu() {
             className="flex items-center justify-center rounded-full ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Avatar className="h-9 w-9 cursor-pointer hover:opacity-80 transition-opacity">
-              <AvatarImage src="" alt={profile?.full_name || "Usuário"} />
+              <AvatarImage src={avatarUrl || ""} alt={profile?.full_name || "Usuário"} />
               <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
                 {getInitials()}
               </AvatarFallback>
@@ -154,7 +169,7 @@ export function UserMenu() {
           <DropdownMenuLabel className="font-normal">
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
-                <AvatarImage src="" alt={profile?.full_name || "Usuário"} />
+                <AvatarImage src={avatarUrl || ""} alt={profile?.full_name || "Usuário"} />
                 <AvatarFallback className="bg-primary text-primary-foreground">
                   {getInitials()}
                 </AvatarFallback>
@@ -170,10 +185,7 @@ export function UserMenu() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => setAccountDialogOpen(true)}
-            className="cursor-pointer"
-          >
+          <DropdownMenuItem onClick={() => setAccountDialogOpen(true)} className="cursor-pointer">
             <Settings className="mr-2 h-4 w-4" />
             Conta
           </DropdownMenuItem>
@@ -201,60 +213,51 @@ export function UserMenu() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="flex justify-center">
+            <div className="flex flex-col items-center gap-2">
               <Avatar className="h-20 w-20">
-                <AvatarImage src="" alt={profile?.full_name || "Usuário"} />
+                <AvatarImage src={avatarUrl || ""} alt={profile?.full_name || "Usuário"} />
                 <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
                   {getInitials()}
                 </AvatarFallback>
               </Avatar>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleAvatarUpload}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs gap-1.5"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingAvatar}
+              >
+                <Upload className="h-3 w-3" />
+                {uploadingAvatar ? "Enviando..." : "Alterar foto"}
+              </Button>
+              <p className="text-[10px] text-muted-foreground">JPG, PNG ou WebP • Máx 2MB</p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                value={user?.email || ""}
-                disabled
-                className="bg-muted"
-              />
+              <Input id="email" value={user?.email || ""} disabled className="bg-muted" />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="fullName">Nome completo</Label>
-              <Input
-                id="fullName"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Seu nome completo"
-              />
+              <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Seu nome completo" />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="newPassword">Nova senha</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Deixe em branco para manter"
-              />
+              <Input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Deixe em branco para manter" />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="confirmPassword">Confirmar senha</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirme a nova senha"
-              />
+              <Input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirme a nova senha" />
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setAccountDialogOpen(false)}
-            >
-              Cancelar
-            </Button>
+            <Button variant="outline" onClick={() => setAccountDialogOpen(false)}>Cancelar</Button>
             <Button onClick={handleSaveAccount} disabled={isLoading}>
               {isLoading ? "Salvando..." : "Salvar"}
             </Button>
