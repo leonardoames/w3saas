@@ -311,12 +311,12 @@ export default function IAW3() {
                 )}
                 <div
                   className={cn(
-                    "group relative rounded-2xl",
+                    "group relative",
                     message.role === "user"
-                      ? "max-w-[85%] px-4 py-3 bg-primary text-primary-foreground"
+                      ? "max-w-[85%] px-4 py-3 rounded-2xl bg-primary text-primary-foreground"
                       : hasHtmlContent(message.content)
                         ? "w-full max-w-full p-0 bg-transparent"
-                        : "max-w-[85%] px-4 py-3 bg-muted/50"
+                        : "w-full max-w-full"
                   )}
                 >
                 {message.role === "user" ? (
@@ -338,20 +338,7 @@ export default function IAW3() {
                   ) : hasHtmlContent(message.content) ? (
                     <HtmlPreviewMessage content={message.content} />
                   ) : (
-                    <>
-                      <div 
-                        className="prose prose-sm max-w-none dark:prose-invert prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2 prose-ul:my-2 prose-li:my-0"
-                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(message.content) }}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute -right-10 top-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-                        onClick={() => handleCopyMessage(message.content)}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </>
+                    <AiMessage content={message.content} onCopy={handleCopyMessage} />
                   )}
                 </div>
               </div>
@@ -359,15 +346,14 @@ export default function IAW3() {
             
             {/* Loading indicator */}
             {isGenerating && (
-              <div className="flex gap-4">
+              <div className="flex gap-4 items-start">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                   <Sparkles className="h-4 w-4 text-primary" />
                 </div>
-                <div className="bg-muted/50 rounded-2xl px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    <span className="text-muted-foreground text-sm">Pensando...</span>
-                  </div>
+                <div className="flex items-center gap-1.5 pt-2.5">
+                  <span className="ai-loading-dot" />
+                  <span className="ai-loading-dot" />
+                  <span className="ai-loading-dot" />
                 </div>
               </div>
             )}

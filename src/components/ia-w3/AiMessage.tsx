@@ -41,8 +41,8 @@ export default function AiMessage({ content, onCopy }: AiMessageProps) {
         >
           {copied ? (
             <>
-              <Check className="h-3.5 w-3.5 text-green-500" />
-              <span className="text-green-500">Copiado</span>
+              <Check className="h-3.5 w-3.5 text-success" />
+              <span className="text-success">Copiado</span>
             </>
           ) : (
             <>
