@@ -84,13 +84,13 @@ export default function Produtos() {
       {loading ? (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-[340px] animate-pulse rounded-2xl bg-[#111111] border border-[#222222]" />
+            <div key={i} className="h-[340px] animate-pulse rounded-xl bg-card border border-border" />
           ))}
         </div>
       ) : products.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-[#222222] bg-[#111111] py-20">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card py-20">
           <Package className="mb-4 h-12 w-12 text-muted-foreground" />
-          <p className="text-section-title text-muted-foreground">Nenhuma solução cadastrada</p>
+          <p className="text-base font-semibold text-muted-foreground">Nenhuma solução cadastrada</p>
         </div>
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
