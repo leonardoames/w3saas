@@ -34,7 +34,7 @@ export function BreakEvenCard({ investimento, faturamento, days }: BreakEvenCard
               R$ {breakEven.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               <span className="text-sm font-normal text-muted-foreground">/dia</span>
             </div>
-            <div className="flex items-center gap-2 mt-2 sm:mt-2.5">
+            <div className="flex items-center gap-2 mt-1.5">
               <span className={cn(
                 "text-[11px] font-semibold px-1.5 py-0.5 rounded-md",
                 isHealthy ? "text-success bg-success/10" : "text-destructive bg-destructive/10"
