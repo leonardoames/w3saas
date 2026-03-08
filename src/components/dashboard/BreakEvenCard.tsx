@@ -30,7 +30,7 @@ export function BreakEvenCard({ investimento, faturamento, days }: BreakEvenCard
               <span className="metric-label">Break-even Diário</span>
               <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
             </div>
-            <div className="text-xl sm:text-2xl md:text-[1.75rem] font-semibold text-foreground tabular-nums tracking-tight" style={{ letterSpacing: '-0.03em' }}>
+            <div className="text-lg sm:text-xl font-semibold text-foreground tabular-nums tracking-tight" style={{ letterSpacing: '-0.03em' }}>
               R$ {breakEven.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               <span className="text-sm font-normal text-muted-foreground">/dia</span>
             </div>
