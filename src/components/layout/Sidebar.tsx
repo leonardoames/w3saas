@@ -8,10 +8,10 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation } from "react-router-dom";
 import { LucideIcon } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
 
 interface MenuItem {
   title: string;
@@ -80,46 +80,71 @@ const adminMenuItems: MenuItem[] = [
 
 const allGroups = [...menuGroups, moreAboutW3];
 
+function getActiveGroup(pathname: string): string | null {
+  for (const group of allGroups) {
+    const match = group.items.some((item) =>
+      item.path === "/app" ? pathname === "/app" : pathname.startsWith(item.path)
+    );
+    if (match) return group.title;
+  }
+  return null;
+}
+
 function SidebarGroup({
   group,
   pathname,
   onNavClick,
   isAdmin,
+  isOpen,
+  onToggle,
 }: {
   group: MenuGroup;
   pathname: string;
   onNavClick?: () => void;
   isAdmin?: boolean;
+  isOpen: boolean;
+  onToggle: () => void;
 }) {
   const visibleItems = group.items.filter((item) => !item.adminOnly || isAdmin);
   if (visibleItems.length === 0) return null;
-  const active = visibleItems.some(
-    (item) => item.path === "/app" ? pathname === "/app" : pathname.startsWith(item.path)
-  );
   const GroupIcon = group.icon;
 
   return (
-    <Collapsible defaultOpen={active}>
-      <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg px-3 py-2 section-label-text text-muted-foreground/50 hover:text-muted-foreground transition-colors">
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 section-label-text text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+      >
         <GroupIcon className="h-3.5 w-3.5 shrink-0 opacity-50" />
         <span className="flex-1 text-left">{group.title}</span>
-        <ChevronDown className="h-3 w-3 shrink-0 opacity-40 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="ml-5 space-y-0.5 py-1 border-l border-border/50">
-          {visibleItems.map((item) => (
-            <SidebarNavLink
-              key={item.path}
-              to={item.path}
-              end={item.path === "/app"}
-              onClick={onNavClick}
-              icon={item.icon}
-              label={item.title}
-            />
-          ))}
+        <ChevronDown
+          className={cn(
+            "h-3 w-3 shrink-0 opacity-40 transition-transform duration-200 ease-in-out",
+            isOpen && "rotate-180"
+          )}
+        />
+      </button>
+      <div
+        className="grid transition-[grid-template-rows] duration-200 ease-in-out"
+        style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
+      >
+        <div className="overflow-hidden">
+          <div className="ml-5 space-y-0.5 py-1 border-l border-border/50">
+            {visibleItems.map((item) => (
+              <SidebarNavLink
+                key={item.path}
+                to={item.path}
+                end={item.path === "/app"}
+                onClick={onNavClick}
+                icon={item.icon}
+                label={item.title}
+              />
+            ))}
+          </div>
         </div>
-      </CollapsibleContent>
-    </Collapsible>
+      </div>
+    </div>
   );
 }
 
@@ -136,30 +161,43 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
   const location = useLocation();
   const isExpanded = isMobile ? true : !isCollapsed;
 
-  const handleNavClick = () => { if (isMobile) onMobileClose(); };
+  const initialGroup = useMemo(() => getActiveGroup(location.pathname), []);
+  const [openGroup, setOpenGroup] = useState<string | null>(initialGroup);
 
-  const getUserName = () => profile?.full_name || "Usuário";
-  const getUserEmail = () => profile?.email || "";
-  const getPlanLabel = () => {
-    if (profile?.is_mentorado) return "Mentorado";
-    if (profile?.is_w3_client) return "Cliente W3";
-    if (profile?.plan_type === "paid") return "Plano Pago";
-    if (profile?.plan_type === "manual") return "Acesso Manual";
-    return "Plano Free";
-  };
+  const handleToggleGroup = useCallback((title: string) => {
+    setOpenGroup((prev) => (prev === title ? null : title));
+  }, []);
+
+  const handleNavClick = () => { if (isMobile) onMobileClose(); };
 
   const renderExpandedNav = (onNav?: () => void) => (
     <>
       {allGroups.map((group) => (
-        <SidebarGroup key={group.title} group={group} pathname={location.pathname} onNavClick={onNav} isAdmin={isAdmin} />
+        <SidebarGroup
+          key={group.title}
+          group={group}
+          pathname={location.pathname}
+          onNavClick={onNav}
+          isAdmin={isAdmin}
+          isOpen={openGroup === group.title}
+          onToggle={() => handleToggleGroup(group.title)}
+        />
       ))}
       {standaloneItems.map((item) => (
         <SidebarNavLink key={item.path} to={item.path} onClick={onNav} icon={item.icon} label={item.title} />
       ))}
-      {isAdmin && adminMenuItems.map((item) => (
-        <SidebarNavLink key={item.path} to={item.path} onClick={onNav} icon={item.icon} label={item.title} />
-      ))}
-      {isAdmin && <SidebarNavLink to="/admin" onClick={onNav} icon={Shield} label="Admin" />}
+
+      {isAdmin && (
+        <div className="mt-4 pt-3 border-t border-border/30">
+          <span className="block px-3 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/30 select-none">
+            Sistema
+          </span>
+          {adminMenuItems.map((item) => (
+            <SidebarNavLink key={item.path} to={item.path} onClick={onNav} icon={item.icon} label={item.title} variant="system" />
+          ))}
+          <SidebarNavLink to="/admin" onClick={onNav} icon={Shield} label="Admin" variant="system" />
+        </div>
+      )}
     </>
   );
 
@@ -198,8 +236,6 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
       )}
     </>
   );
-
-  // No user info block in sidebar — handled by header
 
   // Mobile drawer
   if (isMobile) {
