@@ -118,6 +118,22 @@ export function DailyRevenueBarChart({ data, goal }: DailyBarChartProps) {
             width={55}
           />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+          {dailyGoal > 0 && (
+            <ReferenceLine
+              y={dailyGoal}
+              stroke="#22C55E"
+              strokeWidth={1.5}
+              strokeDasharray="5 4"
+              strokeOpacity={0.7}
+              label={{
+                value: `Meta: R$ ${dailyGoal.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`,
+                position: 'right',
+                fill: '#22C55E',
+                fontSize: 10,
+                opacity: 0.8,
+              }}
+            />
+          )}
           <Bar dataKey="value" shape={<RoundedBar />} maxBarSize={18}>
             {chartData.map((entry, index) => (
               <Cell
