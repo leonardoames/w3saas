@@ -1,4 +1,4 @@
-export type PlatformType = 'todos' | 'shopee' | 'shopee_ads' | 'amazon' | 'mercado_livre' | 'shein' | 'shopify' | 'nuvemshop' | 'tray' | 'loja_integrada' | 'olist_tiny' | 'outros';
+export type PlatformType = 'todos' | 'shopee' | 'shopee_ads' | 'amazon' | 'mercado_livre' | 'shein' | 'shopify' | 'nuvemshop' | 'tray' | 'loja_integrada' | 'olist_tiny' | 'bagy' | 'outros';
 
 export interface PlatformConfig {
   id: PlatformType;
