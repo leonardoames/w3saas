@@ -294,7 +294,7 @@ export default function Dashboard() {
       {/* Charts */}
       {dataLoading ? <ChartSkeleton /> : !hasData ? <EmptyChartState /> : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <DailyRevenueBarChart data={chartData} />
+          <DailyRevenueBarChart data={chartData} goal={revenueGoal} />
           <CumulativeRevenueChart data={chartData} previousData={prevChartData} goal={revenueGoal} />
         </div>
       )}

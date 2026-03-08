@@ -1,8 +1,9 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, ReferenceLine } from "recharts";
 import { getDaysInMonth, getDate } from "date-fns";
 
 interface DailyBarChartProps {
   data: { data: string; faturamento: number }[];
+  goal?: number | null;
 }
 
 const formatYAxis = (value: number) => {
@@ -41,9 +42,10 @@ const RoundedBar = (props: any) => {
   );
 };
 
-export function DailyRevenueBarChart({ data }: DailyBarChartProps) {
+export function DailyRevenueBarChart({ data, goal }: DailyBarChartProps) {
   const now = new Date();
   const totalDays = getDaysInMonth(now);
+  const dailyGoal = goal && goal > 0 ? goal / totalDays : 0;
   const currentDay = getDate(now);
   const currentMonth = now.getMonth();
 
@@ -88,6 +90,12 @@ export function DailyRevenueBarChart({ data }: DailyBarChartProps) {
             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#FBBF24' }} />
             <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>Melhor dia</span>
           </div>
+          {dailyGoal > 0 && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-0.5 rounded-full" style={{ backgroundColor: '#22C55E' }} />
+              <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>Meta/dia</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -110,6 +118,22 @@ export function DailyRevenueBarChart({ data }: DailyBarChartProps) {
             width={55}
           />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+          {dailyGoal > 0 && (
+            <ReferenceLine
+              y={dailyGoal}
+              stroke="#22C55E"
+              strokeWidth={1.5}
+              strokeDasharray="5 4"
+              strokeOpacity={0.7}
+              label={{
+                value: `Meta: R$ ${dailyGoal.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`,
+                position: 'right',
+                fill: '#22C55E',
+                fontSize: 10,
+                opacity: 0.8,
+              }}
+            />
+          )}
           <Bar dataKey="value" shape={<RoundedBar />} maxBarSize={18}>
             {chartData.map((entry, index) => (
               <Cell
