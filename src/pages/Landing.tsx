@@ -196,7 +196,7 @@ export default function Landing() {
                   { label: "Faturamento", value: "R$127.450", change: "+12%" },
                   { label: "Pedidos", value: "1.847", change: "+8%" },
                   { label: "Ticket Médio", value: "R$68,90", change: "+3%" },
-                  { label: "ROAS", value: "3.5x", change: "+15%" },
+                  { label: "ROAS", value: "12.5x", change: "+15%" },
                 ].map((m) => (
                   <div key={m.label} className="rounded-lg border border-border bg-background/50 p-3 sm:p-4">
                     <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1">{m.label}</p>
