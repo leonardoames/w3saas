@@ -1,35 +1,18 @@
 
 
-## Plan: Auto-migrate orphan `sku_reposicao` records to Products catalog
+## Fix: Normalize date keys and parsing in Dashboard
 
-### Problem
-Records created in "Reposição de Estoque" before the centralized catalog was implemented have `product_id = null` and don't appear in "Meus Produtos".
+The root cause is a timezone mismatch: dates from the database may include time/timezone components, causing `parseISO` to shift dates when converting to local time. Additionally, date keys in `dateMap` may not group properly if they contain time components.
 
-### Solution
-Add an automatic migration function that runs when the user opens the "Meus Produtos" page. It scans `sku_reposicao` records where `product_id IS NULL`, creates corresponding `products` entries, and links them.
+### Changes to `src/pages/Dashboard.tsx`
 
-### Implementation
+**1. Normalize date keys in `loadData`** — Use `substring(0, 10)` on both `dailyData` and `metricsData` loops to extract only `YYYY-MM-DD`.
 
-**1. New hook/function: `useSyncOrphanReposicao`** (in `src/hooks/useProducts.ts`)
+**2. Normalize date keys in `effectiveData` useMemo** — Same `substring(0, 10)` fix for platform-specific filtering.
 
-- On mount (when `MeusProdutos` page loads), query `sku_reposicao` where `product_id IS NULL`
-- For each orphan record:
-  - Check if a product with the same `sku + user_id` already exists in `products`
-  - If yes: link the `sku_reposicao` record to it (update `product_id`)
-  - If no: create a new product from the reposicao fields (`nome_peca` → `nome`, etc.), then update `sku_reposicao.product_id`
-- Use a `useRef` flag to run only once per session (avoid repeated runs)
-- Show a toast summarizing: "X produtos sincronizados do estoque"
-- Wrap everything in try/catch — never block the page
+**3. Normalize date parsing in `filtered` and `prevFiltered`** — Use `parseISO(m.data.substring(0, 10))` to ensure local timezone interpretation.
 
-**2. Update `src/pages/MeusProdutos.tsx`**
+**4. Add null safety** — Guard against null `data` values before calling `substring`.
 
-- Call the sync hook at the top of the component
-- Show a subtle loading indicator ("Sincronizando produtos...") while migration runs
-- After completion, invalidate both `products` and `sku_reposicao` query caches
-
-### Files changed
-- `src/hooks/useProducts.ts` — add `useSyncOrphanReposicao` hook
-- `src/pages/MeusProdutos.tsx` — call the hook on mount
-
-No database migrations needed — uses existing tables and RLS policies.
+All changes are in a single file: `src/pages/Dashboard.tsx`. No database or backend changes needed.
 

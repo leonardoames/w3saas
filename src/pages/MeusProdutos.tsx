@@ -3,7 +3,7 @@ import { Plus, Package, Pencil, Trash2, Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useProducts, Product, ProductForm, syncProductToReposicao } from "@/hooks/useProducts";
+import { useProducts, Product, ProductForm, syncProductToReposicao, useSyncOrphanReposicao } from "@/hooks/useProducts";
 import { useSkuReposicao } from "@/hooks/useSkuReposicao";
 import { ProductDrawer } from "@/components/produtos/ProductDrawer";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +19,7 @@ export default function MeusProdutos() {
   const queryClient = useQueryClient();
   const { products, isLoading, create, update, remove, isCreating, isUpdating } = useProducts();
   const { items: skuItems } = useSkuReposicao();
+  const { isSyncing } = useSyncOrphanReposicao();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [search, setSearch] = useState("");
@@ -98,10 +99,13 @@ export default function MeusProdutos() {
     textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#111111",
   };
 
-  if (isLoading) {
+  if (isLoading || isSyncing) {
     return (
       <div className="p-6 space-y-6">
         <div className="h-8 w-64 animate-pulse rounded" style={{ background: "rgba(255,255,255,0.05)" }} />
+        {isSyncing && (
+          <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Sincronizando produtos do estoque...</p>
+        )}
         <div className="grid grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => <div key={i} className="h-[100px] animate-pulse rounded-xl" style={{ background: "#161616" }} />)}
         </div>
