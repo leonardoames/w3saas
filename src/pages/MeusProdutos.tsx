@@ -99,10 +99,13 @@ export default function MeusProdutos() {
     textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#111111",
   };
 
-  if (isLoading) {
+  if (isLoading || isSyncing) {
     return (
       <div className="p-6 space-y-6">
         <div className="h-8 w-64 animate-pulse rounded" style={{ background: "rgba(255,255,255,0.05)" }} />
+        {isSyncing && (
+          <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Sincronizando produtos do estoque...</p>
+        )}
         <div className="grid grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => <div key={i} className="h-[100px] animate-pulse rounded-xl" style={{ background: "#161616" }} />)}
         </div>
