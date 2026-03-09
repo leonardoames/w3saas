@@ -1,0 +1,1 @@
+DROP POLICY "Anyone can view admin status" ON public.user_roles;
