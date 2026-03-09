@@ -19,6 +19,7 @@ export default function MeusProdutos() {
   const queryClient = useQueryClient();
   const { products, isLoading, create, update, remove, isCreating, isUpdating } = useProducts();
   const { items: skuItems } = useSkuReposicao();
+  const { isSyncing } = useSyncOrphanReposicao();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [search, setSearch] = useState("");
