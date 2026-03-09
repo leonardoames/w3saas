@@ -95,8 +95,8 @@ Deno.serve(async (req) => {
             .update({
               full_name: userData.name || null,
               plan_type: userData.plan || "manual",
-              is_mentorado_deprecated: userData.is_mentorado || false,
-              is_w3_client_deprecated: userData.is_w3_client || false,
+              is_mentorado: userData.is_mentorado || false,
+              is_w3_client: userData.is_w3_client || false,
               access_status: "active",
               must_change_password: true,
             })
