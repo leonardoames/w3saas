@@ -1055,6 +1055,60 @@ export type Database = {
         }
         Relationships: []
       }
+      products: {
+        Row: {
+          created_at: string | null
+          custo_unitario: number | null
+          estoque_atual: number | null
+          estoque_seguranca: number | null
+          id: string
+          lead_time_maximo: number | null
+          lead_time_medio: number | null
+          nome: string
+          preco_venda: number | null
+          sku: string
+          tipo_reposicao: string | null
+          updated_at: string | null
+          user_id: string
+          variante: string | null
+          vendas_por_dia: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          custo_unitario?: number | null
+          estoque_atual?: number | null
+          estoque_seguranca?: number | null
+          id?: string
+          lead_time_maximo?: number | null
+          lead_time_medio?: number | null
+          nome: string
+          preco_venda?: number | null
+          sku: string
+          tipo_reposicao?: string | null
+          updated_at?: string | null
+          user_id: string
+          variante?: string | null
+          vendas_por_dia?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          custo_unitario?: number | null
+          estoque_atual?: number | null
+          estoque_seguranca?: number | null
+          id?: string
+          lead_time_maximo?: number | null
+          lead_time_medio?: number | null
+          nome?: string
+          preco_venda?: number | null
+          sku?: string
+          tipo_reposicao?: string | null
+          updated_at?: string | null
+          user_id?: string
+          variante?: string | null
+          vendas_por_dia?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           access_expires_at: string | null
@@ -1171,6 +1225,7 @@ export type Database = {
           new_rate: number | null
           new_ticket: number | null
           new_visits: number | null
+          product_id: string | null
           updated_at: string | null
           user_id: string
         }
@@ -1184,6 +1239,7 @@ export type Database = {
           new_rate?: number | null
           new_ticket?: number | null
           new_visits?: number | null
+          product_id?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -1197,10 +1253,19 @@ export type Database = {
           new_rate?: number | null
           new_ticket?: number | null
           new_visits?: number | null
+          product_id?: string | null
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "saved_scenarios_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sku_reposicao: {
         Row: {
@@ -1213,6 +1278,7 @@ export type Database = {
           lead_time_medio: number
           nome_peca: string
           observacoes: string | null
+          product_id: string | null
           sku: string
           tipo_reposicao: Database["public"]["Enums"]["tipo_reposicao"]
           updated_at: string
@@ -1230,6 +1296,7 @@ export type Database = {
           lead_time_medio?: number
           nome_peca: string
           observacoes?: string | null
+          product_id?: string | null
           sku: string
           tipo_reposicao?: Database["public"]["Enums"]["tipo_reposicao"]
           updated_at?: string
@@ -1247,6 +1314,7 @@ export type Database = {
           lead_time_medio?: number
           nome_peca?: string
           observacoes?: string | null
+          product_id?: string | null
           sku?: string
           tipo_reposicao?: Database["public"]["Enums"]["tipo_reposicao"]
           updated_at?: string
@@ -1254,7 +1322,15 @@ export type Database = {
           variante?: string | null
           vendas_por_dia?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sku_reposicao_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tarefas: {
         Row: {
