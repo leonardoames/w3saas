@@ -86,6 +86,7 @@ const App = () => (
                         <Route path="/calculadora" element={<Calculadora />} />
                         <Route path="/simulacao" element={<SimulacaoCenarios />} />
                         <Route path="/simulacao/historico" element={<SimulacaoHistorico />} />
+                        <Route path="/reposicao" element={<ReposicaoEstoque />} />
                         {/* CRM Influenciadores removed */}
                         <Route path="/ia-w3" element={<IAW3 />} />
                         <Route path="/ia-w3/cerebro" element={<IABrain />} />
