@@ -13,7 +13,7 @@ import { MiroEmbed } from "@/components/plano-acao/MiroEmbed";
 import { UserResourcesTab } from "@/components/plano-acao/UserResourcesTab";
 
 export default function PlanoAcao() {
-  const { user, profile, attributeMap } = useAuth();
+  const { user, profile } = useAuth();
   const { 
     tasks, 
     loading, 
