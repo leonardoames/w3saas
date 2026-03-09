@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
-import { Plus, Package, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Package, Pencil, Trash2, Search, Download, RefreshCw } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useProducts, Product, ProductForm, syncProductToReposicao, useSyncOrphanReposicao } from "@/hooks/useProducts";
 import { useSkuReposicao } from "@/hooks/useSkuReposicao";
 import { ProductDrawer } from "@/components/produtos/ProductDrawer";
+import { ImportProductsModal } from "@/components/produtos/ImportProductsModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -25,6 +26,7 @@ export default function MeusProdutos() {
   const [search, setSearch] = useState("");
   const [moduleFilter, setModuleFilter] = useState<ModuleFilter>("all");
   const [priceFilter, setPriceFilter] = useState<PriceFilter>("all");
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   // Build lookup: product_id -> has reposicao
   const reposicaoByProductId = useMemo(() => {
@@ -33,8 +35,11 @@ export default function MeusProdutos() {
     return map;
   }, [skuItems]);
 
-  // TODO: simulacao lookup would need saved_scenarios with product_id
   const simulacaoByProductId = useMemo(() => new Set<string>(), []);
+
+  const hasImportedProducts = useMemo(() => {
+    return products.some((p) => p.origem_importacao);
+  }, [products]);
 
   const filtered = useMemo(() => {
     let list = products;
@@ -55,10 +60,18 @@ export default function MeusProdutos() {
     semPreco: products.filter((p) => p.preco_venda == null).length,
   }), [products, reposicaoByProductId]);
 
+  const existingProductsForImport = useMemo(() => {
+    return products.map((p) => ({
+      sku: p.sku,
+      nome: p.nome,
+      preco_venda: p.preco_venda,
+      estoque_atual: p.estoque_atual,
+    }));
+  }, [products]);
+
   const handleSave = async (form: ProductForm & { id?: string }) => {
     if (form.id) {
       const updatedProduct = await update(form as any);
-      // Sync to sku_reposicao if linked
       if (reposicaoByProductId.has(form.id)) {
         const synced = await syncProductToReposicao(form.id, form);
         if (synced) {
@@ -127,9 +140,42 @@ export default function MeusProdutos() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Meus Produtos</h1>
           <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Catálogo central de SKUs</p>
         </div>
-        <button onClick={openCreate} style={{ background: "#F97316", color: "#000", fontWeight: 600, fontSize: 13, height: 36, padding: "0 16px", borderRadius: 8, border: "none", cursor: "pointer" }}>
-          + Novo Produto
-        </button>
+        <div className="flex items-center gap-2">
+          {hasImportedProducts && (
+            <button
+              onClick={() => setImportModalOpen(true)}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 12, color: "rgba(255,255,255,0.3)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "#F97316"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.3)"; }}
+            >
+              <RefreshCw style={{ width: 12, height: 12, display: "inline", marginRight: 4, verticalAlign: "middle" }} />
+              Sincronizar
+            </button>
+          )}
+          <button
+            onClick={() => setImportModalOpen(true)}
+            className="transition-colors"
+            style={{
+              background: "transparent", color: "rgba(255,255,255,0.7)",
+              fontWeight: 500, fontSize: 13, height: 36, padding: "0 16px",
+              borderRadius: 8, border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "rgba(249,115,22,0.3)";
+              e.currentTarget.style.color = "#F97316";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)";
+              e.currentTarget.style.color = "rgba(255,255,255,0.7)";
+            }}
+          >
+            <Download style={{ width: 14, height: 14, display: "inline", marginRight: 6, verticalAlign: "middle" }} />
+            Importar Produtos
+          </button>
+          <button onClick={openCreate} style={{ background: "#F97316", color: "#000", fontWeight: 600, fontSize: 13, height: 36, padding: "0 16px", borderRadius: 8, border: "none", cursor: "pointer" }}>
+            + Novo Produto
+          </button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -150,9 +196,18 @@ export default function MeusProdutos() {
           <p className="max-w-md mb-6" style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>
             Cadastre seus produtos para centralizar SKUs e conectar com Reposição e Simulações
           </p>
-          <button onClick={openCreate} style={{ background: "#F97316", color: "#000", fontWeight: 600, fontSize: 13, height: 36, padding: "0 16px", borderRadius: 8, border: "none", cursor: "pointer" }}>
-            + Novo Produto
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setImportModalOpen(true)}
+              style={{ background: "transparent", color: "rgba(255,255,255,0.7)", fontWeight: 500, fontSize: 13, height: 36, padding: "0 16px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer" }}
+            >
+              <Download style={{ width: 14, height: 14, display: "inline", marginRight: 6, verticalAlign: "middle" }} />
+              Importar Produtos
+            </button>
+            <button onClick={openCreate} style={{ background: "#F97316", color: "#000", fontWeight: 600, fontSize: 13, height: 36, padding: "0 16px", borderRadius: 8, border: "none", cursor: "pointer" }}>
+              + Novo Produto
+            </button>
+          </div>
         </div>
       ) : (
         <>
@@ -225,6 +280,16 @@ export default function MeusProdutos() {
                           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
                             SKU: {p.sku}{p.variante ? ` · ${p.variante}` : ""}
                           </div>
+                          {p.origem_importacao && (
+                            <span style={{
+                              fontSize: 10, background: "rgba(255,255,255,0.06)",
+                              color: "rgba(255,255,255,0.4)", borderRadius: 4,
+                              padding: "1px 6px", letterSpacing: "0.04em",
+                              display: "inline-block", marginTop: 2,
+                            }}>
+                              {p.origem_importacao}
+                            </span>
+                          )}
                         </td>
                         <td style={{ padding: "0 20px" }}>
                           {p.preco_venda != null ? (
@@ -316,6 +381,12 @@ export default function MeusProdutos() {
           reposicao: reposicaoByProductId.has(editProduct.id),
           simulacao: simulacaoByProductId.has(editProduct.id),
         } : undefined}
+      />
+
+      <ImportProductsModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        existingProducts={existingProductsForImport}
       />
     </div>
   );
