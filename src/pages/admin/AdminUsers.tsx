@@ -528,7 +528,7 @@ export default function AdminUsers() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => setActionsDialog({ open: true, user })}
+                            onClick={() => { setActionsDialog({ open: true, user }); }}
                           >
                             <MoreHorizontal className="h-4 w-4" />
                             <span className="sr-only">Abrir menu</span>
