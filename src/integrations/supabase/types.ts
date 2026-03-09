@@ -1202,6 +1202,60 @@ export type Database = {
         }
         Relationships: []
       }
+      sku_reposicao: {
+        Row: {
+          created_at: string
+          data_ultimo_pedido: string | null
+          estoque_atual: number
+          estoque_seguranca: number
+          id: string
+          lead_time_maximo: number
+          lead_time_medio: number
+          nome_peca: string
+          observacoes: string | null
+          sku: string
+          tipo_reposicao: Database["public"]["Enums"]["tipo_reposicao"]
+          updated_at: string
+          user_id: string
+          variante: string | null
+          vendas_por_dia: number
+        }
+        Insert: {
+          created_at?: string
+          data_ultimo_pedido?: string | null
+          estoque_atual?: number
+          estoque_seguranca?: number
+          id?: string
+          lead_time_maximo?: number
+          lead_time_medio?: number
+          nome_peca: string
+          observacoes?: string | null
+          sku: string
+          tipo_reposicao?: Database["public"]["Enums"]["tipo_reposicao"]
+          updated_at?: string
+          user_id: string
+          variante?: string | null
+          vendas_por_dia?: number
+        }
+        Update: {
+          created_at?: string
+          data_ultimo_pedido?: string | null
+          estoque_atual?: number
+          estoque_seguranca?: number
+          id?: string
+          lead_time_maximo?: number
+          lead_time_medio?: number
+          nome_peca?: string
+          observacoes?: string | null
+          sku?: string
+          tipo_reposicao?: Database["public"]["Enums"]["tipo_reposicao"]
+          updated_at?: string
+          user_id?: string
+          variante?: string | null
+          vendas_por_dia?: number
+        }
+        Relationships: []
+      }
       tarefas: {
         Row: {
           created_at: string
@@ -1611,6 +1665,7 @@ export type Database = {
       plan_type: "global" | "individual" | "admin_personalizado"
       task_origin: "sistema" | "admin" | "mentorado"
       task_status: "a_fazer" | "em_andamento" | "concluida" | "cancelada"
+      tipo_reposicao: "producao_propria" | "compra_fornecedor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1776,6 +1831,7 @@ export const Constants = {
       plan_type: ["global", "individual", "admin_personalizado"],
       task_origin: ["sistema", "admin", "mentorado"],
       task_status: ["a_fazer", "em_andamento", "concluida", "cancelada"],
+      tipo_reposicao: ["producao_propria", "compra_fornecedor"],
     },
   },
 } as const
