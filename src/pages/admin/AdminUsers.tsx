@@ -544,79 +544,13 @@ export default function AdminUsers() {
         </Card>
       </div>
 
-      <Dialog
+      <UserEditSheet
+        user={actionsDialog.user}
         open={actionsDialog.open}
         onOpenChange={(open) => setActionsDialog({ open, user: open ? actionsDialog.user : null })}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Ações do usuário</DialogTitle>
-            <DialogDescription>
-              {actionsDialog.user?.email || "Selecione um usuário"}
-            </DialogDescription>
-          </DialogHeader>
-
-          {actionsDialog.user && (
-            <div className="grid gap-1 py-2">
-              <Button variant="ghost" className="justify-start" onClick={() => { setEditNameDialog({ open: true, user: actionsDialog.user }); setEditedName(actionsDialog.user.full_name || ""); setActionsDialog({ open: false, user: null }); }}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Editar nome
-              </Button>
-
-              <Button variant="ghost" className="justify-start" onClick={() => { setSuspendDialog({ open: true, user: actionsDialog.user, action: actionsDialog.user.access_status === "suspended" ? "active" : "suspended" }); setActionsDialog({ open: false, user: null }); }}>
-                {actionsDialog.user.access_status === "suspended" ? <Check className="mr-2 h-4 w-4" /> : <UserX className="mr-2 h-4 w-4" />}
-                {actionsDialog.user.access_status === "suspended" ? "Liberar acesso" : "Suspender acesso"}
-              </Button>
-
-              <Button variant="ghost" className="justify-start" onClick={() => { setResetPasswordDialog({ open: true, user: actionsDialog.user }); setTempPassword(""); setActionsDialog({ open: false, user: null }); }}>
-                <Key className="mr-2 h-4 w-4" />
-                Resetar senha
-              </Button>
-
-              <div className="my-1 border-t border-border" />
-
-              <Button variant="ghost" className="justify-start" onClick={() => { setPlanDialog({ open: true, user: actionsDialog.user }); setSelectedPlan(actionsDialog.user.plan_type); setActionsDialog({ open: false, user: null }); }}>
-                <CreditCard className="mr-2 h-4 w-4" />
-                Alterar plano
-              </Button>
-
-              <Button variant="ghost" className="justify-start" onClick={() => { setExpirationDialog({ open: true, user: actionsDialog.user }); setExpirationDate(actionsDialog.user.access_expires_at?.split("T")[0] || ""); setActionsDialog({ open: false, user: null }); }}>
-                <Calendar className="mr-2 h-4 w-4" />
-                Definir expiração
-              </Button>
-
-              <div className="my-1 border-t border-border" />
-
-              <Button variant="ghost" className="justify-start" onClick={() => { setPlanoUser(actionsDialog.user); setActionsDialog({ open: false, user: null }); }}>
-                <ClipboardList className="mr-2 h-4 w-4" />
-                Plano de Ação
-              </Button>
-
-              <Button variant="ghost" className="justify-start" onClick={() => { updateUserRole(actionsDialog.user.user_id, !actionsDialog.user.isAdmin); setActionsDialog({ open: false, user: null }); }}>
-                <Shield className="mr-2 h-4 w-4" />
-                {actionsDialog.user.isAdmin ? "Remover admin" : "Tornar admin"}
-              </Button>
-
-              <Button variant="ghost" className="justify-start" onClick={() => { updateUserFlag(actionsDialog.user.user_id, "is_mentorado", !actionsDialog.user.is_mentorado_deprecated); setActionsDialog({ open: false, user: null }); }}>
-                <Crown className="mr-2 h-4 w-4" />
-                {actionsDialog.user.is_mentorado_deprecated ? "Desmarcar Mentorado" : "Marcar como Mentorado"}
-              </Button>
-
-              <Button variant="ghost" className="justify-start" onClick={() => { updateUserFlag(actionsDialog.user.user_id, "is_w3_client", !actionsDialog.user.is_w3_client_deprecated); setActionsDialog({ open: false, user: null }); }}>
-                <Users className="mr-2 h-4 w-4" />
-                {actionsDialog.user.is_w3_client_deprecated ? "Desmarcar Cliente W3" : "Marcar como Cliente W3"}
-              </Button>
-
-              <div className="my-1 border-t border-border" />
-
-              <Button variant="ghost" className="justify-start text-destructive hover:text-destructive" onClick={() => { setDeleteDialog({ open: true, user: actionsDialog.user }); setActionsDialog({ open: false, user: null }); }}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Remover usuário
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+        onRefresh={fetchUsers}
+        onViewPlano={(u) => { setPlanoUser(u); setActionsDialog({ open: false, user: null }); }}
+      />
 
       {/* Dialog Plano */}
       <Dialog open={planDialog.open} onOpenChange={(open) => { setPlanDialog({ open, user: open ? planDialog.user : null }); if (!open) setSelectedPlan(""); }}>
