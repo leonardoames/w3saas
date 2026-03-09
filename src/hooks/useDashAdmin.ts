@@ -9,8 +9,8 @@ export interface MentoradoRow {
   full_name: string | null;
   access_status: string;
   plan_type: string;
-  is_mentorado_deprecated: boolean;
-  is_w3_client_deprecated: boolean;
+  is_mentorado: boolean;
+  is_w3_client: boolean;
   access_expires_at: string | null;
   created_at: string;
   last_login_at: string | null;
@@ -53,10 +53,10 @@ export function useDashAdmin() {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
-        .eq("is_mentorado_deprecated", true)
+        .eq("is_mentorado", true)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as MentoradoRow[];
+      return (data || []) as unknown as MentoradoRow[];
     },
   });
 
@@ -129,22 +129,16 @@ export function useDashAdmin() {
       ensureUser(row.user_id);
       const a = agg[row.user_id];
       const val = Number(row.receita_paga || 0);
-
       if (inPeriod) {
         a.faturamento += val;
         a.sessoes += Number(row.sessoes || 0);
         a.investimento += Number(row.investimento || 0);
         a.pedidos += Number(row.pedidos_pagos || 0);
       }
-
-      // Monthly trend is always calculated (independent of period filter)
       if (row.data) {
         const d = parseISO(String(row.data).slice(0, 10));
-        if (!isBefore(d, thisMonthStart)) {
-          a.revenueThisMonth += val;
-        } else if (!isBefore(d, lastMonthStart) && isBefore(d, thisMonthStart)) {
-          a.revenueLastMonth += val;
-        }
+        if (!isBefore(d, thisMonthStart)) a.revenueThisMonth += val;
+        else if (!isBefore(d, lastMonthStart) && isBefore(d, thisMonthStart)) a.revenueLastMonth += val;
       }
     }
 
@@ -153,21 +147,16 @@ export function useDashAdmin() {
       ensureUser(row.user_id);
       const a = agg[row.user_id];
       const val = Number(row.faturamento || 0) + Number(row.vendas_valor || 0);
-
       if (inPeriod) {
         a.faturamento += val;
         a.sessoes += Number(row.sessoes || 0);
         a.investimento += Number(row.investimento_trafego || 0);
         a.pedidos += Number(row.vendas_quantidade || 0);
       }
-
       if (row.data) {
         const d = parseISO(String(row.data).slice(0, 10));
-        if (!isBefore(d, thisMonthStart)) {
-          a.revenueThisMonth += val;
-        } else if (!isBefore(d, lastMonthStart) && isBefore(d, thisMonthStart)) {
-          a.revenueLastMonth += val;
-        }
+        if (!isBefore(d, thisMonthStart)) a.revenueThisMonth += val;
+        else if (!isBefore(d, lastMonthStart) && isBefore(d, thisMonthStart)) a.revenueLastMonth += val;
       }
     }
 
@@ -281,17 +270,13 @@ export function useDashAdmin() {
     for (const row of dailyRows) {
       if (!row.data || !mentoradoIds.has(row.user_id)) continue;
       const month = String(row.data).slice(0, 7);
-      if (month in monthMap) {
-        monthMap[month] += Number(row.receita_paga || 0);
-      }
+      if (month in monthMap) monthMap[month] += Number(row.receita_paga || 0);
     }
 
     for (const row of metricsRows) {
       if (!row.data || !mentoradoIds.has(row.user_id)) continue;
       const month = String(row.data).slice(0, 7);
-      if (month in monthMap) {
-        monthMap[month] += Number(row.faturamento || 0) + Number(row.vendas_valor || 0);
-      }
+      if (month in monthMap) monthMap[month] += Number(row.faturamento || 0) + Number(row.vendas_valor || 0);
     }
 
     return Object.entries(monthMap).map(([month, total]) => ({
@@ -306,10 +291,7 @@ export function useDashAdmin() {
     return [...mentorados]
       .sort((a, b) => (b.total_faturamento || 0) - (a.total_faturamento || 0))
       .slice(0, 5)
-      .map((m) => ({
-        name: m.full_name || m.email || "Sem nome",
-        revenue: m.total_faturamento || 0,
-      }));
+      .map((m) => ({ name: m.full_name || m.email || "Sem nome", revenue: m.total_faturamento || 0 }));
   }, [mentorados]);
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);

@@ -1122,8 +1122,8 @@ export type Database = {
           id: string
           is_admin_deprecated: boolean | null
           is_ecommerce: boolean | null
-          is_mentorado_deprecated: boolean
-          is_w3_client_deprecated: boolean
+          is_mentorado: boolean
+          is_w3_client: boolean
           last_login_at: string | null
           must_change_password: boolean
           onboarding_completed: boolean | null
@@ -1141,8 +1141,8 @@ export type Database = {
           id?: string
           is_admin_deprecated?: boolean | null
           is_ecommerce?: boolean | null
-          is_mentorado_deprecated?: boolean
-          is_w3_client_deprecated?: boolean
+          is_mentorado?: boolean
+          is_w3_client?: boolean
           last_login_at?: string | null
           must_change_password?: boolean
           onboarding_completed?: boolean | null
@@ -1160,8 +1160,8 @@ export type Database = {
           id?: string
           is_admin_deprecated?: boolean | null
           is_ecommerce?: boolean | null
-          is_mentorado_deprecated?: boolean
-          is_w3_client_deprecated?: boolean
+          is_mentorado?: boolean
+          is_w3_client?: boolean
           last_login_at?: string | null
           must_change_password?: boolean
           onboarding_completed?: boolean | null
@@ -1600,6 +1600,10 @@ export type Database = {
       }
       admin_set_expiration: {
         Args: { expiration_date: string; target_user_id: string }
+        Returns: undefined
+      }
+      admin_update_revenue_goal: {
+        Args: { new_goal: number; target_user_id: string }
         Returns: undefined
       }
       admin_update_role: {

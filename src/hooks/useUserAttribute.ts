@@ -1,24 +1,15 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useState } from "react";
 
+/**
+ * @deprecated user_attributes table was removed. Use profile flags directly via useAuth().
+ */
 export function useUserAttribute(attribute: string): boolean {
-  const { user } = useAuth();
-  const [value, setValue] = useState<boolean>(false);
+  const { profile } = useAuth();
+  if (!profile) return false;
 
-  useEffect(() => {
-    if (!user?.id) return;
+  // Map known attributes to profile fields
+  if (attribute === "is_mentorado") return profile.is_mentorado ?? false;
+  if (attribute === "is_w3_client") return profile.is_w3_client ?? false;
 
-    supabase
-      .from("user_attributes")
-      .select("value")
-      .eq("user_id", user.id)
-      .eq("attribute", attribute)
-      .maybeSingle()
-      .then(({ data }) => {
-        setValue(data?.value === "true");
-      });
-  }, [user?.id, attribute]);
-
-  return value;
+  return false;
 }

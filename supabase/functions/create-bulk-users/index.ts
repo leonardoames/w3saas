@@ -35,20 +35,19 @@ Deno.serve(async (req) => {
 
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Verify caller using getClaims
+    // Verify caller is authenticated
     const anonClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+    const { data: { user: callerUser }, error: userError } = await anonClient.auth.getUser();
 
-    if (claimsError || !claimsData?.claims) {
-      console.error("Claims error:", claimsError);
+    if (userError || !callerUser) {
+      console.error("Auth error:", userError);
       throw new Error("Not authenticated");
     }
 
-    const userId = claimsData.claims.sub as string;
+    const userId = callerUser.id;
 
     // Check if user is admin
     const { data: isAdmin } = await supabaseClient.rpc("is_admin_user", {
@@ -96,8 +95,8 @@ Deno.serve(async (req) => {
             .update({
               full_name: userData.name || null,
               plan_type: userData.plan || "manual",
-              is_mentorado_deprecated: userData.is_mentorado || false,
-              is_w3_client_deprecated: userData.is_w3_client || false,
+              is_mentorado: userData.is_mentorado || false,
+              is_w3_client: userData.is_w3_client || false,
               access_status: "active",
               must_change_password: true,
             })
@@ -107,32 +106,7 @@ Deno.serve(async (req) => {
             console.error("Profile update error:", profileError);
           }
 
-          // Dual-write to user_attributes (source of truth)
-          const attributesToInsert = [];
-          if (userData.is_mentorado) {
-            attributesToInsert.push({
-              user_id: newUser.user.id,
-              attribute: "is_mentorado",
-              value: "true",
-              notes: "Set during bulk user creation",
-            });
-          }
-          if (userData.is_w3_client) {
-            attributesToInsert.push({
-              user_id: newUser.user.id,
-              attribute: "is_w3_client",
-              value: "true",
-              notes: "Set during bulk user creation",
-            });
-          }
-          if (attributesToInsert.length > 0) {
-            const { error: attrError } = await supabaseClient
-              .from("user_attributes")
-              .upsert(attributesToInsert, { onConflict: "user_id,attribute" });
-            if (attrError) {
-              console.error("user_attributes upsert error:", attrError);
-            }
-          }
+          // Profile flags are the source of truth (user_attributes table removed)
 
           results.push({
             email: userData.email,
