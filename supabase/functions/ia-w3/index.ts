@@ -545,14 +545,25 @@ serve(async (req) => {
       systemPrompt += MODE_INSTRUCTIONS[mode];
     }
 
-    // Build messages array with chat history
+    // Build messages array
     const messages: Array<{ role: string; content: any }> = [{ role: "system", content: systemPrompt }];
 
-    // Add chat history if provided (last 10 turns = 20 messages roughly)
+    // Injeta base de conhecimento como mensagem separada para forçar atenção do modelo
+    if (knowledgeContext) {
+      messages.push({
+        role: "user",
+        content: `Aqui estão exemplos reais de consultorias da Mentoria Ames. Use o estilo, os benchmarks e o tom exatos desses exemplos para responder:\n${knowledgeContext}`
+      });
+      messages.push({
+        role: "assistant",
+        content: "Entendido. Vou usar esses exemplos reais como referência de estilo e benchmarks para responder com o mesmo tom direto e dados concretos da Mentoria Ames."
+      });
+    }
+
+    // Add chat history
     if (chatHistory && Array.isArray(chatHistory)) {
       const recentHistory = chatHistory.slice(-20);
       for (const msg of recentHistory) {
-        // For history messages with images, just send the text part
         messages.push({ role: msg.role, content: msg.content });
       }
     }
