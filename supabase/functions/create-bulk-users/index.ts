@@ -35,20 +35,19 @@ Deno.serve(async (req) => {
 
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Verify caller using getClaims
+    // Verify caller is authenticated
     const anonClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+    const { data: { user: callerUser }, error: userError } = await anonClient.auth.getUser();
 
-    if (claimsError || !claimsData?.claims) {
-      console.error("Claims error:", claimsError);
+    if (userError || !callerUser) {
+      console.error("Auth error:", userError);
       throw new Error("Not authenticated");
     }
 
-    const userId = claimsData.claims.sub as string;
+    const userId = callerUser.id;
 
     // Check if user is admin
     const { data: isAdmin } = await supabaseClient.rpc("is_admin_user", {
