@@ -27,6 +27,7 @@ import PlanoAcao from "./pages/PlanoAcao";
 import Calculadora from "./pages/Calculadora";
 import SimulacaoCenarios from "./pages/SimulacaoCenarios";
 import SimulacaoHistorico from "./pages/SimulacaoHistorico";
+import ReposicaoEstoque from "./pages/ReposicaoEstoque";
 // CRMInfluenciadores removed from routes
 import IAW3 from "./pages/IAW3";
 import IABrain from "./pages/IABrain";
@@ -85,6 +86,7 @@ const App = () => (
                         <Route path="/calculadora" element={<Calculadora />} />
                         <Route path="/simulacao" element={<SimulacaoCenarios />} />
                         <Route path="/simulacao/historico" element={<SimulacaoHistorico />} />
+                        <Route path="/reposicao" element={<ReposicaoEstoque />} />
                         {/* CRM Influenciadores removed */}
                         <Route path="/ia-w3" element={<IAW3 />} />
                         <Route path="/ia-w3/cerebro" element={<IABrain />} />
