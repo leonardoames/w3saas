@@ -48,6 +48,7 @@ import AdminModules from "./pages/admin/AdminModules";
 import AdminBrands from "./pages/admin/AdminBrands";
 import AdminPlanoAcao from "./pages/admin/AdminPlanoAcao";
 
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
