@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SkuReposicao, computeFields } from "@/hooks/useSkuReposicao";
 import { format } from "date-fns";
-import { ClipboardCheck, Package } from "lucide-react";
+import { ptBR } from "date-fns/locale";
 
 interface Props {
   item: SkuReposicao;
@@ -28,38 +26,58 @@ export function SkuDetailPanel({ item, onRegisterOrder, onQuickUpdateStock }: Pr
     setSaving(false);
   };
 
+  const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", marginBottom: 6 };
+  const valueStyle: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: "#FFFFFF" };
+
+  const metrics = [
+    { label: "Venda/dia", value: `${item.vendas_por_dia}`, unit: "unid/dia" },
+    { label: "Lead Time Médio", value: `${item.lead_time_medio}`, unit: "dias" },
+    { label: "Lead Time Máximo", value: `${item.lead_time_maximo}`, unit: "dias" },
+    { label: "Ponto de Reposição", value: `${computed.ponto_reposicao}`, unit: "unidades" },
+    { label: "Estoque de Segurança", value: `${item.estoque_seguranca}`, unit: "unidades" },
+    { label: "Estoque zera em", value: format(computed.data_zeramento, "dd/MMM/yyyy", { locale: ptBR }), unit: "" },
+  ];
+
+  const btnStyle: React.CSSProperties = {
+    background: "none",
+    border: "1px solid rgba(255,255,255,0.15)",
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 12,
+    padding: "6px 14px",
+    borderRadius: 6,
+    cursor: "pointer",
+  };
+
   return (
-    <div className="bg-card/50 border-t border-border/30 px-6 py-4 space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div>
-          <p className="text-xs text-muted-foreground/50 uppercase tracking-wider">Ponto de Reposição</p>
-          <p className="text-lg font-bold">{computed.ponto_reposicao} <span className="text-xs font-normal text-muted-foreground">un</span></p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground/50 uppercase tracking-wider">Estoque Segurança</p>
-          <p className="text-lg font-bold">{item.estoque_seguranca} <span className="text-xs font-normal text-muted-foreground">un</span></p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground/50 uppercase tracking-wider">Estoque Zera Em</p>
-          <p className="text-lg font-bold">{format(computed.data_zeramento, "dd/MM/yyyy")}</p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground/50 uppercase tracking-wider">Último Pedido</p>
-          <p className="text-lg font-bold">{item.data_ultimo_pedido ? format(new Date(item.data_ultimo_pedido + "T12:00:00"), "dd/MM/yyyy") : "—"}</p>
-        </div>
+    <div style={{ background: "#0f0f0f", borderTop: "1px solid rgba(255,255,255,0.05)", padding: 20 }}>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-5 mb-5">
+        {metrics.map((m) => (
+          <div key={m.label}>
+            <div style={labelStyle}>{m.label}</div>
+            <div style={valueStyle}>
+              {m.value}{m.unit && <span style={{ fontSize: 11, fontWeight: 400, color: "rgba(255,255,255,0.35)", marginLeft: 4 }}>{m.unit}</span>}
+            </div>
+          </div>
+        ))}
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <button onClick={handleRegister} disabled={saving} style={btnStyle}>
+          ✓ Registrar pedido feito
+        </button>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground whitespace-nowrap">Atualizar Estoque:</span>
-          <Input type="number" min={0} className="w-24" value={newStock} onChange={(e) => setNewStock(Number(e.target.value))} />
-          <Button size="sm" variant="outline" onClick={handleUpdateStock} disabled={saving}>
-            <Package className="h-3.5 w-3.5 mr-1" /> Salvar
-          </Button>
+          <input
+            type="number"
+            min={0}
+            value={newStock}
+            onChange={(e) => setNewStock(Number(e.target.value))}
+            className="outline-none"
+            style={{ width: 80, height: 32, background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, fontSize: 13, color: "white", padding: "0 10px", textAlign: "center" }}
+          />
+          <button onClick={handleUpdateStock} disabled={saving} style={btnStyle}>
+            Atualizar estoque
+          </button>
         </div>
-        <Button size="sm" onClick={handleRegister} disabled={saving} className="bg-primary hover:bg-primary/90">
-          <ClipboardCheck className="h-3.5 w-3.5 mr-1" /> Registrar Pedido Feito
-        </Button>
       </div>
     </div>
   );
