@@ -54,6 +54,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { BulkUserImportDialog } from "@/components/admin/BulkUserImportDialog";
 import { AdminWhatsAppConfig } from "@/components/admin/AdminWhatsAppConfig";
+import { UserEditSheet } from "@/components/admin/UserEditSheet";
 
 // Plano de Ação imports
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
