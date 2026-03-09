@@ -2,7 +2,7 @@ import { SidebarNavLink } from "./SidebarNavLink";
 import {
   LayoutDashboard, GraduationCap, ListChecks, Calculator, GitCompare,
   Sparkles, Brain, Store, ShoppingBag, CalendarDays, ChevronLeft,
-  ChevronRight, X, Shield, ChevronDown, BarChart3, BarChart2, Activity, Lightbulb, TrendingUp,
+  ChevronRight, X, Shield, ChevronDown, BarChart3, BarChart2, Activity, Lightbulb, TrendingUp, PackageSearch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
