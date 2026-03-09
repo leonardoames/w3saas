@@ -21,11 +21,12 @@ export function useAdminStatus() {
         return;
       }
 
-      const { data, error } = await supabase.from("profiles").select("is_admin").eq("user_id", user.id).maybeSingle();
+      // Use user_roles via RPC — single source of truth
+      const { data, error } = await supabase.rpc("is_admin", { _user_id: user.id });
 
       if (error) throw error;
 
-      setIsAdmin(data?.is_admin === true);
+      setIsAdmin(data === true);
     } catch (error) {
       console.error("Erro ao verificar admin:", error);
       setIsAdmin(false);

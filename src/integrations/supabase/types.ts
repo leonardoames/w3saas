@@ -1120,7 +1120,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
-          is_admin: boolean | null
+          is_admin_deprecated: boolean | null
           is_ecommerce: boolean | null
           is_mentorado: boolean
           is_w3_client: boolean
@@ -1139,7 +1139,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
-          is_admin?: boolean | null
+          is_admin_deprecated?: boolean | null
           is_ecommerce?: boolean | null
           is_mentorado?: boolean
           is_w3_client?: boolean
@@ -1158,7 +1158,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
-          is_admin?: boolean | null
+          is_admin_deprecated?: boolean | null
           is_ecommerce?: boolean | null
           is_mentorado?: boolean
           is_w3_client?: boolean
