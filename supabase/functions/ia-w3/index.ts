@@ -594,7 +594,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "ft:gpt-4o-mini-2024-07-18:personal:iaw3:DHEdHXbi",
         messages,
         max_tokens: 4096,
         temperature: 0.3,
