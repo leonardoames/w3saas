@@ -14,6 +14,11 @@ interface Results {
   shopeeTarifa: number;
   shopeeComissaoPct: number;
   shopeeComissaoRS: number;
+  logisticaReversaPct: number;
+  logisticaReversaRS: number;
+  channelTarifaFixa: number;
+  channelComissaoPct: number;
+  channelComissaoRS: number;
 }
 
 const costLabels: Record<string, string> = {
@@ -25,14 +30,46 @@ const costLabels: Record<string, string> = {
   extraFees: "Taxas Extras",
 };
 
-const shopeeLabels: Record<string, string> = {
-  mediaCost: "Shopee Ads",
+const channelMediaLabels: Record<string, string> = {
+  site: "Custo de Mídia",
+  shopee: "Shopee Ads",
+  temu: "TEMU Ads",
+  tiktokshop: "TikTok Ads / Comissão Afiliados",
+  "meli-classico": "Mercado Ads",
+  "meli-premium": "Mercado Ads",
+};
+
+const channelDisplayLabels: Record<string, string> = {
+  site: "SITE",
+  shopee: "SHOPEE",
+  temu: "TEMU",
+  tiktokshop: "TIKTOK SHOP",
+  shein: "SHEIN",
+  "meli-classico": "ML CLÁSSICO",
+  "meli-premium": "ML PREMIUM",
 };
 
 // Keys visible per channel — must match Calculadora.tsx
 const visibleKeysPerChannel: Record<string, string[]> = {
   site: ["mediaCost", "fixedCosts", "taxes", "gatewayFee", "platformFee", "extraFees"],
   shopee: ["mediaCost", "fixedCosts", "taxes", "extraFees"],
+  temu: ["mediaCost", "fixedCosts", "taxes", "extraFees"],
+  tiktokshop: ["mediaCost", "fixedCosts", "taxes", "extraFees"],
+  shein: ["fixedCosts", "taxes", "extraFees"],
+  "meli-classico": ["mediaCost", "fixedCosts", "taxes", "extraFees"],
+  "meli-premium": ["mediaCost", "fixedCosts", "taxes", "extraFees"],
+};
+
+interface ChannelFixedInfo {
+  comissaoLabel: string;
+  tarifaLabel: string;
+}
+
+const channelFixedInfo: Record<string, ChannelFixedInfo> = {
+  tiktokshop: { comissaoLabel: "Comissão TikTok (12%)", tarifaLabel: "Tarifa Fixa (R$2,00)" },
+  shein: { comissaoLabel: "Comissão Shein (18%)", tarifaLabel: "Tarifa Fixa (R$4,00)" },
+  "meli-classico": { comissaoLabel: "Comissão ML Clássico (14%)", tarifaLabel: "Tarifa Fixa (R$6,00)" },
+  "meli-premium": { comissaoLabel: "Comissão ML Premium (19%)", tarifaLabel: "Tarifa Fixa (R$6,00)" },
 };
 
 export function generatePricingPDF(inputs: ProductInputs, results: Results, channel: Channel = "site") {
@@ -40,7 +77,7 @@ export function generatePricingPDF(inputs: ProductInputs, results: Results, chan
   const now = new Date();
   const dateStr = now.toLocaleDateString("pt-BR") + " " + now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   const productName = inputs.title?.trim() || "Sem título";
-  const channelLabel = channel === "shopee" ? "SHOPEE" : "SITE";
+  const channelLabel = channelDisplayLabels[channel] || "SITE";
 
   const pageW = doc.internal.pageSize.getWidth();
   let y = 20;
@@ -81,7 +118,9 @@ export function generatePricingPDF(inputs: ProductInputs, results: Results, chan
   const tableBody: string[][] = Object.keys(costLabels)
     .filter((key) => visibleKeys.includes(key))
     .map((key) => {
-      const label = channel === "shopee" && shopeeLabels[key] ? shopeeLabels[key] : costLabels[key];
+      const label = key === "mediaCost" && channelMediaLabels[channel]
+        ? channelMediaLabels[channel]
+        : costLabels[key];
       return [
         label,
         `${results.pcts[key].toFixed(1)}%`,
@@ -89,10 +128,27 @@ export function generatePricingPDF(inputs: ProductInputs, results: Results, chan
       ];
     });
 
+  // Shopee extra rows
   if (channel === "shopee") {
     tableBody.push(
       ["Tarifa Fixa Shopee", "—", `R$ ${results.shopeeTarifa.toFixed(2)}`],
       ["Comissão Shopee", `${results.shopeeComissaoPct}%`, `R$ ${results.shopeeComissaoRS.toFixed(2)}`],
+    );
+  }
+
+  // TEMU logística reversa
+  if (channel === "temu") {
+    tableBody.push(
+      ["Logística Reversa (sobre custo)", `${results.logisticaReversaPct.toFixed(1)}%`, `R$ ${results.logisticaReversaRS.toFixed(2)}`],
+    );
+  }
+
+  // Fixed commission channels
+  const fixedInfo = channelFixedInfo[channel];
+  if (fixedInfo) {
+    tableBody.push(
+      [fixedInfo.tarifaLabel, "—", `R$ ${results.channelTarifaFixa.toFixed(2)}`],
+      [fixedInfo.comissaoLabel, `${results.channelComissaoPct}%`, `R$ ${results.channelComissaoRS.toFixed(2)}`],
     );
   }
 

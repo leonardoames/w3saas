@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { motion, AnimatePresence } from "motion/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
-export type Channel = "site" | "shopee";
+export type Channel = "site" | "shopee" | "temu" | "tiktokshop" | "shein" | "meli-classico" | "meli-premium";
 
 export interface ProductInputs {
   title: string;
@@ -26,6 +26,7 @@ export interface ProductInputs {
   gatewayFee: string;
   platformFee: string;
   extraFees: string;
+  logisticaReversa: string;
 }
 
 const defaultInputs: ProductInputs = {
@@ -38,6 +39,7 @@ const defaultInputs: ProductInputs = {
   gatewayFee: "",
   platformFee: "",
   extraFees: "",
+  logisticaReversa: "",
 };
 
 /* ── Shopee-specific cost helpers ── */
@@ -52,10 +54,41 @@ function getShopeeComissaoPct(preco: number): number {
   return preco <= 79.99 ? 20 : 14;
 }
 
+/* ── Channel config for fixed commissions/tariffs ── */
+interface ChannelFixedCosts {
+  tarifaFixa: number;
+  comissaoPct: number;
+  comissaoLabel: string;
+  tarifaLabel: string;
+}
+
+const channelFixedCosts: Partial<Record<Channel, ChannelFixedCosts>> = {
+  tiktokshop: { tarifaFixa: 2, comissaoPct: 12, comissaoLabel: "Comissão TikTok (12%)", tarifaLabel: "Tarifa Fixa (R$2,00)" },
+  shein: { tarifaFixa: 4, comissaoPct: 18, comissaoLabel: "Comissão Shein (18%)", tarifaLabel: "Tarifa Fixa (R$4,00)" },
+  "meli-classico": { tarifaFixa: 6, comissaoPct: 14, comissaoLabel: "Comissão ML Clássico (14%)", tarifaLabel: "Tarifa Fixa (R$6,00)" },
+  "meli-premium": { tarifaFixa: 6, comissaoPct: 19, comissaoLabel: "Comissão ML Premium (19%)", tarifaLabel: "Tarifa Fixa (R$6,00)" },
+};
+
 // Keys visible per channel — hidden fields are excluded from calculation
 const visibleKeysPerChannel: Record<Channel, (keyof ProductInputs)[]> = {
   site: ["mediaCost", "fixedCosts", "taxes", "gatewayFee", "platformFee", "extraFees"],
   shopee: ["mediaCost", "fixedCosts", "taxes", "extraFees"],
+  temu: ["mediaCost", "fixedCosts", "taxes", "extraFees"],
+  tiktokshop: ["mediaCost", "fixedCosts", "taxes", "extraFees"],
+  shein: ["fixedCosts", "taxes", "extraFees"],
+  "meli-classico": ["mediaCost", "fixedCosts", "taxes", "extraFees"],
+  "meli-premium": ["mediaCost", "fixedCosts", "taxes", "extraFees"],
+};
+
+/* ── Media cost label per channel ── */
+const mediaCostLabel: Record<Channel, string> = {
+  site: "Custo de Mídia",
+  shopee: "Shopee Ads",
+  temu: "TEMU Ads",
+  tiktokshop: "TikTok Ads / Comissão Afiliados",
+  shein: "Custo de Mídia", // hidden for shein but fallback
+  "meli-classico": "Mercado Ads",
+  "meli-premium": "Mercado Ads",
 };
 
 export function useCalculatorResults(inputs: ProductInputs, channel: Channel) {
@@ -85,11 +118,31 @@ export function useCalculatorResults(inputs: ProductInputs, channel: Channel) {
       .filter(([k]) => visibleKeys.includes(k as keyof ProductInputs))
       .reduce((a, [, v]) => a + v, 0);
 
+    // Shopee
     const shopeeTarifa = channel === "shopee" ? getShopeeTarifa(sellingPrice) : 0;
     const shopeeComissaoPct = channel === "shopee" ? getShopeeComissaoPct(sellingPrice) : 0;
     const shopeeComissaoRS = (sellingPrice * shopeeComissaoPct) / 100;
 
-    const custoVendaTotal = pctCostSum + shopeeTarifa + shopeeComissaoRS;
+    // TEMU — logística reversa sobre custo
+    const logisticaReversaPct = channel === "temu" ? parseFloat(inputs.logisticaReversa || "0") : 0;
+    const logisticaReversaRS = (productCost * logisticaReversaPct) / 100;
+
+    // Fixed commission channels (tiktokshop, shein, meli-classico, meli-premium)
+    const fixedConfig = channelFixedCosts[channel];
+    const channelTarifaFixa = fixedConfig?.tarifaFixa ?? 0;
+    const channelComissaoPct = fixedConfig?.comissaoPct ?? 0;
+    const channelComissaoRS = (sellingPrice * channelComissaoPct) / 100;
+
+    // Total cost calculation
+    let custoVendaTotal = pctCostSum;
+    if (channel === "shopee") {
+      custoVendaTotal += shopeeTarifa + shopeeComissaoRS;
+    } else if (channel === "temu") {
+      custoVendaTotal += logisticaReversaRS;
+    } else if (fixedConfig) {
+      custoVendaTotal += channelTarifaFixa + channelComissaoRS;
+    }
+
     const custoTotal = productCost + custoVendaTotal;
     const lucroLiquido = sellingPrice - custoTotal;
     const margemPct = sellingPrice > 0 ? (lucroLiquido / sellingPrice) * 100 : 0;
@@ -97,27 +150,34 @@ export function useCalculatorResults(inputs: ProductInputs, channel: Channel) {
     return {
       sellingPrice, productCost, pcts, values,
       pctCostSum, shopeeTarifa, shopeeComissaoPct, shopeeComissaoRS,
+      logisticaReversaPct, logisticaReversaRS,
+      channelTarifaFixa, channelComissaoPct, channelComissaoRS,
       custoVendaTotal, custoTotal, lucroLiquido, margemPct,
       isValid: sellingPrice > 0,
     };
   }, [inputs, channel]);
 }
 
-const allCostRows: { key: keyof ReturnType<typeof useCalculatorResults>["pcts"]; label: string; shopeeLabel?: string; inputKey: keyof ProductInputs; tooltip: string; channels: Channel[] }[] = [
-  { key: "mediaCost", label: "Custo de Mídia", shopeeLabel: "Shopee Ads", inputKey: "mediaCost", tooltip: "Percentual do faturamento investido em anúncios (Meta Ads, Google Ads, etc.)", channels: ["site", "shopee"] },
-  { key: "fixedCosts", label: "Custos Fixos", inputKey: "fixedCosts", tooltip: "Aluguel, salários, internet, ferramentas — divididos pelo faturamento mensal", channels: ["site", "shopee"] },
-  { key: "taxes", label: "Impostos", inputKey: "taxes", tooltip: "Alíquota de impostos sobre a venda (Simples Nacional, Lucro Presumido, etc.)", channels: ["site", "shopee"] },
+const allCostRows: { key: keyof ReturnType<typeof useCalculatorResults>["pcts"]; label: string; inputKey: keyof ProductInputs; tooltip: string; channels: Channel[] }[] = [
+  { key: "mediaCost", label: "Custo de Mídia", inputKey: "mediaCost", tooltip: "Percentual do faturamento investido em anúncios (Meta Ads, Google Ads, etc.)", channels: ["site", "shopee", "temu", "tiktokshop", "meli-classico", "meli-premium"] },
+  { key: "fixedCosts", label: "Custos Fixos", inputKey: "fixedCosts", tooltip: "Aluguel, salários, internet, ferramentas — divididos pelo faturamento mensal", channels: ["site", "shopee", "temu", "tiktokshop", "shein", "meli-classico", "meli-premium"] },
+  { key: "taxes", label: "Impostos", inputKey: "taxes", tooltip: "Alíquota de impostos sobre a venda (Simples Nacional, Lucro Presumido, etc.)", channels: ["site", "shopee", "temu", "tiktokshop", "shein", "meli-classico", "meli-premium"] },
   { key: "gatewayFee", label: "Taxa Gateway", inputKey: "gatewayFee", tooltip: "Taxa cobrada pelo meio de pagamento (Mercado Pago, PagSeguro, Stripe, etc.)", channels: ["site"] },
   { key: "platformFee", label: "Taxa Plataforma", inputKey: "platformFee", tooltip: "Percentual cobrado pela plataforma de e-commerce (Shopify, Nuvemshop, etc.)", channels: ["site"] },
-  { key: "extraFees", label: "Taxas Extras", inputKey: "extraFees", tooltip: "Outras taxas como antifraude, frete grátis subsidiado, etc.", channels: ["site", "shopee"] },
+  { key: "extraFees", label: "Taxas Extras", inputKey: "extraFees", tooltip: "Outras taxas como antifraude, frete grátis subsidiado, etc.", channels: ["site", "shopee", "temu", "tiktokshop", "shein", "meli-classico", "meli-premium"] },
 ];
 
-const disabledChannels = [
-  { value: "temu", label: "TEMU" },
-  { value: "tiktokshop", label: "TikTok Shop" },
-  { value: "shein", label: "SHEIN" },
-  { value: "meli", label: "Mercado Livre" },
+const channelTabs: { value: Channel; label: string }[] = [
+  { value: "site", label: "🌐 SITE" },
+  { value: "shopee", label: "🟠 SHOPEE" },
+  { value: "temu", label: "🔶 TEMU" },
+  { value: "tiktokshop", label: "🎵 TIKTOK" },
+  { value: "shein", label: "🖤 SHEIN" },
+  { value: "meli-classico", label: "🟡 ML Clássico" },
+  { value: "meli-premium", label: "⭐ ML Premium" },
 ];
+
+const channelHasAutoRules = (ch: Channel) => ch !== "site";
 
 export default function Calculadora() {
   const [inputs, setInputs] = useState<ProductInputs>(defaultInputs);
@@ -153,10 +213,6 @@ export default function Calculadora() {
   };
 
   const handleChannelChange = (val: string) => {
-    if (disabledChannels.some((c) => c.value === val)) {
-      toast.info("Disponível em breve");
-      return;
-    }
     if (val !== channel) {
       setChannel(val as Channel);
       toast.info("Alguns custos foram ocultados para este canal.", { duration: 3000 });
@@ -174,6 +230,7 @@ export default function Calculadora() {
       gatewayFee: product.gateway_fee_pct?.toString() || "",
       platformFee: product.platform_fee_pct?.toString() || "",
       extraFees: product.extra_fees_pct?.toString() || "",
+      logisticaReversa: "",
     };
     setInputs(loaded);
     setSavedInputs(loaded);
@@ -232,6 +289,14 @@ export default function Calculadora() {
       if (results.shopeeComissaoRS > maxVal) { maxKey = "shopeeComissao"; maxVal = results.shopeeComissaoRS; }
       if (results.shopeeTarifa > maxVal) { maxKey = "shopeeTarifa"; }
     }
+    if (channel === "temu") {
+      if (results.logisticaReversaRS > maxVal) { maxKey = "logisticaReversa"; }
+    }
+    const fixedConfig = channelFixedCosts[channel];
+    if (fixedConfig) {
+      if (results.channelComissaoRS > maxVal) { maxKey = "channelComissao"; maxVal = results.channelComissaoRS; }
+      if (results.channelTarifaFixa > maxVal) { maxKey = "channelTarifa"; }
+    }
     return maxVal > 0 ? maxKey : "";
   }, [results, channel, visibleKeys]);
 
@@ -274,15 +339,12 @@ export default function Calculadora() {
           <CardContent className="py-3 px-4">
             <div className="flex items-center gap-3 flex-wrap">
               <Label className="text-xs text-muted-foreground uppercase tracking-wide font-semibold shrink-0">Canal</Label>
-              <div className="flex gap-1">
-                {[
-                  { value: "site", label: "🌐 SITE" },
-                  { value: "shopee", label: "🟠 SHOPEE" },
-                ].map((ch) => (
+              <div className="flex gap-1 flex-wrap">
+                {channelTabs.map((ch) => (
                   <button
                     key={ch.value}
                     onClick={() => handleChannelChange(ch.value)}
-                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                       channel === ch.value
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "bg-muted text-muted-foreground hover:bg-accent"
@@ -291,17 +353,8 @@ export default function Calculadora() {
                     {ch.label}
                   </button>
                 ))}
-                {disabledChannels.map((ch) => (
-                  <button
-                    key={ch.value}
-                    onClick={() => toast.info("Disponível em breve")}
-                    className="px-3 py-1.5 rounded-md text-xs text-muted-foreground/50 bg-muted/50 cursor-not-allowed"
-                  >
-                    {ch.label}
-                  </button>
-                ))}
               </div>
-              {channel === "shopee" && (
+              {channelHasAutoRules(channel) && (
                 <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                   Regras automáticas aplicadas
                 </span>
@@ -375,6 +428,7 @@ export default function Calculadora() {
                 </div>
                 {costRows.map((row, idx) => {
                   const isMax = maxCostKey === row.key;
+                  const displayLabel = row.key === "mediaCost" ? mediaCostLabel[channel] : row.label;
                   return (
                     <div
                       key={row.key}
@@ -383,7 +437,7 @@ export default function Calculadora() {
                       }`}
                     >
                       <div className="flex items-center gap-1">
-                        <Label className="text-xs truncate">{channel === "shopee" && row.shopeeLabel ? row.shopeeLabel : row.label}</Label>
+                        <Label className="text-xs truncate">{displayLabel}</Label>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Info className="h-3 w-3 text-muted-foreground/50 shrink-0 cursor-help" />
@@ -416,6 +470,39 @@ export default function Calculadora() {
                   );
                 })}
 
+                {/* TEMU exclusive: Logística Reversa */}
+                {channel === "temu" && (
+                  <>
+                    <div className="border-t border-border my-1" />
+                    <div className={`grid grid-cols-[1fr_70px_80px] gap-2 items-center py-0.5 rounded-sm ${maxCostKey === "logisticaReversa" ? "bg-accent/50" : ""}`}>
+                      <div className="flex items-center gap-1">
+                        <Label className="text-xs truncate text-orange-400">Logística Reversa</Label>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3 w-3 text-orange-400/50 shrink-0 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[220px] text-xs">
+                            Percentual cobrado sobre o custo do produto em caso de devolução
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <div className="relative">
+                        <Input
+                          type="number" min="0" step="0.1" placeholder="0"
+                          value={inputs.logisticaReversa}
+                          onChange={(e) => updateInput("logisticaReversa", e.target.value)}
+                          className="pr-6 text-center h-8 text-xs"
+                        />
+                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px]">%</span>
+                      </div>
+                      <span className={`text-xs text-right tabular-nums text-orange-400 ${maxCostKey === "logisticaReversa" ? "font-semibold" : "font-medium"}`}>
+                        R$ {results.logisticaReversaRS.toFixed(2)}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground/60 pl-0.5">* Calculado sobre o custo do produto</span>
+                  </>
+                )}
+
                 {/* Shopee-specific rows */}
                 {channel === "shopee" && (
                   <>
@@ -438,6 +525,33 @@ export default function Calculadora() {
                       </span>
                       <span className={`text-xs text-right tabular-nums text-orange-400 ${maxCostKey === "shopeeComissao" ? "font-semibold" : "font-medium"}`}>
                         R$ {results.shopeeComissaoRS.toFixed(2)}
+                      </span>
+                    </div>
+                  </>
+                )}
+
+                {/* Fixed commission channel rows (tiktokshop, shein, meli-classico, meli-premium) */}
+                {channelFixedCosts[channel] && (
+                  <>
+                    <div className="border-t border-border my-1" />
+                    <div className={`grid grid-cols-[1fr_70px_80px] gap-2 items-center py-0.5 rounded-sm ${maxCostKey === "channelTarifa" ? "bg-accent/50" : ""}`}>
+                      <Label className="text-xs truncate text-orange-400 flex items-center gap-1">
+                        <Lock className="h-3 w-3" /> {channelFixedCosts[channel]!.tarifaLabel}
+                      </Label>
+                      <span className="text-xs text-center text-muted-foreground">—</span>
+                      <span className={`text-xs text-right tabular-nums text-orange-400 ${maxCostKey === "channelTarifa" ? "font-semibold" : "font-medium"}`}>
+                        R$ {results.channelTarifaFixa.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className={`grid grid-cols-[1fr_70px_80px] gap-2 items-center py-0.5 rounded-sm ${maxCostKey === "channelComissao" ? "bg-accent/50" : ""}`}>
+                      <Label className="text-xs truncate text-orange-400 flex items-center gap-1">
+                        <Lock className="h-3 w-3" /> {channelFixedCosts[channel]!.comissaoLabel}
+                      </Label>
+                      <span className="text-xs text-center tabular-nums text-orange-400">
+                        {results.channelComissaoPct}%
+                      </span>
+                      <span className={`text-xs text-right tabular-nums text-orange-400 ${maxCostKey === "channelComissao" ? "font-semibold" : "font-medium"}`}>
+                        R$ {results.channelComissaoRS.toFixed(2)}
                       </span>
                     </div>
                   </>
