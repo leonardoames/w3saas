@@ -685,8 +685,8 @@ export default function AdminUsers() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Adicionar Usuário */}
-      <Dialog open={addUserDialog} onOpenChange={(open) => {
+      {/* Dialog Adicionar Usuário — Drawer (7+ fields) */}
+      <Sheet open={addUserDialog} onOpenChange={(open) => {
         setAddUserDialog(open);
         if (!open) {
           setNewUserEmail(""); setNewUserName(""); setNewUserPlan("free");
@@ -694,12 +694,12 @@ export default function AdminUsers() {
           setNewUserMentorado(false); setNewUserW3Client(false);
         }
       }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Adicionar Novo Usuário</DialogTitle>
-            <DialogDescription>O usuário será criado com acesso imediato usando a senha temporária definida.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
+        <SheetContent side="right" className="w-full sm:w-[520px] bg-[#111111] border-l border-[#242424] p-0 flex flex-col">
+          <SheetHeader className="px-6 py-5 border-b border-[#242424]">
+            <SheetTitle className="text-foreground">Adicionar Novo Usuário</SheetTitle>
+            <p className="text-sm text-muted-foreground mt-1">O usuário será criado com acesso imediato usando a senha temporária definida.</p>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="newEmail">Email</Label>
               <Input id="newEmail" type="email" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} placeholder="usuario@email.com" />
@@ -724,6 +724,7 @@ export default function AdminUsers() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="border-t border-border/30 my-1" />
             <div className="space-y-3 pt-2">
               <div className="flex items-center space-x-2">
                 <Checkbox id="newUserAdmin" checked={newUserIsAdmin} onCheckedChange={(v) => setNewUserIsAdmin(v === true)} />
@@ -741,14 +742,14 @@ export default function AdminUsers() {
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <div className="px-6 py-4 border-t border-[#242424] flex justify-end gap-3">
             <Button variant="outline" onClick={() => setAddUserDialog(false)}>Cancelar</Button>
-            <Button onClick={sendInvite} disabled={addingUser || !newUserEmail.trim() || newUserPassword.length < 6}>
+            <Button onClick={sendInvite} disabled={addingUser || !newUserEmail.trim() || newUserPassword.length < 6} className="bg-primary hover:bg-primary/90">
               {addingUser ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Criando...</> : "Criar Usuário"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* AlertDialog Suspender/Liberar */}
       <AlertDialog open={suspendDialog.open} onOpenChange={(open) => setSuspendDialog({ open, user: open ? suspendDialog.user : null, action: suspendDialog.action })}>
