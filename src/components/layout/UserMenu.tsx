@@ -27,7 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export function UserMenu() {
   const navigate = useNavigate();
-  const { user, profile, attributeMap, signOut, refreshProfile } = useAuth();
+  const { user, profile, signOut, refreshProfile } = useAuth();
   const { toast } = useToast();
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const [fullName, setFullName] = useState("");
