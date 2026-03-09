@@ -269,7 +269,12 @@ export default function ReposicaoEstoque() {
                             />
                           </td>
                           <td style={{ padding: "0 20px" }}>
-                            <div style={{ fontWeight: 600, color: "#FFFFFF", fontSize: 13 }}>{item.nome_peca}</div>
+                            <div className="flex items-center gap-1.5">
+                              <span style={{ fontWeight: 600, color: "#FFFFFF", fontSize: 13 }}>{item.nome_peca}</span>
+                              {(item as any).product_id && (
+                                <span title="Vinculado ao catálogo de produtos" style={{ fontSize: 12, cursor: "default" }}>🔗</span>
+                              )}
+                            </div>
                             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
                               SKU: {item.sku}{item.variante ? ` · ${item.variante}` : ""}
                             </div>
