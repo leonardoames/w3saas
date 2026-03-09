@@ -222,6 +222,7 @@ export async function findOrCreateProduct(userId: string, form: {
     return (newProduct as any)?.id || null;
   } catch {
     return null;
+  }
 }
 
 /** Hook to auto-sync orphan sku_reposicao records (product_id IS NULL) into products catalog */
