@@ -32,6 +32,14 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     return <Navigate to="/auth" replace />;
   }
 
+  // Onboarding redirect (skip for admins)
+  if (profile && !profile.onboarding_completed && !isAdmin && !requireAdmin) {
+    // Only redirect if not already on onboarding
+    if (location.pathname !== "/onboarding") {
+      return <Navigate to="/onboarding" replace />;
+    }
+  }
+
   // Admin route check
   if (requireAdmin && !isAdmin) {
     return <Navigate to="/app" replace />;

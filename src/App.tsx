@@ -70,6 +70,16 @@ const App = () => (
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/acesso-bloqueado" element={<AcessoBloqueado />} />
 
+              {/* Onboarding route */}
+              <Route
+                path="/onboarding"
+                element={
+                  <ProtectedRoute>
+                    <Onboarding />
+                  </ProtectedRoute>
+                }
+              />
+
               {/* Protected app routes */}
               <Route
                 path="/app/*"
