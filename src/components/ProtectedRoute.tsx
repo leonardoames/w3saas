@@ -45,8 +45,8 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     return <Navigate to="/app" replace />;
   }
 
-  // Access check (not for admin routes, admins bypass this)
-  if (!requireAdmin && !hasAccess && !isAdmin) {
+  // Access check (not for admin routes, admins bypass this, onboarding bypasses this)
+  if (!requireAdmin && !hasAccess && !isAdmin && location.pathname !== "/onboarding") {
     return <Navigate to="/acesso-bloqueado" state={{ reason: accessDeniedReason }} replace />;
   }
 
