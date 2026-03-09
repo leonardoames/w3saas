@@ -8,8 +8,8 @@ interface Profile {
   email: string | null;
   full_name: string | null;
   access_status: "active" | "suspended";
-  is_mentorado_deprecated: boolean;
-  is_w3_client_deprecated: boolean;
+  is_mentorado: boolean;
+  is_w3_client: boolean;
   plan_type: "free" | "paid" | "manual";
   access_expires_at: string | null;
   last_login_at: string | null;
@@ -26,7 +26,6 @@ interface AuthContextType {
   isLoading: boolean;
   hasAccess: boolean;
   accessDeniedReason: string | null;
-  attributeMap: Record<string, boolean>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -41,38 +40,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [accessDeniedReason, setAccessDeniedReason] = useState<string | null>(null);
-  const [attributeMap, setAttributeMap] = useState<Record<string, boolean>>({});
   const [needsProfileRefresh, setNeedsProfileRefresh] = useState(false);
 
   const checkAccess = (
     userProfile: Profile | null,
     adminStatus: boolean,
-    isMentorado: boolean,
-    isW3Client: boolean,
   ): { hasAccess: boolean; reason: string | null } => {
-    if (adminStatus) {
-      return { hasAccess: true, reason: null };
-    }
-
-    if (!userProfile) {
-      return { hasAccess: false, reason: "Perfil não encontrado" };
-    }
-
-    if (userProfile.access_status === "suspended") {
-      return { hasAccess: false, reason: "Acesso suspenso" };
-    }
-
+    if (adminStatus) return { hasAccess: true, reason: null };
+    if (!userProfile) return { hasAccess: false, reason: "Perfil não encontrado" };
+    if (userProfile.access_status === "suspended") return { hasAccess: false, reason: "Acesso suspenso" };
     if (userProfile.access_expires_at) {
       const expiresAt = new Date(userProfile.access_expires_at);
-      if (expiresAt < new Date()) {
-        return { hasAccess: false, reason: "Assinatura expirada" };
-      }
+      if (expiresAt < new Date()) return { hasAccess: false, reason: "Assinatura expirada" };
     }
-
-    if (userProfile.plan_type === "free" && !isMentorado && !isW3Client) {
+    if (userProfile.plan_type === "free" && !userProfile.is_mentorado && !userProfile.is_w3_client) {
       return { hasAccess: false, reason: "Pagamento necessário" };
     }
-
     return { hasAccess: true, reason: null };
   };
 
@@ -81,41 +64,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setNeedsProfileRefresh(true);
   };
 
-  // Efeito separado para lidar com o auth state change
   useEffect(() => {
     let mounted = true;
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, newSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
-
-      console.log("Auth state changed:", event);
-
       setSession(newSession);
       setUser(newSession?.user ?? null);
-
       if (!newSession?.user) {
         setProfile(null);
         setIsAdmin(false);
         setHasAccess(false);
         setAccessDeniedReason(null);
-        setAttributeMap({});
         setIsLoading(false);
       } else {
-        // Garante que isLoading = true enquanto o perfil não for carregado
         setIsLoading(true);
         setNeedsProfileRefresh(true);
       }
     });
 
-    // Busca a sessão inicial
     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
       if (!mounted) return;
-
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
-
       if (existingSession?.user) {
         setNeedsProfileRefresh(true);
       } else {
@@ -123,21 +93,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []); // Array vazio - executa apenas uma vez
+    return () => { mounted = false; subscription.unsubscribe(); };
+  }, []);
 
-  // Efeito separado para buscar perfil (evita deadlock)
   useEffect(() => {
     if (!needsProfileRefresh || !user) return;
-
     let mounted = true;
 
     const fetchUserData = async () => {
       try {
-        // Busca o perfil
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("*")
@@ -156,27 +120,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Se não existe perfil, tenta criar um padrão
         if (!profileData) {
-          console.log("Profile not found, creating one...");
-
           const { data: newProfile, error: createError } = await supabase
             .from("profiles")
-            .insert([
-              {
-                user_id: user.id,
-                email: user.email,
-                access_status: "active",
-                is_mentorado_deprecated: false,
-                is_w3_client_deprecated: false,
-                plan_type: "free",
-              },
-            ])
+            .insert([{
+              user_id: user.id,
+              email: user.email,
+              access_status: "active",
+              is_mentorado: false,
+              is_w3_client: false,
+              plan_type: "free",
+            }])
             .select()
             .single();
 
           if (!mounted) return;
-
           if (createError) {
             console.error("Error creating profile:", createError);
             setProfile(null);
@@ -186,45 +144,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setNeedsProfileRefresh(false);
             return;
           }
-
-          setProfile(newProfile as Profile);
+          setProfile(newProfile as unknown as Profile);
         } else {
-          setProfile(profileData as Profile);
+          setProfile(profileData as unknown as Profile);
         }
 
-        // Busca atributos do usuário (fonte principal para is_mentorado / is_w3_client)
-        const { data: attributesData } = await supabase
-          .from("user_attributes")
-          .select("attribute, value")
-          .eq("user_id", user.id);
-
-        if (!mounted) return;
-
-        const newAttributeMap: Record<string, boolean> = Object.fromEntries(
-          (attributesData || []).map((a) => [a.attribute, a.value === "true"])
-        );
-        setAttributeMap(newAttributeMap);
-
-        // OR fallback: user_attributes is source of truth; deprecated column is safety net
-        const isMentorado =
-          newAttributeMap["is_mentorado"] || (profileData as Profile)?.is_mentorado_deprecated || false;
-        const isW3Client =
-          newAttributeMap["is_w3_client"] || (profileData as Profile)?.is_w3_client_deprecated || false;
-
-        // Busca status de admin
         const { data: adminData, error: adminError } = await supabase.rpc("is_admin", { _user_id: user.id });
-
         if (!mounted) return;
-
         const adminStatus = adminError ? false : adminData === true;
         setIsAdmin(adminStatus);
 
-        // Verifica acesso
-        const accessCheck = checkAccess((profileData as Profile) || null, adminStatus, isMentorado, isW3Client);
+        const typedProfile = (profileData || null) as unknown as Profile | null;
+        const accessCheck = checkAccess(typedProfile, adminStatus);
         setHasAccess(accessCheck.hasAccess);
         setAccessDeniedReason(accessCheck.reason);
 
-        // Atualiza last_login_at
         await supabase.from("profiles").update({ last_login_at: new Date().toISOString() }).eq("user_id", user.id);
       } catch (err) {
         if (!mounted) return;
@@ -241,31 +175,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     fetchUserData();
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [needsProfileRefresh, user]);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
-  };
+  const signOut = async () => { await supabase.auth.signOut(); };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        profile,
-        isAdmin,
-        isLoading,
-        hasAccess,
-        accessDeniedReason,
-        attributeMap,
-        signOut,
-        refreshProfile,
-      }}
-    >
+    <AuthContext.Provider value={{ user, session, profile, isAdmin, isLoading, hasAccess, accessDeniedReason, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
@@ -273,8 +189,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (context === undefined) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }
