@@ -27,6 +27,7 @@ import PlanoAcao from "./pages/PlanoAcao";
 import Calculadora from "./pages/Calculadora";
 import SimulacaoCenarios from "./pages/SimulacaoCenarios";
 import SimulacaoHistorico from "./pages/SimulacaoHistorico";
+import ReposicaoEstoque from "./pages/ReposicaoEstoque";
 // CRMInfluenciadores removed from routes
 import IAW3 from "./pages/IAW3";
 import IABrain from "./pages/IABrain";
