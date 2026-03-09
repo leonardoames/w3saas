@@ -176,7 +176,7 @@ export default function PlanoAcao() {
           <UserResourcesTab />
         </TabsContent>
 
-        {attributeMap["is_mentorado"] || profile?.is_mentorado_deprecated && (
+        {profile?.is_mentorado && (
           <TabsContent value="mapa-mental" className="mt-6">
             <MiroEmbed />
           </TabsContent>

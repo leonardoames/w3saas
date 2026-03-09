@@ -62,8 +62,8 @@ export function UserMenu() {
   };
 
   const getPlanLabel = () => {
-    const isMentorado = attributeMap["is_mentorado"] || profile?.is_mentorado_deprecated;
-    const isW3Client = attributeMap["is_w3_client"] || profile?.is_w3_client_deprecated;
+    const isMentorado = profile?.is_mentorado;
+    const isW3Client = profile?.is_w3_client;
     if (isMentorado) return "Plano Mentorado";
     if (isW3Client) return "Plano W3";
     if (profile?.plan_type === "paid") return "Plano Pago";
