@@ -1,61 +1,45 @@
 project_id = "jmbouivvkofocqaakenb"
 
-[functions.ia-w3]
-verify_jwt = false
-
-[functions.create-checkout]
-verify_jwt = false
-
-[functions.stripe-webhook]
-verify_jwt = false
-
-[functions.verify-checkout-session]
-verify_jwt = false
-
-[functions.influenciadores-api]
-verify_jwt = false
-
-[functions.parse-metrics-ai]
-verify_jwt = false
-
-[functions.scan-screenshot]
-verify_jwt = false
-
-[functions.process-ia-document]
-verify_jwt = false
-
-[functions.fetch-products]
-verify_jwt = false
-
-[functions.sync-shopify]
-verify_jwt = false
-
-[functions.sync-olist_tiny]
-verify_jwt = false
-
-[functions.sync-nuvemshop]
-verify_jwt = false
-
-[functions.nuvemshop-webhooks]
-verify_jwt = false
-
-[functions.shopify-oauth]
-verify_jwt = false
-
-[functions.create-bulk-users]
-verify_jwt = false
-
-[functions.admin-reset-password]
-verify_jwt = false
-
-[functions.sync-shopee]
-verify_jwt = false
-
-[functions.sync-shopee-ads]
-verify_jwt = false
-
-[functions.shopee-oauth]
-verify_jwt = false
-
-[functions.shopee-ads-oauth]
-verify_jwt = false
+[functions]
+  [functions.admin-reset-password]
+    verify_jwt = false
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.create-bulk-users]
+    verify_jwt = false
+  [functions.create-checkout]
+    verify_jwt = false
+  [functions.fetch-products]
+    verify_jwt = false
+  [functions.ia-w3]
+    verify_jwt = false
+  [functions.influenciadores-api]
+    verify_jwt = false
+  [functions.nuvemshop-webhooks]
+    verify_jwt = false
+  [functions.parse-metrics-ai]
+    verify_jwt = false
+  [functions.process-ia-document]
+    verify_jwt = false
+  [functions.scan-screenshot]
+    verify_jwt = false
+  [functions.shopee-ads-oauth]
+    verify_jwt = false
+  [functions.shopee-oauth]
+    verify_jwt = false
+  [functions.shopify-oauth]
+    verify_jwt = false
+  [functions.stripe-webhook]
+    verify_jwt = false
+  [functions.sync-nuvemshop]
+    verify_jwt = false
+  [functions.sync-olist_tiny]
+    verify_jwt = false
+  [functions.sync-shopee]
+    verify_jwt = false
+  [functions.sync-shopee-ads]
+    verify_jwt = false
+  [functions.sync-shopify]
+    verify_jwt = false
+  [functions.verify-checkout-session]
+    verify_jwt = false
