@@ -35,6 +35,7 @@ import Catalogo from "./pages/Catalogo";
 import Produtos from "./pages/Produtos";
 import CalendarioComercial from "./pages/CalendarioComercial";
 import Integracoes from "./pages/Integracoes";
+import MeusProdutos from "./pages/MeusProdutos";
 import ShopifyCallback from "./pages/ShopifyCallback";
 import ShopeeCallback from "./pages/ShopeeCallback";
 import ShopeeAdsCallback from "./pages/ShopeeAdsCallback";
