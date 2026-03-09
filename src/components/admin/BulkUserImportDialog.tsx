@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { FileUp, FileSpreadsheet, Loader2, Download, AlertCircle, CheckCircle2 } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,12 +55,10 @@ export function BulkUserImportDialog({ open, onOpenChange, onSuccess }: BulkUser
       const line = lines[i].trim();
       if (!line) continue;
 
-      // Skip header if present
       if (i === 0 && (line.toLowerCase().includes("email") || line.toLowerCase().includes("nome"))) {
         continue;
       }
 
-      // Try to parse as CSV
       const parts = line.split(/[,;\t]/).map(p => p.trim().replace(/^["']|["']$/g, ""));
       
       if (parts[0] && parts[0].includes("@")) {
@@ -119,7 +115,6 @@ export function BulkUserImportDialog({ open, onOpenChange, onSuccess }: BulkUser
       });
     }
 
-    // Reset input
     e.target.value = "";
   };
 
@@ -139,7 +134,6 @@ export function BulkUserImportDialog({ open, onOpenChange, onSuccess }: BulkUser
     setResults([]);
 
     try {
-      // Call edge function to create users with default password
       const { data, error } = await supabase.functions.invoke("create-bulk-users", {
         body: {
           users: users.map((u) => ({
@@ -149,7 +143,6 @@ export function BulkUserImportDialog({ open, onOpenChange, onSuccess }: BulkUser
             is_mentorado: u.is_mentorado ?? defaultMentorado,
             is_w3_client: u.is_w3_client ?? defaultW3Client,
           })),
-          // Password is generated server-side in the edge function
         },
       });
 
@@ -208,180 +201,182 @@ export function BulkUserImportDialog({ open, onOpenChange, onSuccess }: BulkUser
   const parsedUsers = parseCSVContent(pasteContent);
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Importar Usuários em Massa</DialogTitle>
-          <DialogDescription>
+    <Sheet open={open} onOpenChange={handleClose}>
+      <SheetContent
+        side="right"
+        className="w-full sm:w-[520px] bg-[#111111] border-l border-[#242424] p-0 flex flex-col"
+      >
+        <SheetHeader className="px-6 py-5 border-b border-[#242424]">
+          <SheetTitle className="text-foreground">Importar Usuários em Massa</SheetTitle>
+          <p className="text-sm text-muted-foreground mt-1">
             Adicione múltiplos usuários de uma vez. Cada usuário receberá um email para criar sua senha.
-          </DialogDescription>
-        </DialogHeader>
+          </p>
+        </SheetHeader>
 
-        {showResults ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium">Resultados da Importação</h3>
-              <div className="flex gap-2 text-sm">
-                <span className="text-green-600">
-                  ✓ {results.filter((r) => r.status === "success").length} sucesso
-                </span>
-                <span className="text-destructive">
-                  ✗ {results.filter((r) => r.status === "error").length} erros
-                </span>
-              </div>
-            </div>
-
-            <div className="border rounded-lg max-h-64 overflow-y-auto">
-              {results.map((result, i) => (
-                <div
-                  key={i}
-                  className={`flex items-center gap-2 px-3 py-2 border-b last:border-b-0 ${
-                    result.status === "error" ? "bg-destructive/10" : "bg-primary/5"
-                  }`}
-                >
-                  {result.status === "success" ? (
-                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
-                  )}
-                  <span className="font-mono text-sm truncate">{result.email}</span>
-                  <span className="text-xs text-muted-foreground ml-auto truncate max-w-[200px]">
-                    {result.message}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {showResults ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium">Resultados da Importação</h3>
+                <div className="flex gap-2 text-sm">
+                  <span className="text-green-600">
+                    ✓ {results.filter((r) => r.status === "success").length} sucesso
+                  </span>
+                  <span className="text-destructive">
+                    ✗ {results.filter((r) => r.status === "error").length} erros
                   </span>
                 </div>
-              ))}
-            </div>
+              </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={handleClose}>
-                Fechar
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowResults(false);
-                  setPasteContent("");
-                }}
-              >
+              <div className="border rounded-lg max-h-64 overflow-y-auto">
+                {results.map((result, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center gap-2 px-3 py-2 border-b last:border-b-0 ${
+                      result.status === "error" ? "bg-destructive/10" : "bg-primary/5"
+                    }`}
+                  >
+                    {result.status === "success" ? (
+                      <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                    )}
+                    <span className="font-mono text-sm truncate">{result.email}</span>
+                    <span className="text-xs text-muted-foreground ml-auto truncate max-w-[200px]">
+                      {result.message}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "paste" | "file")}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="paste">Colar Dados</TabsTrigger>
+                  <TabsTrigger value="file">Importar Arquivo</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="paste" className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Lista de Emails (um por linha ou separados por vírgula)</Label>
+                    <Textarea
+                      placeholder={"email1@exemplo.com,Nome do Usuário\nemail2@exemplo.com,Outro Nome\nemail3@exemplo.com"}
+                      value={pasteContent}
+                      onChange={(e) => setPasteContent(e.target.value)}
+                      rows={8}
+                      className="font-mono text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Formato: email, nome (opcional), plano (opcional), mentorado (sim/nao), cliente_w3 (sim/nao)
+                    </p>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="file" className="space-y-4">
+                  <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer">
+                    <Label htmlFor="bulk-file-upload" className="cursor-pointer block">
+                      <div className="flex justify-center gap-2 mb-4">
+                        <FileUp className="h-10 w-10 text-muted-foreground" />
+                        <FileSpreadsheet className="h-10 w-10 text-primary" />
+                      </div>
+                      <p className="text-sm font-medium text-foreground mb-2">
+                        Clique para selecionar arquivo CSV ou Excel
+                      </p>
+                      <p className="text-xs text-muted-foreground">Formatos suportados: CSV, TXT, XLSX, XLS</p>
+                    </Label>
+                    <Input
+                      id="bulk-file-upload"
+                      type="file"
+                      accept=".csv,.txt,.xlsx,.xls"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </div>
+
+                  <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-2">
+                    <Download className="h-4 w-4" />
+                    Baixar Template CSV
+                  </Button>
+                </TabsContent>
+              </Tabs>
+
+              <div className="border-t border-[hsl(var(--border)/0.3)] my-1" />
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Plano Padrão</Label>
+                  <Select value={defaultPlan} onValueChange={setDefaultPlan}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="free">Free</SelectItem>
+                      <SelectItem value="paid">Pago</SelectItem>
+                      <SelectItem value="manual">Manual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center space-x-2 pt-6">
+                  <input
+                    type="checkbox"
+                    id="default-mentorado"
+                    checked={defaultMentorado}
+                    onChange={(e) => setDefaultMentorado(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="default-mentorado" className="text-sm">
+                    Mentorado
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2 pt-6">
+                  <input
+                    type="checkbox"
+                    id="default-w3"
+                    checked={defaultW3Client}
+                    onChange={(e) => setDefaultW3Client(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="default-w3" className="text-sm">
+                    Cliente W3
+                  </Label>
+                </div>
+              </div>
+
+              {parsedUsers.length > 0 && (
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <h4 className="font-medium mb-2">Prévia ({parsedUsers.length} usuários)</h4>
+                  <div className="max-h-32 overflow-y-auto space-y-1">
+                    {parsedUsers.slice(0, 10).map((user, i) => (
+                      <div key={i} className="text-sm font-mono flex gap-2">
+                        <span className="text-primary">{user.email}</span>
+                        {user.name && <span className="text-muted-foreground">- {user.name}</span>}
+                      </div>
+                    ))}
+                    {parsedUsers.length > 10 && (
+                      <p className="text-xs text-muted-foreground">... e mais {parsedUsers.length - 10} usuários</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="px-6 py-4 border-t border-[#242424] flex justify-end gap-3">
+          {showResults ? (
+            <>
+              <Button variant="outline" onClick={handleClose}>Fechar</Button>
+              <Button onClick={() => { setShowResults(false); setPasteContent(""); }} className="bg-primary hover:bg-primary/90">
                 Importar Mais
               </Button>
-            </DialogFooter>
-          </div>
-        ) : (
-          <>
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "paste" | "file")}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="paste">Colar Dados</TabsTrigger>
-                <TabsTrigger value="file">Importar Arquivo</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="paste" className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Lista de Emails (um por linha ou separados por vírgula)</Label>
-                  <Textarea
-                    placeholder="email1@exemplo.com,Nome do Usuário&#10;email2@exemplo.com,Outro Nome&#10;email3@exemplo.com"
-                    value={pasteContent}
-                    onChange={(e) => setPasteContent(e.target.value)}
-                    rows={8}
-                    className="font-mono text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Formato: email, nome (opcional), plano (opcional), mentorado (sim/nao), cliente_w3 (sim/nao)
-                  </p>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="file" className="space-y-4">
-                <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                  <Label htmlFor="bulk-file-upload" className="cursor-pointer block">
-                    <div className="flex justify-center gap-2 mb-4">
-                      <FileUp className="h-10 w-10 text-muted-foreground" />
-                      <FileSpreadsheet className="h-10 w-10 text-primary" />
-                    </div>
-                    <p className="text-sm font-medium text-foreground mb-2">
-                      Clique para selecionar arquivo CSV ou Excel
-                    </p>
-                    <p className="text-xs text-muted-foreground">Formatos suportados: CSV, TXT, XLSX, XLS</p>
-                  </Label>
-                  <Input
-                    id="bulk-file-upload"
-                    type="file"
-                    accept=".csv,.txt,.xlsx,.xls"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </div>
-
-                <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-2">
-                  <Download className="h-4 w-4" />
-                  Baixar Template CSV
-                </Button>
-              </TabsContent>
-            </Tabs>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Plano Padrão</Label>
-                <Select value={defaultPlan} onValueChange={setDefaultPlan}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="free">Free</SelectItem>
-                    <SelectItem value="paid">Pago</SelectItem>
-                    <SelectItem value="manual">Manual</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center space-x-2 pt-6">
-                <input
-                  type="checkbox"
-                  id="default-mentorado"
-                  checked={defaultMentorado}
-                  onChange={(e) => setDefaultMentorado(e.target.checked)}
-                  className="h-4 w-4"
-                />
-                <Label htmlFor="default-mentorado" className="text-sm">
-                  Mentorado
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2 pt-6">
-                <input
-                  type="checkbox"
-                  id="default-w3"
-                  checked={defaultW3Client}
-                  onChange={(e) => setDefaultW3Client(e.target.checked)}
-                  className="h-4 w-4"
-                />
-                <Label htmlFor="default-w3" className="text-sm">
-                  Cliente W3
-                </Label>
-              </div>
-            </div>
-
-            {parsedUsers.length > 0 && (
-              <div className="bg-muted/50 rounded-lg p-4">
-                <h4 className="font-medium mb-2">Prévia ({parsedUsers.length} usuários)</h4>
-                <div className="max-h-32 overflow-y-auto space-y-1">
-                  {parsedUsers.slice(0, 10).map((user, i) => (
-                    <div key={i} className="text-sm font-mono flex gap-2">
-                      <span className="text-primary">{user.email}</span>
-                      {user.name && <span className="text-muted-foreground">- {user.name}</span>}
-                    </div>
-                  ))}
-                  {parsedUsers.length > 10 && (
-                    <p className="text-xs text-muted-foreground">... e mais {parsedUsers.length - 10} usuários</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <DialogFooter>
-              <Button variant="outline" onClick={handleClose} disabled={importing}>
-                Cancelar
-              </Button>
-              <Button onClick={handleImport} disabled={importing || parsedUsers.length === 0}>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={handleClose} disabled={importing}>Cancelar</Button>
+              <Button onClick={handleImport} disabled={importing || parsedUsers.length === 0} className="bg-primary hover:bg-primary/90">
                 {importing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -391,10 +386,10 @@ export function BulkUserImportDialog({ open, onOpenChange, onSuccess }: BulkUser
                   `Importar ${parsedUsers.length} Usuários`
                 )}
               </Button>
-            </DialogFooter>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+            </>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -1,9 +1,9 @@
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { FileText } from "lucide-react";
@@ -34,21 +34,24 @@ export function DocumentViewerDialog({
   const charCount = document.content_text?.length || 0;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:w-[520px] bg-[#111111] border-l border-[#242424] p-0 flex flex-col"
+      >
+        <SheetHeader className="px-6 py-5 border-b border-[#242424]">
+          <SheetTitle className="flex items-center gap-2 text-foreground">
             <FileText className="h-5 w-5" />
             {document.file_name}
-          </DialogTitle>
+          </SheetTitle>
           <div className="flex items-center gap-2 pt-2">
             <Badge variant="outline">{document.file_type.toUpperCase()}</Badge>
             <Badge variant="secondary">{wordCount.toLocaleString()} palavras</Badge>
             <Badge variant="secondary">{charCount.toLocaleString()} caracteres</Badge>
           </div>
-        </DialogHeader>
+        </SheetHeader>
         
-        <ScrollArea className="h-[50vh] mt-4">
+        <ScrollArea className="flex-1 px-6 py-5">
           <div className="prose prose-sm dark:prose-invert max-w-none p-4 bg-muted/50 rounded-lg">
             {document.content_text ? (
               <pre className="whitespace-pre-wrap font-sans text-sm">
@@ -61,7 +64,7 @@ export function DocumentViewerDialog({
             )}
           </div>
         </ScrollArea>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

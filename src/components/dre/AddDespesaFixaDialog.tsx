@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -34,13 +34,22 @@ export function AddDespesaFixaDialog({ open, onOpenChange, onAdd }: Props) {
     onOpenChange(false);
   };
 
+  const handleOpenChange = (v: boolean) => {
+    if (!v) reset();
+    onOpenChange(v);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
-      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Adicionar Despesa Fixa</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
+    <Sheet open={open} onOpenChange={handleOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:w-[520px] bg-[#111111] border-l border-[#242424] p-0 flex flex-col"
+      >
+        <SheetHeader className="px-6 py-5 border-b border-[#242424]">
+          <SheetTitle className="text-foreground">Adicionar Despesa Fixa</SheetTitle>
+        </SheetHeader>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
           <p className="text-sm text-muted-foreground">Selecione uma despesa pré-definida ou crie uma personalizada:</p>
 
           <Accordion type="single" collapsible className="w-full">
@@ -87,6 +96,8 @@ export function AddDespesaFixaDialog({ open, onOpenChange, onAdd }: Props) {
             </div>
           )}
 
+          <div className="border-t border-[hsl(var(--border)/0.3)] my-1" />
+
           <div className="space-y-2">
             <label className="text-sm font-medium">Valor mensal (R$)</label>
             <Input
@@ -98,13 +109,15 @@ export function AddDespesaFixaDialog({ open, onOpenChange, onAdd }: Props) {
               onChange={(e) => setValor(e.target.value)}
             />
           </div>
-
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => { reset(); onOpenChange(false); }}>Cancelar</Button>
-            <Button onClick={handleSubmit} disabled={!(selectedItem || customItem) || !valor}>Adicionar</Button>
-          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+
+        <div className="px-6 py-4 border-t border-[#242424] flex justify-end gap-3">
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancelar</Button>
+          <Button onClick={handleSubmit} disabled={!(selectedItem || customItem) || !valor} className="bg-primary hover:bg-primary/90">
+            Adicionar
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

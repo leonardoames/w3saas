@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -136,12 +136,16 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{product ? "Editar Solução" : "Nova Solução"}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:w-[520px] bg-[#111111] border-l border-[#242424] p-0 flex flex-col"
+      >
+        <SheetHeader className="px-6 py-5 border-b border-[#242424]">
+          <SheetTitle className="text-foreground">{product ? "Editar Solução" : "Nova Solução"}</SheetTitle>
+        </SheetHeader>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
           <div className="space-y-2">
             <Label>Nome *</Label>
             <Input placeholder="Ex: Mentoria AMES" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -154,6 +158,9 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
             <Label>Descrição</Label>
             <Textarea placeholder="O que essa solução resolve?" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
           </div>
+
+          <div className="border-t border-[hsl(var(--border)/0.3)] my-1" />
+
           <div className="space-y-2">
             <Label>Imagem</Label>
             {imagePreview ? (
@@ -175,6 +182,9 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
             )}
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
           </div>
+
+          <div className="border-t border-[hsl(var(--border)/0.3)] my-1" />
+
           <div className="space-y-2">
             <Label>Texto do Botão</Label>
             <Input placeholder="Ex: Falar com Especialista" value={buttonText} onChange={(e) => setButtonText(e.target.value)} />
@@ -194,11 +204,14 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
             <Input type="number" value={displayOrder} onChange={(e) => setDisplayOrder(Number(e.target.value))} />
           </div>
         </div>
-        <DialogFooter>
+
+        <div className="px-6 py-4 border-t border-[#242424] flex justify-end gap-3">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
+            {saving ? "Salvando..." : "Salvar"}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

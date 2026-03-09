@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -64,7 +64,6 @@ export function AddFerramentaDialog({
 
     let fileUrl = editData?.file_url || null;
 
-    // Upload file if provided
     if (file) {
       const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
       const path = `${userId}/${Date.now()}_${sanitized}`;
@@ -129,13 +128,16 @@ export function AddFerramentaDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{editData ? "Editar Ferramenta" : "Adicionar Ferramenta"}</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:w-[520px] bg-[#111111] border-l border-[#242424] p-0 flex flex-col"
+      >
+        <SheetHeader className="px-6 py-5 border-b border-[#242424]">
+          <SheetTitle className="text-foreground">{editData ? "Editar Ferramenta" : "Adicionar Ferramenta"}</SheetTitle>
+        </SheetHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
           <div>
             <Label>Título *</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nome da ferramenta" />
@@ -160,6 +162,8 @@ export function AddFerramentaDialog({
             </Select>
           </div>
 
+          <div className="border-t border-[hsl(var(--border)/0.3)] my-1" />
+
           <div>
             <Label>Link externo</Label>
             <Input value={externalUrl} onChange={(e) => setExternalUrl(e.target.value)} placeholder="https://..." />
@@ -177,14 +181,14 @@ export function AddFerramentaDialog({
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 mt-2">
+        <div className="px-6 py-4 border-t border-[#242424] flex justify-end gap-3">
           <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={saving || !title.trim()}>
+          <Button onClick={handleSave} disabled={saving || !title.trim()} className="bg-primary hover:bg-primary/90">
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {editData ? "Salvar" : "Adicionar"}
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
