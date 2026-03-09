@@ -1,18 +1,29 @@
 
 
-## Fix: Normalize date keys and parsing in Dashboard
+## Configurar Envio de Emails Reais (Auth Emails)
 
-The root cause is a timezone mismatch: dates from the database may include time/timezone components, causing `parseISO` to shift dates when converting to local time. Additionally, date keys in `dateMap` may not group properly if they contain time components.
+O projeto já tem um domínio customizado (`app.leonardoames.com.br`), mas ainda não tem um domínio de email configurado. Para que emails de autenticação (recuperação de senha, verificação de email, etc.) sejam enviados com a identidade da sua marca, precisamos configurar um domínio de email.
 
-### Changes to `src/pages/Dashboard.tsx`
+### O que será feito
 
-**1. Normalize date keys in `loadData`** — Use `substring(0, 10)` on both `dailyData` and `metricsData` loops to extract only `YYYY-MM-DD`.
+1. **Configurar domínio de email** — Você precisará adicionar registros DNS (DKIM, SPF) para que os emails saiam de um endereço como `noreply@leonardoames.com.br` (ou subdomínio como `notify.leonardoames.com.br`)
 
-**2. Normalize date keys in `effectiveData` useMemo** — Same `substring(0, 10)` fix for platform-specific filtering.
+2. **Criar templates de email customizados** — Templates para:
+   - Recuperação de senha (já tem o fluxo `/reset-password` funcionando)
+   - Verificação de email (confirmação de cadastro)
+   - Magic link (se aplicável)
+   - Convite de usuário
 
-**3. Normalize date parsing in `filtered` and `prevFiltered`** — Use `parseISO(m.data.substring(0, 10))` to ensure local timezone interpretation.
+3. **Estilizar com a identidade visual do app** — Cores, fontes e tom de voz alinhados com o SaaS
 
-**4. Add null safety** — Guard against null `data` values before calling `substring`.
+4. **Deploy da edge function `auth-email-hook`** — Função que processa e envia os emails automaticamente
 
-All changes are in a single file: `src/pages/Dashboard.tsx`. No database or backend changes needed.
+### Primeiro passo
+
+O primeiro passo é configurar o domínio de email. Clique no botão abaixo para iniciar:
+
+### Observações
+- Enquanto o DNS não for verificado, os emails padrão do sistema continuam sendo enviados normalmente
+- Após verificação, os emails customizados são ativados automaticamente
+- Não é necessária nenhuma API key externa — o sistema gerencia as credenciais automaticamente
 
