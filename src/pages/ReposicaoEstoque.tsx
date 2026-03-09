@@ -1,41 +1,39 @@
 import { useState, useMemo } from "react";
-import { Plus, PackageSearch, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Plus, Package, Pencil, Trash2, ChevronRight, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSkuReposicao, SkuReposicao, SkuReposicaoForm, computeFields, ComputedFields } from "@/hooks/useSkuReposicao";
 import { SkuFormDrawer } from "@/components/reposicao/SkuFormDrawer";
 import { SkuDetailPanel } from "@/components/reposicao/SkuDetailPanel";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 type StatusFilter = "all" | "critico" | "atencao" | "seguro";
 type TipoFilter = "all" | "producao_propria" | "compra_fornecedor";
 
-function getStatusLabel(status: ComputedFields["status"]) {
-  switch (status) {
-    case "critico": return { label: "🔴 Pedir Agora", cls: "bg-red-500/20 text-red-400 border-red-500/30" };
-    case "atencao": return { label: "🟡 Atenção", cls: "bg-orange-500/20 text-orange-400 border-orange-500/30" };
-    case "seguro": return { label: "🟢 Em Dia", cls: "bg-green-500/20 text-green-400 border-green-500/30" };
-  }
-}
-
 function getDateLabel(dataPedido: Date) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const diff = Math.floor((dataPedido.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  if (diff < 0) return { text: "ATRASADO", color: "#EF4444" };
-  if (diff === 0) return { text: "HOJE", color: "#EF4444" };
-  if (diff <= 7) return { text: format(dataPedido, "dd/MM"), color: "#F97316" };
-  return { text: format(dataPedido, "dd/MM"), color: "rgba(255,255,255,0.7)" };
+  if (diff < 0) return { text: "Atrasado", color: "#EF4444", weight: 700 };
+  if (diff === 0) return { text: "Hoje", color: "#EF4444", weight: 700 };
+  if (diff <= 7) return { text: format(dataPedido, "dd/MMM", { locale: ptBR }), color: "#F97316", weight: 600 };
+  return { text: format(dataPedido, "dd/MMM", { locale: ptBR }), color: "rgba(255,255,255,0.7)", weight: 400 };
 }
 
-function getDiasColor(dias: number) {
-  if (dias <= 0) return "#EF4444";
-  if (dias <= 7) return "#F97316";
-  return "#22C55E";
+function getStatusDot(status: ComputedFields["status"]) {
+  switch (status) {
+    case "critico": return { color: "#EF4444", label: "Pedir agora" };
+    case "atencao": return { color: "#F97316", label: "Esta semana" };
+    case "seguro": return { color: "#22C55E", label: "Em dia" };
+  }
+}
+
+function getBorderColor(status: ComputedFields["status"]) {
+  if (status === "critico") return "#EF4444";
+  if (status === "atencao") return "#F97316";
+  return "transparent";
 }
 
 export default function ReposicaoEstoque() {
@@ -45,27 +43,27 @@ export default function ReposicaoEstoque() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [tipoFilter, setTipoFilter] = useState<TipoFilter>("all");
+  const [search, setSearch] = useState("");
 
-  const enriched = useMemo(() => {
-    return items.map((item) => ({ ...item, computed: computeFields(item) }));
-  }, [items]);
+  const enriched = useMemo(() => items.map((item) => ({ ...item, computed: computeFields(item) })), [items]);
 
   const filtered = useMemo(() => {
     let list = enriched;
     if (statusFilter !== "all") list = list.filter((i) => i.computed.status === statusFilter);
     if (tipoFilter !== "all") list = list.filter((i) => i.tipo_reposicao === tipoFilter);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((i) => i.nome_peca.toLowerCase().includes(q) || i.sku.toLowerCase().includes(q));
+    }
     return list.sort((a, b) => a.computed.data_pedido.getTime() - b.computed.data_pedido.getTime());
-  }, [enriched, statusFilter, tipoFilter]);
+  }, [enriched, statusFilter, tipoFilter, search]);
 
-  const counts = useMemo(() => {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    return {
-      total: enriched.length,
-      critico: enriched.filter((i) => i.computed.status === "critico").length,
-      atencao: enriched.filter((i) => i.computed.status === "atencao").length,
-      seguro: enriched.filter((i) => i.computed.status === "seguro").length,
-    };
-  }, [enriched]);
+  const counts = useMemo(() => ({
+    total: enriched.length,
+    critico: enriched.filter((i) => i.computed.status === "critico").length,
+    atencao: enriched.filter((i) => i.computed.status === "atencao").length,
+    seguro: enriched.filter((i) => i.computed.status === "seguro").length,
+  }), [enriched]);
 
   const handleSave = async (form: SkuReposicaoForm & { id?: string }) => {
     if (form.id) await update(form as any);
@@ -77,161 +75,196 @@ export default function ReposicaoEstoque() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-4">
-        <div className="h-8 w-64 bg-muted/30 animate-pulse rounded" />
-        <div className="grid grid-cols-4 gap-4">{[1, 2, 3, 4].map((i) => <div key={i} className="h-24 bg-muted/20 animate-pulse rounded-xl" />)}</div>
+      <div className="p-6 space-y-6">
+        <div className="h-8 w-64 animate-pulse rounded" style={{ background: "rgba(255,255,255,0.05)" }} />
+        <div className="grid grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => <div key={i} className="h-[100px] animate-pulse rounded-xl" style={{ background: "#161616" }} />)}
+        </div>
       </div>
     );
   }
+
+  const cardData = [
+    { label: "Peças Cadastradas", value: counts.total, sub: "SKUs monitorados", valueColor: undefined },
+    { label: "Pedir Hoje", value: counts.critico, sub: "requerem ação imediata", valueColor: counts.critico > 0 ? "#EF4444" : undefined },
+    { label: "Próximos 7 dias", value: counts.atencao, sub: "pedidos esta semana", valueColor: undefined },
+    { label: "Em Dia", value: counts.seguro, sub: "sem urgência", valueColor: undefined },
+  ];
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Reposição de Estoque</h1>
-          <p className="text-sm text-muted-foreground/60">Gestão de ponto de reposição por SKU</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Reposição de Estoque</h1>
+          <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Gestão de ponto de reposição por SKU</p>
         </div>
-        <Button onClick={openCreate} className="bg-primary hover:bg-primary/90">
-          <Plus className="h-4 w-4 mr-2" /> Cadastrar Peça
-        </Button>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground/50 uppercase tracking-wider">Peças Cadastradas</p>
-          <p className="text-2xl font-bold mt-1">{counts.total}</p>
-        </Card>
-        <Card className={`p-4 ${counts.critico > 0 ? "border-red-500/30" : ""}`}>
-          <p className="text-xs text-muted-foreground/50 uppercase tracking-wider">Pedir Hoje</p>
-          <p className="text-2xl font-bold mt-1" style={{ color: counts.critico > 0 ? "#EF4444" : undefined }}>{counts.critico}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground/50 uppercase tracking-wider">Próximos 7 dias</p>
-          <p className="text-2xl font-bold mt-1 text-orange-400">{counts.atencao}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground/50 uppercase tracking-wider">Em dia</p>
-          <p className="text-2xl font-bold mt-1 text-green-400">{counts.seguro}</p>
-        </Card>
+        {cardData.map((c) => (
+          <div key={c.label} className="p-6 rounded-xl" style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <p className="uppercase mb-3" style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.1em", color: "rgba(255,255,255,0.35)" }}>{c.label}</p>
+            <p className="font-bold" style={{ fontSize: 32, color: c.valueColor || "#FFFFFF" }}>{c.value}</p>
+            <p className="mt-1" style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{c.sub}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Empty state */}
       {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="rounded-full p-6 mb-4" style={{ backgroundColor: "rgba(249,115,22,0.1)" }}>
-            <PackageSearch className="h-12 w-12" style={{ color: "rgba(249,115,22,0.5)" }} />
-          </div>
-          <h2 className="text-lg font-semibold mb-1">Nenhuma peça cadastrada</h2>
-          <p className="text-sm text-muted-foreground/60 max-w-md mb-6">
-            Cadastre suas peças para calcular automaticamente quando fazer cada pedido de reposição
+        /* Empty State */
+        <div className="flex flex-col items-center justify-center py-24 text-center rounded-xl" style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <Package className="mb-4" style={{ width: 48, height: 48, color: "rgba(255,255,255,0.1)" }} />
+          <h2 className="mb-1" style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>Nenhuma peça cadastrada</h2>
+          <p className="max-w-md mb-6" style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>
+            Cadastre SKUs para calcular automaticamente a data de cada pedido
           </p>
-          <Button onClick={openCreate} className="bg-primary hover:bg-primary/90">
-            <Plus className="h-4 w-4 mr-2" /> Cadastrar primeira peça
-          </Button>
+          <button onClick={openCreate} style={{ background: "#F97316", color: "#000", fontWeight: 600, fontSize: 13, height: 36, padding: "0 16px", borderRadius: 8, border: "none", cursor: "pointer" }}>
+            + Cadastrar Peça
+          </button>
         </div>
       ) : (
         <>
-          {/* Filters */}
-          <div className="flex flex-wrap gap-3">
+          {/* Filter Bar */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative" style={{ width: 280 }}>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2" style={{ width: 14, height: 14, color: "rgba(255,255,255,0.3)" }} />
+              <input
+                type="text"
+                placeholder="Buscar SKU ou peça..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full outline-none"
+                style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, height: 36, fontSize: 13, color: "white", padding: "0 12px 0 34px" }}
+              />
+            </div>
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-              <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectTrigger className="border-0 outline-none ring-0 focus:ring-0" style={{ width: 160, background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, height: 36, fontSize: 13, color: "rgba(255,255,255,0.7)" }}>
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os status</SelectItem>
-                <SelectItem value="critico">🔴 Crítico</SelectItem>
-                <SelectItem value="atencao">🟡 Atenção</SelectItem>
-                <SelectItem value="seguro">🟢 Em Dia</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="critico">Crítico</SelectItem>
+                <SelectItem value="atencao">Atenção</SelectItem>
+                <SelectItem value="seguro">Em dia</SelectItem>
               </SelectContent>
             </Select>
             <Select value={tipoFilter} onValueChange={(v) => setTipoFilter(v as TipoFilter)}>
-              <SelectTrigger className="w-44"><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <SelectTrigger className="border-0 outline-none ring-0 focus:ring-0" style={{ width: 160, background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, height: 36, fontSize: 13, color: "rgba(255,255,255,0.7)" }}>
+                <SelectValue placeholder="Tipo" />
+              </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os tipos</SelectItem>
-                <SelectItem value="producao_propria">Produção Própria</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="producao_propria">Produção</SelectItem>
                 <SelectItem value="compra_fornecedor">Fornecedor</SelectItem>
               </SelectContent>
             </Select>
+            <div className="ml-auto">
+              <button onClick={openCreate} style={{ background: "#F97316", color: "#000", fontWeight: 600, fontSize: 13, height: 36, padding: "0 16px", borderRadius: 8, border: "none", cursor: "pointer" }}>
+                + Cadastrar Peça
+              </button>
+            </div>
           </div>
 
           {/* Table */}
-          <div className="rounded-xl border border-border/50 overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-8"></TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Peça / Variante</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Estoque</TableHead>
-                  <TableHead className="text-right">Venda/dia</TableHead>
-                  <TableHead className="text-right">Lead Time</TableHead>
-                  <TableHead className="text-right">Pt. Reposição</TableHead>
-                  <TableHead className="text-right">📅 PEDIR EM</TableHead>
-                  <TableHead className="text-right">Dias rest.</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+          <div className="overflow-hidden rounded-xl" style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <table className="w-full" style={{ borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "#111111", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                  <th style={{ width: 32, height: 40, padding: "0 8px" }} />
+                  <th className="text-left uppercase" style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", height: 40, padding: "0 20px" }}>Peça</th>
+                  <th className="text-left uppercase" style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", height: 40, padding: "0 20px", width: "12%" }}>Tipo</th>
+                  <th className="text-left uppercase" style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", height: 40, padding: "0 20px", width: "12%" }}>Estoque</th>
+                  <th className="text-left uppercase" style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", height: 40, padding: "0 20px", width: "20%" }}>📅 Pedir em</th>
+                  <th className="text-left uppercase" style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", height: 40, padding: "0 20px", width: "15%" }}>Status</th>
+                  <th style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", height: 40, padding: "0 20px", width: "8%", textAlign: "right" }}>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
                 {filtered.map((item) => {
                   const { computed } = item;
                   const dateLabel = getDateLabel(computed.data_pedido);
-                  const statusInfo = getStatusLabel(computed.status);
-                  const diasColor = getDiasColor(computed.dias_restantes);
+                  const statusDot = getStatusDot(computed.status);
                   const isOpen = expandedId === item.id;
-                  const maxDays = 30;
-                  const progressPct = Math.min(100, (computed.dias_restantes / maxDays) * 100);
+                  const diasRestantes = Math.max(0, Math.floor(computed.dias_restantes));
 
                   return (
-                    <> 
-                      <TableRow key={item.id} className="cursor-pointer" onClick={() => setExpandedId(isOpen ? null : item.id)}>
-                        <TableCell className="w-8 px-2">
-                          {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">{item.sku}</TableCell>
-                        <TableCell>
-                          <span className="font-medium">{item.nome_peca}</span>
-                          {item.variante && <span className="text-muted-foreground/50 ml-1.5 text-xs">({item.variante})</span>}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={item.tipo_reposicao === "producao_propria" ? "bg-blue-500/10 text-blue-400 border-blue-500/30" : "bg-purple-500/10 text-purple-400 border-purple-500/30"}>
-                            {item.tipo_reposicao === "producao_propria" ? "Produção" : "Fornecedor"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-medium">{item.estoque_atual}</TableCell>
-                        <TableCell className="text-right">{item.vendas_por_dia}</TableCell>
-                        <TableCell className="text-right">{item.lead_time_medio}d</TableCell>
-                        <TableCell className="text-right">{computed.ponto_reposicao}</TableCell>
-                        <TableCell className="text-right">
+                    <tbody key={item.id}>
+                      <tr
+                        className="cursor-pointer transition-colors"
+                        onClick={() => setExpandedId(isOpen ? null : item.id)}
+                        style={{
+                          height: 56,
+                          borderBottom: "1px solid rgba(255,255,255,0.05)",
+                          borderLeft: `3px solid ${getBorderColor(computed.status)}`,
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.02)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ""; }}
+                      >
+                        <td style={{ width: 32, padding: "0 8px" }}>
+                          <ChevronRight
+                            className="transition-transform"
+                            style={{
+                              width: 14, height: 14,
+                              color: "rgba(255,255,255,0.25)",
+                              transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
+                            }}
+                          />
+                        </td>
+                        <td style={{ padding: "0 20px" }}>
+                          <div>
+                            <div style={{ fontWeight: 600, color: "#FFFFFF", fontSize: 13 }}>{item.nome_peca}</div>
+                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                              SKU: {item.sku}{item.variante ? ` · ${item.variante}` : ""}
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: "0 20px", fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+                          {item.tipo_reposicao === "producao_propria" ? "Produção" : "Fornecedor"}
+                        </td>
+                        <td style={{ padding: "0 20px" }}>
+                          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>{item.estoque_atual}</div>
+                          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>unidades</div>
+                        </td>
+                        <td style={{ padding: "0 20px" }}>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className="font-bold" style={{ color: dateLabel.color }}>{dateLabel.text}</span>
+                              <div>
+                                <div style={{ color: dateLabel.color, fontWeight: dateLabel.weight, fontSize: 13 }}>{dateLabel.text}</div>
+                                <div style={{ fontSize: 11, color: dateLabel.color, opacity: 0.7 }}>{diasRestantes} dias restantes</div>
+                              </div>
                             </TooltipTrigger>
                             <TooltipContent>Faça o pedido nesta data para receber antes de zerar o estoque</TooltipContent>
                           </Tooltip>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex flex-col items-end gap-1">
-                            <span className="text-sm font-medium" style={{ color: diasColor }}>{Math.max(0, Math.floor(computed.dias_restantes))} dias</span>
-                            <div className="w-16 h-1.5 rounded-full bg-muted/30 overflow-hidden">
-                              <div className="h-full rounded-full transition-all" style={{ width: `${progressPct}%`, backgroundColor: diasColor }} />
-                            </div>
+                        </td>
+                        <td style={{ padding: "0 20px" }}>
+                          <div className="flex items-center gap-2">
+                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusDot.color, display: "inline-block", flexShrink: 0 }} />
+                            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>{statusDot.label}</span>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={statusInfo.cls}>{statusInfo.label}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(item)}>
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
+                        </td>
+                        <td style={{ padding: "0 20px", textAlign: "right" }}>
+                          <div className="flex items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => openEdit(item)}
+                              className="transition-colors"
+                              style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                              onMouseEnter={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.8)"; }}
+                              onMouseLeave={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.3)"; }}
+                            >
+                              <Pencil style={{ width: 14, height: 14, color: "rgba(255,255,255,0.3)", transition: "color 0.15s" }} />
+                            </button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive">
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
+                                <button
+                                  className="transition-colors"
+                                  style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                                  onMouseEnter={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "#EF4444"; }}
+                                  onMouseLeave={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.3)"; }}
+                                >
+                                  <Trash2 style={{ width: 14, height: 14, color: "rgba(255,255,255,0.3)", transition: "color 0.15s" }} />
+                                </button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
@@ -245,20 +278,20 @@ export default function ReposicaoEstoque() {
                               </AlertDialogContent>
                             </AlertDialog>
                           </div>
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                      </tr>
                       {isOpen && (
-                        <TableRow key={`${item.id}-detail`}>
-                          <TableCell colSpan={12} className="p-0">
+                        <tr>
+                          <td colSpan={7} style={{ padding: 0 }}>
                             <SkuDetailPanel item={item} onRegisterOrder={registerOrder} onQuickUpdateStock={quickUpdateStock} />
-                          </TableCell>
-                        </TableRow>
+                          </td>
+                        </tr>
                       )}
-                    </>
+                    </tbody>
                   );
                 })}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           </div>
         </>
       )}
