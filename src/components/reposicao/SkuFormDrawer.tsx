@@ -5,14 +5,15 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Factory, Package } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
 import { SkuReposicao, SkuReposicaoForm, computeFields } from "@/hooks/useSkuReposicao";
+import { ProductCatalogSelector } from "@/components/produtos/ProductCatalogSelector";
+import { useProducts, Product } from "@/hooks/useProducts";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item?: SkuReposicao | null;
-  onSave: (form: SkuReposicaoForm & { id?: string }) => Promise<void>;
+  onSave: (form: SkuReposicaoForm & { id?: string; product_id?: string | null }) => Promise<void>;
   isSaving: boolean;
 }
 
@@ -31,6 +32,8 @@ const helperStyle: React.CSSProperties = { fontSize: 11, color: "rgba(255,255,25
 const dividerStyle: React.CSSProperties = { borderTop: "1px solid rgba(255,255,255,0.06)", margin: "20px 0" };
 
 export function SkuFormDrawer({ open, onOpenChange, item, onSave, isSaving }: Props) {
+  const { products } = useProducts();
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [nome_peca, setNomePeca] = useState("");
   const [sku, setSku] = useState("");
   const [variante, setVariante] = useState("");
@@ -48,6 +51,7 @@ export function SkuFormDrawer({ open, onOpenChange, item, onSave, isSaving }: Pr
 
   useEffect(() => {
     if (item) {
+      setSelectedProductId((item as any).product_id || null);
       setNomePeca(item.nome_peca); setSku(item.sku); setVariante(item.variante || "");
       setTipoReposicao(item.tipo_reposicao); setEstoqueAtual(item.estoque_atual);
       setVendasPorDia(item.vendas_por_dia); setLeadTimeMedio(item.lead_time_medio);
@@ -56,6 +60,7 @@ export function SkuFormDrawer({ open, onOpenChange, item, onSave, isSaving }: Pr
       setDataUltimoPedido(item.data_ultimo_pedido ? new Date(item.data_ultimo_pedido + "T12:00:00") : undefined);
       setObservacoes(item.observacoes || "");
     } else {
+      setSelectedProductId(null);
       setNomePeca(""); setSku(""); setVariante(""); setTipoReposicao("compra_fornecedor");
       setEstoqueAtual(0); setVendasPorDia(0); setLeadTimeMedio(0); setLeadTimeMaximo(0);
       setEstoqueSeguranca(0); setManualSafety(false); setDataUltimoPedido(undefined); setObservacoes("");
@@ -70,11 +75,29 @@ export function SkuFormDrawer({ open, onOpenChange, item, onSave, isSaving }: Pr
     vendas_por_dia, lead_time_medio, estoque_seguranca: manualSafety ? estoque_seguranca : Math.max(0, autoSafety), estoque_atual,
   }), [vendas_por_dia, lead_time_medio, estoque_seguranca, estoque_atual, manualSafety, autoSafety]);
 
+  const handleProductSelect = (product: Product | null) => {
+    if (product) {
+      setSelectedProductId(product.id);
+      setNomePeca(product.nome);
+      setSku(product.sku);
+      setVariante(product.variante || "");
+      setEstoqueAtual(product.estoque_atual || 0);
+      if (product.vendas_por_dia != null) setVendasPorDia(Number(product.vendas_por_dia));
+      if (product.lead_time_medio != null) setLeadTimeMedio(Number(product.lead_time_medio));
+      if (product.lead_time_maximo != null) setLeadTimeMaximo(Number(product.lead_time_maximo));
+      if (product.tipo_reposicao) setTipoReposicao(product.tipo_reposicao as any);
+      if (product.estoque_seguranca != null) setEstoqueSeguranca(Number(product.estoque_seguranca));
+    } else {
+      setSelectedProductId(null);
+    }
+  };
+
   const handleSave = async () => {
     if (!nome_peca || !sku) return;
     const safeSeg = manualSafety ? estoque_seguranca : Math.max(0, autoSafety);
     await onSave({
       ...(item ? { id: item.id } : {}),
+      product_id: selectedProductId,
       nome_peca, sku, variante: variante || undefined,
       tipo_reposicao, estoque_atual, vendas_por_dia, lead_time_medio, lead_time_maximo,
       estoque_seguranca: safeSeg,
@@ -103,6 +126,17 @@ export function SkuFormDrawer({ open, onOpenChange, item, onSave, isSaving }: Pr
         </SheetHeader>
 
         <div className="p-6 space-y-0">
+          {/* Product Catalog Selector */}
+          <div style={labelStyle}>Produto do catálogo</div>
+          <ProductCatalogSelector
+            products={products}
+            selectedId={selectedProductId}
+            onSelect={handleProductSelect}
+            placeholder="Buscar no catálogo ou preencher manualmente"
+          />
+
+          <div style={dividerStyle} />
+
           {/* Section 1 */}
           <div style={labelStyle}>Identificação</div>
           <div className="space-y-3">

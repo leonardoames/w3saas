@@ -35,6 +35,7 @@ import Catalogo from "./pages/Catalogo";
 import Produtos from "./pages/Produtos";
 import CalendarioComercial from "./pages/CalendarioComercial";
 import Integracoes from "./pages/Integracoes";
+import MeusProdutos from "./pages/MeusProdutos";
 import ShopifyCallback from "./pages/ShopifyCallback";
 import ShopeeCallback from "./pages/ShopeeCallback";
 import ShopeeAdsCallback from "./pages/ShopeeAdsCallback";
@@ -87,6 +88,7 @@ const App = () => (
                         <Route path="/simulacao" element={<SimulacaoCenarios />} />
                         <Route path="/simulacao/historico" element={<SimulacaoHistorico />} />
                         <Route path="/reposicao" element={<ReposicaoEstoque />} />
+                        <Route path="/meus-produtos" element={<MeusProdutos />} />
                         {/* CRM Influenciadores removed */}
                         <Route path="/ia-w3" element={<IAW3 />} />
                         <Route path="/ia-w3/cerebro" element={<IABrain />} />

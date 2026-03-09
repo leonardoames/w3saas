@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { findOrCreateProduct, syncReposicaoToProduct } from "@/hooks/useProducts";
 
 export interface SkuReposicao {
   id: string;
@@ -17,6 +18,7 @@ export interface SkuReposicao {
   estoque_seguranca: number;
   data_ultimo_pedido: string | null;
   observacoes: string | null;
+  product_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -33,6 +35,7 @@ export interface SkuReposicaoForm {
   estoque_seguranca: number;
   data_ultimo_pedido?: string | null;
   observacoes?: string;
+  product_id?: string | null;
 }
 
 export interface ComputedFields {
@@ -91,29 +94,89 @@ export function useSkuReposicao() {
 
   const createMutation = useMutation({
     mutationFn: async (form: SkuReposicaoForm) => {
+      let productId = form.product_id || null;
+
+      // If no product_id, try to find or create a product
+      if (!productId && user?.id) {
+        try {
+          productId = await findOrCreateProduct(user.id, {
+            nome_peca: form.nome_peca,
+            sku: form.sku,
+            variante: form.variante || null,
+            estoque_atual: form.estoque_atual,
+            vendas_por_dia: form.vendas_por_dia,
+            lead_time_medio: form.lead_time_medio,
+            lead_time_maximo: form.lead_time_maximo,
+            tipo_reposicao: form.tipo_reposicao,
+            estoque_seguranca: form.estoque_seguranca,
+          });
+        } catch {
+          // Silently fail - don't block reposicao save
+        }
+      } else if (productId) {
+        // Sync to existing product
+        try {
+          await syncReposicaoToProduct(productId, {
+            nome_peca: form.nome_peca,
+            sku: form.sku,
+            variante: form.variante || null,
+            estoque_atual: form.estoque_atual,
+            vendas_por_dia: form.vendas_por_dia,
+            lead_time_medio: form.lead_time_medio,
+            lead_time_maximo: form.lead_time_maximo,
+            tipo_reposicao: form.tipo_reposicao,
+            estoque_seguranca: form.estoque_seguranca,
+          });
+        } catch {
+          // Silently fail
+        }
+      }
+
       const { error } = await supabase.from("sku_reposicao" as any).insert({
         user_id: user!.id,
         ...form,
+        product_id: productId,
       } as any);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sku_reposicao"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
       toast.success("Peça cadastrada com sucesso!");
     },
     onError: () => toast.error("Erro ao cadastrar peça"),
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, ...form }: SkuReposicaoForm & { id: string }) => {
+    mutationFn: async ({ id, product_id, ...form }: SkuReposicaoForm & { id: string }) => {
+      // If linked to a product, sync fields
+      if (product_id) {
+        try {
+          await syncReposicaoToProduct(product_id, {
+            nome_peca: form.nome_peca,
+            sku: form.sku,
+            variante: form.variante || null,
+            estoque_atual: form.estoque_atual,
+            vendas_por_dia: form.vendas_por_dia,
+            lead_time_medio: form.lead_time_medio,
+            lead_time_maximo: form.lead_time_maximo,
+            tipo_reposicao: form.tipo_reposicao,
+            estoque_seguranca: form.estoque_seguranca,
+          });
+        } catch {
+          toast.warning("Não foi possível sincronizar com o catálogo de produtos");
+        }
+      }
+
       const { error } = await supabase
         .from("sku_reposicao" as any)
-        .update(form as any)
+        .update({ ...form, product_id } as any)
         .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sku_reposicao"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
       toast.success("Peça atualizada!");
     },
     onError: () => toast.error("Erro ao atualizar peça"),

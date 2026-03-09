@@ -2,7 +2,7 @@ import { SidebarNavLink } from "./SidebarNavLink";
 import {
   LayoutDashboard, GraduationCap, ListChecks, Calculator, GitCompare,
   Sparkles, Brain, Store, ShoppingBag, CalendarDays, ChevronLeft,
-  ChevronRight, X, Shield, ChevronDown, BarChart3, BarChart2, Activity, Lightbulb, TrendingUp, PackageSearch,
+  ChevronRight, X, Shield, ChevronDown, BarChart3, BarChart2, Activity, Lightbulb, TrendingUp, PackageSearch, Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,6 +37,7 @@ const menuGroups: MenuGroup[] = [
       { title: "DRE", icon: TrendingUp, path: "/app/dre" },
       { title: "Plano de Ação", icon: ListChecks, path: "/app/plano-acao" },
       { title: "Banco de Ideias", icon: Lightbulb, path: "/app/banco-de-ideias" },
+      { title: "Meus Produtos", icon: Package, path: "/app/meus-produtos" },
       { title: "Integrações", icon: Activity, path: "/app/integracoes" },
       { title: "Dash Admin", icon: Activity, path: "/app/dash-admin", adminOnly: true },
     ],
