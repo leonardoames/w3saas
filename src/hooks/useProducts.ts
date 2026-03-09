@@ -222,5 +222,96 @@ export async function findOrCreateProduct(userId: string, form: {
     return (newProduct as any)?.id || null;
   } catch {
     return null;
-  }
+}
+
+/** Hook to auto-sync orphan sku_reposicao records (product_id IS NULL) into products catalog */
+export function useSyncOrphanReposicao() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const hasRun = useRef(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const sync = useCallback(async () => {
+    if (!user?.id || hasRun.current) return;
+    hasRun.current = true;
+
+    try {
+      // Fetch orphan sku_reposicao records
+      const { data: orphans, error } = await supabase
+        .from("sku_reposicao" as any)
+        .select("*")
+        .eq("user_id", user.id)
+        .is("product_id", null);
+
+      if (error || !orphans || (orphans as any[]).length === 0) return;
+
+      setIsSyncing(true);
+      let synced = 0;
+
+      for (const orphan of orphans as any[]) {
+        try {
+          // Check if product with same SKU already exists
+          const { data: existing } = await supabase
+            .from("products" as any)
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("sku", orphan.sku)
+            .limit(1);
+
+          let productId: string;
+
+          if (existing && (existing as any[]).length > 0) {
+            productId = (existing as any[])[0].id;
+          } else {
+            // Create new product from reposicao data
+            const { data: newProd, error: insertErr } = await supabase
+              .from("products" as any)
+              .insert({
+                user_id: user.id,
+                nome: orphan.nome_peca,
+                sku: orphan.sku,
+                variante: orphan.variante || null,
+                estoque_atual: orphan.estoque_atual,
+                vendas_por_dia: orphan.vendas_por_dia,
+                lead_time_medio: orphan.lead_time_medio,
+                lead_time_maximo: orphan.lead_time_maximo,
+                tipo_reposicao: orphan.tipo_reposicao,
+                estoque_seguranca: orphan.estoque_seguranca,
+              } as any)
+              .select("id")
+              .single();
+
+            if (insertErr || !newProd) continue;
+            productId = (newProd as any).id;
+          }
+
+          // Link orphan to product
+          await supabase
+            .from("sku_reposicao" as any)
+            .update({ product_id: productId } as any)
+            .eq("id", orphan.id);
+
+          synced++;
+        } catch {
+          // Continue with next orphan
+        }
+      }
+
+      if (synced > 0) {
+        queryClient.invalidateQueries({ queryKey: ["products"] });
+        queryClient.invalidateQueries({ queryKey: ["sku_reposicao"] });
+        toast.success(`${synced} produto${synced > 1 ? "s" : ""} sincronizado${synced > 1 ? "s" : ""} do estoque`);
+      }
+    } catch {
+      // Never block the page
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [user?.id, queryClient]);
+
+  useEffect(() => {
+    sync();
+  }, [sync]);
+
+  return { isSyncing };
 }
