@@ -71,12 +71,13 @@ interface UserProfile {
   email: string | null;
   full_name: string | null;
   access_status: string;
-  is_mentorado_deprecated: boolean;
-  is_w3_client_deprecated: boolean;
+  is_mentorado: boolean;
+  is_w3_client: boolean;
   plan_type: string;
   access_expires_at: string | null;
   last_login_at: string | null;
   created_at: string;
+  revenue_goal?: number | null;
   isAdmin?: boolean;
 }
 
