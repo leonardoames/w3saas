@@ -1602,6 +1602,10 @@ export type Database = {
         Args: { expiration_date: string; target_user_id: string }
         Returns: undefined
       }
+      admin_update_revenue_goal: {
+        Args: { new_goal: number; target_user_id: string }
+        Returns: undefined
+      }
       admin_update_role: {
         Args: { make_admin: boolean; target_user_id: string }
         Returns: undefined
