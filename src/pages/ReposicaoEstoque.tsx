@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { Plus, Package, Pencil, Trash2, ChevronRight, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -42,7 +42,7 @@ function getBorderColor(status: ComputedFields["status"]) {
 const statusOrder = { critico: 0, atencao: 1, seguro: 2 };
 
 function sortItems(list: EnrichedItem[], key: SortKey, dir: SortDir): EnrichedItem[] {
-  const sorted = [...list].sort((a, b) => {
+  return [...list].sort((a, b) => {
     let cmp = 0;
     switch (key) {
       case "nome_peca": cmp = a.nome_peca.localeCompare(b.nome_peca); break;
@@ -53,7 +53,6 @@ function sortItems(list: EnrichedItem[], key: SortKey, dir: SortDir): EnrichedIt
     }
     return dir === "asc" ? cmp : -cmp;
   });
-  return sorted;
 }
 
 export default function ReposicaoEstoque() {
@@ -125,19 +124,18 @@ export default function ReposicaoEstoque() {
     { label: "Em Dia", value: counts.seguro, sub: "sem urgência", valueColor: undefined },
   ];
 
-  const thStyle: React.CSSProperties = {
+  const thBase: React.CSSProperties = {
     fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)",
     height: 40, padding: "0 20px", textTransform: "uppercase", cursor: "pointer", userSelect: "none",
+    textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#111111",
   };
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Reposição de Estoque</h1>
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Gestão de ponto de reposição por SKU</p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Reposição de Estoque</h1>
+        <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Gestão de ponto de reposição por SKU</p>
       </div>
 
       {/* Summary Cards */}
@@ -207,145 +205,146 @@ export default function ReposicaoEstoque() {
 
           {/* Table */}
           <div className="overflow-hidden rounded-xl" style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <table className="w-full" style={{ borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: "#111111", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-                  <th style={{ width: 32, height: 40, padding: "0 8px" }} />
-                  <th className="text-left" style={thStyle} onClick={() => handleSort("nome_peca")}>
-                    <span className="flex items-center">Peça <SortIcon col="nome_peca" /></span>
-                  </th>
-                  <th className="text-left" style={{ ...thStyle, width: "12%" }} onClick={() => handleSort("tipo_reposicao")}>
-                    <span className="flex items-center">Tipo <SortIcon col="tipo_reposicao" /></span>
-                  </th>
-                  <th className="text-left" style={{ ...thStyle, width: "12%" }} onClick={() => handleSort("estoque_atual")}>
-                    <span className="flex items-center">Estoque <SortIcon col="estoque_atual" /></span>
-                  </th>
-                  <th className="text-left" style={{ ...thStyle, width: "20%" }} onClick={() => handleSort("data_pedido")}>
-                    <span className="flex items-center">📅 Pedir em <SortIcon col="data_pedido" /></span>
-                  </th>
-                  <th className="text-left" style={{ ...thStyle, width: "15%" }} onClick={() => handleSort("status")}>
-                    <span className="flex items-center">Status <SortIcon col="status" /></span>
-                  </th>
-                  <th style={{ ...thStyle, width: "8%", textAlign: "right", cursor: "default" }}>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((item) => {
-                  const { computed } = item;
-                  const dateLabel = getDateLabel(computed.data_pedido);
-                  const statusDot = getStatusDot(computed.status);
-                  const isOpen = expandedId === item.id;
-                  const diasRestantes = Math.max(0, Math.floor(computed.dias_restantes));
+            <div className="w-full overflow-x-auto">
+              <table className="w-full" style={{ borderCollapse: "collapse", minWidth: 700 }}>
+                <colgroup>
+                  <col style={{ width: 35 }} />
+                  <col />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "20%" }} />
+                  <col style={{ width: "15%" }} />
+                  <col style={{ width: "8%" }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th style={{ ...thBase, cursor: "default" }} />
+                    <th style={thBase} onClick={() => handleSort("nome_peca")}>
+                      <span className="flex items-center">Peça <SortIcon col="nome_peca" /></span>
+                    </th>
+                    <th style={thBase} onClick={() => handleSort("tipo_reposicao")}>
+                      <span className="flex items-center">Tipo <SortIcon col="tipo_reposicao" /></span>
+                    </th>
+                    <th style={thBase} onClick={() => handleSort("estoque_atual")}>
+                      <span className="flex items-center">Estoque <SortIcon col="estoque_atual" /></span>
+                    </th>
+                    <th style={thBase} onClick={() => handleSort("data_pedido")}>
+                      <span className="flex items-center">📅 Pedir em <SortIcon col="data_pedido" /></span>
+                    </th>
+                    <th style={thBase} onClick={() => handleSort("status")}>
+                      <span className="flex items-center">Status <SortIcon col="status" /></span>
+                    </th>
+                    <th style={{ ...thBase, textAlign: "right", cursor: "default" }}>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((item) => {
+                    const { computed } = item;
+                    const dateLabel = getDateLabel(computed.data_pedido);
+                    const statusDot = getStatusDot(computed.status);
+                    const isOpen = expandedId === item.id;
+                    const diasRestantes = Math.max(0, Math.floor(computed.dias_restantes));
 
-                  return (
-                    <tr key={item.id} style={{ display: "contents" }}>
-                      <td colSpan={7} style={{ display: "contents" }}>
-                        <table className="w-full" style={{ borderCollapse: "collapse" }}>
-                          <tbody>
-                            <tr
-                              className="cursor-pointer transition-colors"
-                              onClick={() => setExpandedId(isOpen ? null : item.id)}
+                    return (
+                      <Fragment key={item.id}>
+                        <tr
+                          className="cursor-pointer"
+                          onClick={() => setExpandedId(isOpen ? null : item.id)}
+                          style={{
+                            height: 56,
+                            borderBottom: "1px solid rgba(255,255,255,0.05)",
+                            borderLeft: `3px solid ${getBorderColor(computed.status)}`,
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.02)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ""; }}
+                        >
+                          <td style={{ padding: "0 8px" }}>
+                            <ChevronRight
                               style={{
-                                height: 56,
-                                borderBottom: "1px solid rgba(255,255,255,0.05)",
-                                borderLeft: `3px solid ${getBorderColor(computed.status)}`,
+                                width: 14, height: 14,
+                                color: "rgba(255,255,255,0.25)",
+                                transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
+                                transition: "transform 0.15s",
                               }}
-                              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.02)"; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ""; }}
-                            >
-                              <td style={{ width: 32, padding: "0 8px" }}>
-                                <ChevronRight
-                                  className="transition-transform"
-                                  style={{
-                                    width: 14, height: 14,
-                                    color: "rgba(255,255,255,0.25)",
-                                    transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
-                                  }}
-                                />
-                              </td>
-                              <td style={{ padding: "0 20px" }}>
+                            />
+                          </td>
+                          <td style={{ padding: "0 20px" }}>
+                            <div style={{ fontWeight: 600, color: "#FFFFFF", fontSize: 13 }}>{item.nome_peca}</div>
+                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                              SKU: {item.sku}{item.variante ? ` · ${item.variante}` : ""}
+                            </div>
+                          </td>
+                          <td style={{ padding: "0 20px", fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+                            {item.tipo_reposicao === "producao_propria" ? "Produção" : "Fornecedor"}
+                          </td>
+                          <td style={{ padding: "0 20px" }}>
+                            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>{item.estoque_atual}</div>
+                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>unidades</div>
+                          </td>
+                          <td style={{ padding: "0 20px" }}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
                                 <div>
-                                  <div style={{ fontWeight: 600, color: "#FFFFFF", fontSize: 13 }}>{item.nome_peca}</div>
-                                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-                                    SKU: {item.sku}{item.variante ? ` · ${item.variante}` : ""}
-                                  </div>
+                                  <div style={{ color: dateLabel.color, fontWeight: dateLabel.weight, fontSize: 13 }}>{dateLabel.text}</div>
+                                  <div style={{ fontSize: 11, color: dateLabel.color, opacity: 0.7 }}>{diasRestantes} dias restantes</div>
                                 </div>
-                              </td>
-                              <td style={{ padding: "0 20px", fontSize: 12, color: "rgba(255,255,255,0.45)", width: "12%" }}>
-                                {item.tipo_reposicao === "producao_propria" ? "Produção" : "Fornecedor"}
-                              </td>
-                              <td style={{ padding: "0 20px", width: "12%" }}>
-                                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>{item.estoque_atual}</div>
-                                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>unidades</div>
-                              </td>
-                              <td style={{ padding: "0 20px", width: "20%" }}>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div>
-                                      <div style={{ color: dateLabel.color, fontWeight: dateLabel.weight, fontSize: 13 }}>{dateLabel.text}</div>
-                                      <div style={{ fontSize: 11, color: dateLabel.color, opacity: 0.7 }}>{diasRestantes} dias restantes</div>
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Faça o pedido nesta data para receber antes de zerar o estoque</TooltipContent>
-                                </Tooltip>
-                              </td>
-                              <td style={{ padding: "0 20px", width: "15%" }}>
-                                <div className="flex items-center gap-2">
-                                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusDot.color, display: "inline-block", flexShrink: 0 }} />
-                                  <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>{statusDot.label}</span>
-                                </div>
-                              </td>
-                              <td style={{ padding: "0 20px", textAlign: "right", width: "8%" }}>
-                                <div className="flex items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
+                              </TooltipTrigger>
+                              <TooltipContent>Faça o pedido nesta data para receber antes de zerar o estoque</TooltipContent>
+                            </Tooltip>
+                          </td>
+                          <td style={{ padding: "0 20px" }}>
+                            <div className="flex items-center gap-2">
+                              <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusDot.color, display: "inline-block", flexShrink: 0 }} />
+                              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>{statusDot.label}</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: "0 20px", textAlign: "right" }}>
+                            <div className="flex items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => openEdit(item)}
+                                style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                                onMouseEnter={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.8)"; }}
+                                onMouseLeave={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.3)"; }}
+                              >
+                                <Pencil style={{ width: 14, height: 14, color: "rgba(255,255,255,0.3)", transition: "color 0.15s" }} />
+                              </button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
                                   <button
-                                    onClick={() => openEdit(item)}
-                                    className="transition-colors"
                                     style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                                    onMouseEnter={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.8)"; }}
+                                    onMouseEnter={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "#EF4444"; }}
                                     onMouseLeave={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.3)"; }}
                                   >
-                                    <Pencil style={{ width: 14, height: 14, color: "rgba(255,255,255,0.3)", transition: "color 0.15s" }} />
+                                    <Trash2 style={{ width: 14, height: 14, color: "rgba(255,255,255,0.3)", transition: "color 0.15s" }} />
                                   </button>
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <button
-                                        className="transition-colors"
-                                        style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                                        onMouseEnter={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "#EF4444"; }}
-                                        onMouseLeave={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.3)"; }}
-                                      >
-                                        <Trash2 style={{ width: 14, height: 14, color: "rgba(255,255,255,0.3)", transition: "color 0.15s" }} />
-                                      </button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>Remover peça?</AlertDialogTitle>
-                                        <AlertDialogDescription>Esta ação não pode ser desfeita. A peça "{item.nome_peca}" será removida permanentemente.</AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => remove(item.id)} className="bg-destructive hover:bg-destructive/90">Remover</AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                </div>
-                              </td>
-                            </tr>
-                            {isOpen && (
-                              <tr>
-                                <td colSpan={7} style={{ padding: 0 }}>
-                                  <SkuDetailPanel item={item} onRegisterOrder={registerOrder} onQuickUpdateStock={quickUpdateStock} />
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Remover peça?</AlertDialogTitle>
+                                    <AlertDialogDescription>Esta ação não pode ser desfeita. A peça "{item.nome_peca}" será removida permanentemente.</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => remove(item.id)} className="bg-destructive hover:bg-destructive/90">Remover</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </td>
+                        </tr>
+                        {isOpen && (
+                          <tr>
+                            <td colSpan={7} style={{ padding: 0 }}>
+                              <SkuDetailPanel item={item} onRegisterOrder={registerOrder} onQuickUpdateStock={quickUpdateStock} />
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </>
       )}
