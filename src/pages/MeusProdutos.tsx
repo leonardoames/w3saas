@@ -3,7 +3,7 @@ import { Plus, Package, Pencil, Trash2, Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useProducts, Product, ProductForm, syncProductToReposicao } from "@/hooks/useProducts";
+import { useProducts, Product, ProductForm, syncProductToReposicao, useSyncOrphanReposicao } from "@/hooks/useProducts";
 import { useSkuReposicao } from "@/hooks/useSkuReposicao";
 import { ProductDrawer } from "@/components/produtos/ProductDrawer";
 import { supabase } from "@/integrations/supabase/client";
