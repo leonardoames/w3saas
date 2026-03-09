@@ -442,43 +442,47 @@ serve(async (req) => {
     try {
       const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-      // Proteção contra null (caso venha só imagem) e limpeza de pontuação
+      // Extrair palavras-chave da pergunta do usuário
       const safeMessage = typeof userMessage === "string" ? userMessage : "";
-
-      // Extrai palavras-chave reais (ignora termos curtos e verbos genéricos comuns)
-      const ignoreWords = ["quero", "sobre", "ajuda", "como", "fazer", "preciso", "gostaria"];
       const keywords = safeMessage
         .toLowerCase()
-        .replace(/[^\w\sÀ-ÿ]/g, "") // Remove pontuação que atrapalha o split
         .split(/\s+/)
-        .filter((w: string) => w.length > 4 && !ignoreWords.includes(w))
-        .slice(0, 3); // Pega as 3 mais fortes para não sobrecarregar a query
+        .filter((w: string) => w.length > 4)
+        .slice(0, 5);
 
-      let query = serviceClient.from("ia_documents").select("file_name, content_text").eq("status", "ready");
+      // Buscar documentos relevantes por palavra-chave
+      let query = serviceClient
+        .from("ia_documents")
+        .select("file_name, content_text")
+        .eq("status", "ready");
 
-      // Filtra documentos que contenham QUALQUER UMA das palavras-chave
       if (keywords.length > 0) {
-        // Monta a string no formato do Supabase: 'content_text.ilike.%termo1%,content_text.ilike.%termo2%'
-        const orConditions = keywords.map((kw) => `content_text.ilike.%${kw}%`).join(",");
-        query = query.or(orConditions);
+        const searchTerms = keywords.map((k: string) => `content_text.ilike.%${k}%`).join(",");
+        query = query.or(searchTerms);
       }
 
-      // Aumentamos o limite para 15
-      const { data: documents, error: docError } = await query.limit(15);
+      const { data: documents } = await query.limit(8);
 
-      if (docError) {
-        console.error("Erro na busca de documentos:", docError);
+      // Se não achou por palavras-chave, pega os mais recentes como fallback
+      let finalDocs = documents;
+      if (!finalDocs || finalDocs.length < 3) {
+        const { data: fallback } = await serviceClient
+          .from("ia_documents")
+          .select("file_name, content_text")
+          .eq("status", "ready")
+          .limit(8);
+        finalDocs = fallback;
       }
 
-      if (documents && documents.length > 0) {
-        console.log(`Found ${documents.length} contextual documents based on keywords:`, keywords);
+      if (finalDocs && finalDocs.length > 0) {
+        console.log(`Found ${finalDocs.length} relevant documents for context`);
         const MAX_CONTEXT_SIZE = 15000;
         let contextSize = 0;
         const contextParts: string[] = [];
 
-        for (const doc of documents) {
+        for (const doc of finalDocs) {
           if (doc.content_text) {
-            const docContext = `\n--- Documento: ${doc.file_name} ---\n${doc.content_text.substring(0, 3000)}\n`;
+            const docContext = `\n--- ${doc.file_name} ---\n${doc.content_text.substring(0, 2500)}\n`;
             if (contextSize + docContext.length <= MAX_CONTEXT_SIZE) {
               contextParts.push(docContext);
               contextSize += docContext.length;
@@ -487,7 +491,7 @@ serve(async (req) => {
         }
 
         if (contextParts.length > 0) {
-          knowledgeContext = `\n\n=== BASE DE CONHECIMENTO ===\n${contextParts.join("")}\n=== FIM DA BASE DE CONHECIMENTO ===\n`;
+          knowledgeContext = `\n\n=== BASE DE CONHECIMENTO MENTORIA AMES ===\nUse os exemplos abaixo como referência de estilo, benchmarks e respostas. Responda SEMPRE com o mesmo tom direto, prático e com dados reais:\n${contextParts.join("")}\n=== FIM DA BASE DE CONHECIMENTO ===\n`;
         }
       }
     } catch (docError) {
