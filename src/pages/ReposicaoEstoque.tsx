@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
-import { Plus, Package, Pencil, Trash2, ChevronRight, Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Plus, Package, Pencil, Trash2, ChevronRight, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -12,6 +11,10 @@ import { ptBR } from "date-fns/locale";
 
 type StatusFilter = "all" | "critico" | "atencao" | "seguro";
 type TipoFilter = "all" | "producao_propria" | "compra_fornecedor";
+type SortKey = "nome_peca" | "tipo_reposicao" | "estoque_atual" | "data_pedido" | "status";
+type SortDir = "asc" | "desc";
+
+type EnrichedItem = SkuReposicao & { computed: ComputedFields };
 
 function getDateLabel(dataPedido: Date) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -36,6 +39,23 @@ function getBorderColor(status: ComputedFields["status"]) {
   return "transparent";
 }
 
+const statusOrder = { critico: 0, atencao: 1, seguro: 2 };
+
+function sortItems(list: EnrichedItem[], key: SortKey, dir: SortDir): EnrichedItem[] {
+  const sorted = [...list].sort((a, b) => {
+    let cmp = 0;
+    switch (key) {
+      case "nome_peca": cmp = a.nome_peca.localeCompare(b.nome_peca); break;
+      case "tipo_reposicao": cmp = a.tipo_reposicao.localeCompare(b.tipo_reposicao); break;
+      case "estoque_atual": cmp = a.estoque_atual - b.estoque_atual; break;
+      case "data_pedido": cmp = a.computed.data_pedido.getTime() - b.computed.data_pedido.getTime(); break;
+      case "status": cmp = statusOrder[a.computed.status] - statusOrder[b.computed.status]; break;
+    }
+    return dir === "asc" ? cmp : -cmp;
+  });
+  return sorted;
+}
+
 export default function ReposicaoEstoque() {
   const { items, isLoading, create, update, remove, quickUpdateStock, registerOrder, isCreating, isUpdating } = useSkuReposicao();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -44,6 +64,8 @@ export default function ReposicaoEstoque() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [tipoFilter, setTipoFilter] = useState<TipoFilter>("all");
   const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("data_pedido");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const enriched = useMemo(() => items.map((item) => ({ ...item, computed: computeFields(item) })), [items]);
 
@@ -55,8 +77,8 @@ export default function ReposicaoEstoque() {
       const q = search.toLowerCase();
       list = list.filter((i) => i.nome_peca.toLowerCase().includes(q) || i.sku.toLowerCase().includes(q));
     }
-    return list.sort((a, b) => a.computed.data_pedido.getTime() - b.computed.data_pedido.getTime());
-  }, [enriched, statusFilter, tipoFilter, search]);
+    return sortItems(list, sortKey, sortDir);
+  }, [enriched, statusFilter, tipoFilter, search, sortKey, sortDir]);
 
   const counts = useMemo(() => ({
     total: enriched.length,
@@ -72,6 +94,18 @@ export default function ReposicaoEstoque() {
 
   const openCreate = () => { setEditItem(null); setDrawerOpen(true); };
   const openEdit = (item: SkuReposicao) => { setEditItem(item); setDrawerOpen(true); };
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setSortDir("asc"); }
+  };
+
+  const SortIcon = ({ col }: { col: SortKey }) => {
+    if (sortKey !== col) return <ArrowUpDown style={{ width: 12, height: 12, color: "rgba(255,255,255,0.15)", marginLeft: 4, flexShrink: 0 }} />;
+    return sortDir === "asc"
+      ? <ArrowUp style={{ width: 12, height: 12, color: "rgba(255,255,255,0.5)", marginLeft: 4, flexShrink: 0 }} />
+      : <ArrowDown style={{ width: 12, height: 12, color: "rgba(255,255,255,0.5)", marginLeft: 4, flexShrink: 0 }} />;
+  };
 
   if (isLoading) {
     return (
@@ -90,6 +124,11 @@ export default function ReposicaoEstoque() {
     { label: "Próximos 7 dias", value: counts.atencao, sub: "pedidos esta semana", valueColor: undefined },
     { label: "Em Dia", value: counts.seguro, sub: "sem urgência", valueColor: undefined },
   ];
+
+  const thStyle: React.CSSProperties = {
+    fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)",
+    height: 40, padding: "0 20px", textTransform: "uppercase", cursor: "pointer", userSelect: "none",
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-[1400px] mx-auto">
@@ -113,7 +152,6 @@ export default function ReposicaoEstoque() {
       </div>
 
       {items.length === 0 ? (
-        /* Empty State */
         <div className="flex flex-col items-center justify-center py-24 text-center rounded-xl" style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)" }}>
           <Package className="mb-4" style={{ width: 48, height: 48, color: "rgba(255,255,255,0.1)" }} />
           <h2 className="mb-1" style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>Nenhuma peça cadastrada</h2>
@@ -140,24 +178,24 @@ export default function ReposicaoEstoque() {
               />
             </div>
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-              <SelectTrigger className="border-0 outline-none ring-0 focus:ring-0" style={{ width: 160, background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, height: 36, fontSize: 13, color: "rgba(255,255,255,0.7)" }}>
-                <SelectValue placeholder="Status" />
+              <SelectTrigger className="border-0 outline-none ring-0 focus:ring-0" style={{ width: 180, background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, height: 36, fontSize: 13, color: "rgba(255,255,255,0.7)" }}>
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="critico">Crítico</SelectItem>
-                <SelectItem value="atencao">Atenção</SelectItem>
-                <SelectItem value="seguro">Em dia</SelectItem>
+                <SelectItem value="all">Status: Todos</SelectItem>
+                <SelectItem value="critico">Status: Crítico</SelectItem>
+                <SelectItem value="atencao">Status: Atenção</SelectItem>
+                <SelectItem value="seguro">Status: Em dia</SelectItem>
               </SelectContent>
             </Select>
             <Select value={tipoFilter} onValueChange={(v) => setTipoFilter(v as TipoFilter)}>
-              <SelectTrigger className="border-0 outline-none ring-0 focus:ring-0" style={{ width: 160, background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, height: 36, fontSize: 13, color: "rgba(255,255,255,0.7)" }}>
-                <SelectValue placeholder="Tipo" />
+              <SelectTrigger className="border-0 outline-none ring-0 focus:ring-0" style={{ width: 180, background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, height: 36, fontSize: 13, color: "rgba(255,255,255,0.7)" }}>
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="producao_propria">Produção</SelectItem>
-                <SelectItem value="compra_fornecedor">Fornecedor</SelectItem>
+                <SelectItem value="all">Tipo: Todos</SelectItem>
+                <SelectItem value="producao_propria">Tipo: Produção</SelectItem>
+                <SelectItem value="compra_fornecedor">Tipo: Fornecedor</SelectItem>
               </SelectContent>
             </Select>
             <div className="ml-auto">
@@ -173,12 +211,22 @@ export default function ReposicaoEstoque() {
               <thead>
                 <tr style={{ background: "#111111", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
                   <th style={{ width: 32, height: 40, padding: "0 8px" }} />
-                  <th className="text-left uppercase" style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", height: 40, padding: "0 20px" }}>Peça</th>
-                  <th className="text-left uppercase" style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", height: 40, padding: "0 20px", width: "12%" }}>Tipo</th>
-                  <th className="text-left uppercase" style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", height: 40, padding: "0 20px", width: "12%" }}>Estoque</th>
-                  <th className="text-left uppercase" style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", height: 40, padding: "0 20px", width: "20%" }}>📅 Pedir em</th>
-                  <th className="text-left uppercase" style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", height: 40, padding: "0 20px", width: "15%" }}>Status</th>
-                  <th style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", height: 40, padding: "0 20px", width: "8%", textAlign: "right" }}>Ações</th>
+                  <th className="text-left" style={thStyle} onClick={() => handleSort("nome_peca")}>
+                    <span className="flex items-center">Peça <SortIcon col="nome_peca" /></span>
+                  </th>
+                  <th className="text-left" style={{ ...thStyle, width: "12%" }} onClick={() => handleSort("tipo_reposicao")}>
+                    <span className="flex items-center">Tipo <SortIcon col="tipo_reposicao" /></span>
+                  </th>
+                  <th className="text-left" style={{ ...thStyle, width: "12%" }} onClick={() => handleSort("estoque_atual")}>
+                    <span className="flex items-center">Estoque <SortIcon col="estoque_atual" /></span>
+                  </th>
+                  <th className="text-left" style={{ ...thStyle, width: "20%" }} onClick={() => handleSort("data_pedido")}>
+                    <span className="flex items-center">📅 Pedir em <SortIcon col="data_pedido" /></span>
+                  </th>
+                  <th className="text-left" style={{ ...thStyle, width: "15%" }} onClick={() => handleSort("status")}>
+                    <span className="flex items-center">Status <SortIcon col="status" /></span>
+                  </th>
+                  <th style={{ ...thStyle, width: "8%", textAlign: "right", cursor: "default" }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -190,104 +238,110 @@ export default function ReposicaoEstoque() {
                   const diasRestantes = Math.max(0, Math.floor(computed.dias_restantes));
 
                   return (
-                    <tbody key={item.id}>
-                      <tr
-                        className="cursor-pointer transition-colors"
-                        onClick={() => setExpandedId(isOpen ? null : item.id)}
-                        style={{
-                          height: 56,
-                          borderBottom: "1px solid rgba(255,255,255,0.05)",
-                          borderLeft: `3px solid ${getBorderColor(computed.status)}`,
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.02)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ""; }}
-                      >
-                        <td style={{ width: 32, padding: "0 8px" }}>
-                          <ChevronRight
-                            className="transition-transform"
-                            style={{
-                              width: 14, height: 14,
-                              color: "rgba(255,255,255,0.25)",
-                              transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
-                            }}
-                          />
-                        </td>
-                        <td style={{ padding: "0 20px" }}>
-                          <div>
-                            <div style={{ fontWeight: 600, color: "#FFFFFF", fontSize: 13 }}>{item.nome_peca}</div>
-                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-                              SKU: {item.sku}{item.variante ? ` · ${item.variante}` : ""}
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: "0 20px", fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
-                          {item.tipo_reposicao === "producao_propria" ? "Produção" : "Fornecedor"}
-                        </td>
-                        <td style={{ padding: "0 20px" }}>
-                          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>{item.estoque_atual}</div>
-                          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>unidades</div>
-                        </td>
-                        <td style={{ padding: "0 20px" }}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div>
-                                <div style={{ color: dateLabel.color, fontWeight: dateLabel.weight, fontSize: 13 }}>{dateLabel.text}</div>
-                                <div style={{ fontSize: 11, color: dateLabel.color, opacity: 0.7 }}>{diasRestantes} dias restantes</div>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>Faça o pedido nesta data para receber antes de zerar o estoque</TooltipContent>
-                          </Tooltip>
-                        </td>
-                        <td style={{ padding: "0 20px" }}>
-                          <div className="flex items-center gap-2">
-                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusDot.color, display: "inline-block", flexShrink: 0 }} />
-                            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>{statusDot.label}</span>
-                          </div>
-                        </td>
-                        <td style={{ padding: "0 20px", textAlign: "right" }}>
-                          <div className="flex items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={() => openEdit(item)}
-                              className="transition-colors"
-                              style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                              onMouseEnter={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.8)"; }}
-                              onMouseLeave={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.3)"; }}
+                    <tr key={item.id} style={{ display: "contents" }}>
+                      <td colSpan={7} style={{ display: "contents" }}>
+                        <table className="w-full" style={{ borderCollapse: "collapse" }}>
+                          <tbody>
+                            <tr
+                              className="cursor-pointer transition-colors"
+                              onClick={() => setExpandedId(isOpen ? null : item.id)}
+                              style={{
+                                height: 56,
+                                borderBottom: "1px solid rgba(255,255,255,0.05)",
+                                borderLeft: `3px solid ${getBorderColor(computed.status)}`,
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.02)"; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ""; }}
                             >
-                              <Pencil style={{ width: 14, height: 14, color: "rgba(255,255,255,0.3)", transition: "color 0.15s" }} />
-                            </button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <button
-                                  className="transition-colors"
-                                  style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                                  onMouseEnter={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "#EF4444"; }}
-                                  onMouseLeave={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.3)"; }}
-                                >
-                                  <Trash2 style={{ width: 14, height: 14, color: "rgba(255,255,255,0.3)", transition: "color 0.15s" }} />
-                                </button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Remover peça?</AlertDialogTitle>
-                                  <AlertDialogDescription>Esta ação não pode ser desfeita. A peça "{item.nome_peca}" será removida permanentemente.</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => remove(item.id)} className="bg-destructive hover:bg-destructive/90">Remover</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </td>
-                      </tr>
-                      {isOpen && (
-                        <tr>
-                          <td colSpan={7} style={{ padding: 0 }}>
-                            <SkuDetailPanel item={item} onRegisterOrder={registerOrder} onQuickUpdateStock={quickUpdateStock} />
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
+                              <td style={{ width: 32, padding: "0 8px" }}>
+                                <ChevronRight
+                                  className="transition-transform"
+                                  style={{
+                                    width: 14, height: 14,
+                                    color: "rgba(255,255,255,0.25)",
+                                    transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
+                                  }}
+                                />
+                              </td>
+                              <td style={{ padding: "0 20px" }}>
+                                <div>
+                                  <div style={{ fontWeight: 600, color: "#FFFFFF", fontSize: 13 }}>{item.nome_peca}</div>
+                                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                                    SKU: {item.sku}{item.variante ? ` · ${item.variante}` : ""}
+                                  </div>
+                                </div>
+                              </td>
+                              <td style={{ padding: "0 20px", fontSize: 12, color: "rgba(255,255,255,0.45)", width: "12%" }}>
+                                {item.tipo_reposicao === "producao_propria" ? "Produção" : "Fornecedor"}
+                              </td>
+                              <td style={{ padding: "0 20px", width: "12%" }}>
+                                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>{item.estoque_atual}</div>
+                                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>unidades</div>
+                              </td>
+                              <td style={{ padding: "0 20px", width: "20%" }}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div>
+                                      <div style={{ color: dateLabel.color, fontWeight: dateLabel.weight, fontSize: 13 }}>{dateLabel.text}</div>
+                                      <div style={{ fontSize: 11, color: dateLabel.color, opacity: 0.7 }}>{diasRestantes} dias restantes</div>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Faça o pedido nesta data para receber antes de zerar o estoque</TooltipContent>
+                                </Tooltip>
+                              </td>
+                              <td style={{ padding: "0 20px", width: "15%" }}>
+                                <div className="flex items-center gap-2">
+                                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusDot.color, display: "inline-block", flexShrink: 0 }} />
+                                  <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>{statusDot.label}</span>
+                                </div>
+                              </td>
+                              <td style={{ padding: "0 20px", textAlign: "right", width: "8%" }}>
+                                <div className="flex items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    onClick={() => openEdit(item)}
+                                    className="transition-colors"
+                                    style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                                    onMouseEnter={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.8)"; }}
+                                    onMouseLeave={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.3)"; }}
+                                  >
+                                    <Pencil style={{ width: 14, height: 14, color: "rgba(255,255,255,0.3)", transition: "color 0.15s" }} />
+                                  </button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <button
+                                        className="transition-colors"
+                                        style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                                        onMouseEnter={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "#EF4444"; }}
+                                        onMouseLeave={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.3)"; }}
+                                      >
+                                        <Trash2 style={{ width: 14, height: 14, color: "rgba(255,255,255,0.3)", transition: "color 0.15s" }} />
+                                      </button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Remover peça?</AlertDialogTitle>
+                                        <AlertDialogDescription>Esta ação não pode ser desfeita. A peça "{item.nome_peca}" será removida permanentemente.</AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => remove(item.id)} className="bg-destructive hover:bg-destructive/90">Remover</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              </td>
+                            </tr>
+                            {isOpen && (
+                              <tr>
+                                <td colSpan={7} style={{ padding: 0 }}>
+                                  <SkuDetailPanel item={item} onRegisterOrder={registerOrder} onQuickUpdateStock={quickUpdateStock} />
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
                   );
                 })}
               </tbody>
