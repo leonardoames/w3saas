@@ -1121,10 +1121,12 @@ export type Database = {
           full_name: string | null
           id: string
           is_admin: boolean | null
+          is_ecommerce: boolean | null
           is_mentorado: boolean
           is_w3_client: boolean
           last_login_at: string | null
           must_change_password: boolean
+          onboarding_completed: boolean | null
           plan_type: string
           revenue_goal: number | null
           updated_at: string
@@ -1138,10 +1140,12 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_admin?: boolean | null
+          is_ecommerce?: boolean | null
           is_mentorado?: boolean
           is_w3_client?: boolean
           last_login_at?: string | null
           must_change_password?: boolean
+          onboarding_completed?: boolean | null
           plan_type?: string
           revenue_goal?: number | null
           updated_at?: string
@@ -1155,10 +1159,12 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_admin?: boolean | null
+          is_ecommerce?: boolean | null
           is_mentorado?: boolean
           is_w3_client?: boolean
           last_login_at?: string | null
           must_change_password?: boolean
+          onboarding_completed?: boolean | null
           plan_type?: string
           revenue_goal?: number | null
           updated_at?: string
