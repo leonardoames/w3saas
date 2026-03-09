@@ -18,6 +18,7 @@ export interface Product {
   lead_time_maximo: number | null;
   tipo_reposicao: string | null;
   estoque_seguranca: number | null;
+  origem_importacao: string | null;
   created_at: string;
   updated_at: string;
 }

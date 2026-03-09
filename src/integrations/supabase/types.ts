@@ -1065,6 +1065,7 @@ export type Database = {
           lead_time_maximo: number | null
           lead_time_medio: number | null
           nome: string
+          origem_importacao: string | null
           preco_venda: number | null
           sku: string
           tipo_reposicao: string | null
@@ -1082,6 +1083,7 @@ export type Database = {
           lead_time_maximo?: number | null
           lead_time_medio?: number | null
           nome: string
+          origem_importacao?: string | null
           preco_venda?: number | null
           sku: string
           tipo_reposicao?: string | null
@@ -1099,6 +1101,7 @@ export type Database = {
           lead_time_maximo?: number | null
           lead_time_medio?: number | null
           nome?: string
+          origem_importacao?: string | null
           preco_venda?: number | null
           sku?: string
           tipo_reposicao?: string | null
