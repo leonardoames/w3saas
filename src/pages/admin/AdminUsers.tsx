@@ -511,10 +511,10 @@ export default function AdminUsers() {
                         <TableCell>{getStatusBadge(user)}</TableCell>
                         <TableCell>{getPlanBadge(user.plan_type)}</TableCell>
                         <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {user.is_mentorado_deprecated && <Badge variant="outline" className="text-xs">Mentorado</Badge>}
-                            {user.is_w3_client_deprecated && <Badge variant="outline" className="text-xs">Cliente W3</Badge>}
-                            {!user.is_mentorado_deprecated && !user.is_w3_client_deprecated && <span className="text-muted-foreground text-sm">-</span>}
+                           <div className="flex flex-wrap gap-1">
+                            {user.is_mentorado && <Badge variant="outline" className="text-xs">Mentorado</Badge>}
+                            {user.is_w3_client && <Badge variant="outline" className="text-xs">Cliente W3</Badge>}
+                            {!user.is_mentorado && !user.is_w3_client && <span className="text-muted-foreground text-sm">-</span>}
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
