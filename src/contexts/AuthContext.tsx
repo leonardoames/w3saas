@@ -14,6 +14,8 @@ interface Profile {
   access_expires_at: string | null;
   last_login_at: string | null;
   must_change_password: boolean;
+  is_ecommerce: boolean | null;
+  onboarding_completed: boolean;
 }
 
 interface AuthContextType {

@@ -48,6 +48,7 @@ import AdminModules from "./pages/admin/AdminModules";
 import AdminBrands from "./pages/admin/AdminBrands";
 import AdminPlanoAcao from "./pages/admin/AdminPlanoAcao";
 
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -68,6 +69,16 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/acesso-bloqueado" element={<AcessoBloqueado />} />
+
+              {/* Onboarding route */}
+              <Route
+                path="/onboarding"
+                element={
+                  <ProtectedRoute>
+                    <Onboarding />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Protected app routes */}
               <Route
