@@ -22,7 +22,7 @@ const DEFAULT_COLUMNS = [
 const COLUMN_LABELS: Record<string, string> = {
   user_id: "ID", email: "E-mail", full_name: "Nome",
   access_status: "Status", plan_type: "Plano",
-  is_mentorado: "Mentorado", is_w3_client: "Cliente W3",
+  is_mentorado_deprecated: "Mentorado", is_w3_client_deprecated: "Cliente W3",
   access_expires_at: "Expiração", created_at: "Cadastro",
   last_login_at: "Último Login", revenue_goal: "Meta Faturamento",
   total_faturamento: "Faturamento Total", total_sessoes: "Sessões Total",

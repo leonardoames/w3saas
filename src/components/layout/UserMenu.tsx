@@ -27,7 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export function UserMenu() {
   const navigate = useNavigate();
-  const { user, profile, signOut, refreshProfile } = useAuth();
+  const { user, profile, attributeMap, signOut, refreshProfile } = useAuth();
   const { toast } = useToast();
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const [fullName, setFullName] = useState("");
@@ -62,8 +62,10 @@ export function UserMenu() {
   };
 
   const getPlanLabel = () => {
-    if (profile?.is_mentorado) return "Plano Mentorado";
-    if (profile?.is_w3_client) return "Plano W3";
+    const isMentorado = attributeMap["is_mentorado"] || profile?.is_mentorado_deprecated;
+    const isW3Client = attributeMap["is_w3_client"] || profile?.is_w3_client_deprecated;
+    if (isMentorado) return "Plano Mentorado";
+    if (isW3Client) return "Plano W3";
     if (profile?.plan_type === "paid") return "Plano Pago";
     if (profile?.plan_type === "manual") return "Acesso Manual";
     return "Plano Free";

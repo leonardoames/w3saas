@@ -71,8 +71,8 @@ interface UserProfile {
   email: string | null;
   full_name: string | null;
   access_status: string;
-  is_mentorado: boolean;
-  is_w3_client: boolean;
+  is_mentorado_deprecated: boolean;
+  is_w3_client_deprecated: boolean;
   plan_type: string;
   access_expires_at: string | null;
   last_login_at: string | null;
@@ -511,9 +511,9 @@ export default function AdminUsers() {
                         <TableCell>{getPlanBadge(user.plan_type)}</TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
-                            {user.is_mentorado && <Badge variant="outline" className="text-xs">Mentorado</Badge>}
-                            {user.is_w3_client && <Badge variant="outline" className="text-xs">Cliente W3</Badge>}
-                            {!user.is_mentorado && !user.is_w3_client && <span className="text-muted-foreground text-sm">-</span>}
+                            {user.is_mentorado_deprecated && <Badge variant="outline" className="text-xs">Mentorado</Badge>}
+                            {user.is_w3_client_deprecated && <Badge variant="outline" className="text-xs">Cliente W3</Badge>}
+                            {!user.is_mentorado_deprecated && !user.is_w3_client_deprecated && <span className="text-muted-foreground text-sm">-</span>}
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
@@ -596,14 +596,14 @@ export default function AdminUsers() {
                 {actionsDialog.user.isAdmin ? "Remover admin" : "Tornar admin"}
               </Button>
 
-              <Button variant="ghost" className="justify-start" onClick={() => { updateUserFlag(actionsDialog.user.user_id, "is_mentorado", !actionsDialog.user.is_mentorado); setActionsDialog({ open: false, user: null }); }}>
+              <Button variant="ghost" className="justify-start" onClick={() => { updateUserFlag(actionsDialog.user.user_id, "is_mentorado", !actionsDialog.user.is_mentorado_deprecated); setActionsDialog({ open: false, user: null }); }}>
                 <Crown className="mr-2 h-4 w-4" />
-                {actionsDialog.user.is_mentorado ? "Desmarcar Mentorado" : "Marcar como Mentorado"}
+                {actionsDialog.user.is_mentorado_deprecated ? "Desmarcar Mentorado" : "Marcar como Mentorado"}
               </Button>
 
-              <Button variant="ghost" className="justify-start" onClick={() => { updateUserFlag(actionsDialog.user.user_id, "is_w3_client", !actionsDialog.user.is_w3_client); setActionsDialog({ open: false, user: null }); }}>
+              <Button variant="ghost" className="justify-start" onClick={() => { updateUserFlag(actionsDialog.user.user_id, "is_w3_client", !actionsDialog.user.is_w3_client_deprecated); setActionsDialog({ open: false, user: null }); }}>
                 <Users className="mr-2 h-4 w-4" />
-                {actionsDialog.user.is_w3_client ? "Desmarcar Cliente W3" : "Marcar como Cliente W3"}
+                {actionsDialog.user.is_w3_client_deprecated ? "Desmarcar Cliente W3" : "Marcar como Cliente W3"}
               </Button>
 
               <div className="my-1 border-t border-border" />

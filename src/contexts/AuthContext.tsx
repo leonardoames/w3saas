@@ -8,8 +8,8 @@ interface Profile {
   email: string | null;
   full_name: string | null;
   access_status: "active" | "suspended";
-  is_mentorado: boolean;
-  is_w3_client: boolean;
+  is_mentorado_deprecated: boolean;
+  is_w3_client_deprecated: boolean;
   plan_type: "free" | "paid" | "manual";
   access_expires_at: string | null;
   last_login_at: string | null;
@@ -26,6 +26,7 @@ interface AuthContextType {
   isLoading: boolean;
   hasAccess: boolean;
   accessDeniedReason: string | null;
+  attributeMap: Record<string, boolean>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -40,11 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [accessDeniedReason, setAccessDeniedReason] = useState<string | null>(null);
+  const [attributeMap, setAttributeMap] = useState<Record<string, boolean>>({});
   const [needsProfileRefresh, setNeedsProfileRefresh] = useState(false);
 
   const checkAccess = (
     userProfile: Profile | null,
     adminStatus: boolean,
+    isMentorado: boolean,
+    isW3Client: boolean,
   ): { hasAccess: boolean; reason: string | null } => {
     if (adminStatus) {
       return { hasAccess: true, reason: null };
@@ -65,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    if (userProfile.plan_type === "free" && !userProfile.is_mentorado && !userProfile.is_w3_client) {
+    if (userProfile.plan_type === "free" && !isMentorado && !isW3Client) {
       return { hasAccess: false, reason: "Pagamento necessário" };
     }
 
@@ -96,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsAdmin(false);
         setHasAccess(false);
         setAccessDeniedReason(null);
+        setAttributeMap({});
         setIsLoading(false);
       } else {
         // Garante que isLoading = true enquanto o perfil não for carregado
@@ -162,8 +167,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 user_id: user.id,
                 email: user.email,
                 access_status: "active",
-                is_mentorado: false,
-                is_w3_client: false,
+                is_mentorado_deprecated: false,
+                is_w3_client_deprecated: false,
                 plan_type: "free",
               },
             ])
@@ -187,6 +192,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(profileData as Profile);
         }
 
+        // Busca atributos do usuário (fonte principal para is_mentorado / is_w3_client)
+        const { data: attributesData } = await supabase
+          .from("user_attributes")
+          .select("attribute, value")
+          .eq("user_id", user.id);
+
+        if (!mounted) return;
+
+        const newAttributeMap: Record<string, boolean> = Object.fromEntries(
+          (attributesData || []).map((a) => [a.attribute, a.value === "true"])
+        );
+        setAttributeMap(newAttributeMap);
+
+        // OR fallback: user_attributes is source of truth; deprecated column is safety net
+        const isMentorado =
+          newAttributeMap["is_mentorado"] || (profileData as Profile)?.is_mentorado_deprecated || false;
+        const isW3Client =
+          newAttributeMap["is_w3_client"] || (profileData as Profile)?.is_w3_client_deprecated || false;
+
         // Busca status de admin
         const { data: adminData, error: adminError } = await supabase.rpc("is_admin", { _user_id: user.id });
 
@@ -196,7 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsAdmin(adminStatus);
 
         // Verifica acesso
-        const accessCheck = checkAccess((profileData as Profile) || null, adminStatus);
+        const accessCheck = checkAccess((profileData as Profile) || null, adminStatus, isMentorado, isW3Client);
         setHasAccess(accessCheck.hasAccess);
         setAccessDeniedReason(accessCheck.reason);
 
@@ -237,6 +261,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         hasAccess,
         accessDeniedReason,
+        attributeMap,
         signOut,
         refreshProfile,
       }}
