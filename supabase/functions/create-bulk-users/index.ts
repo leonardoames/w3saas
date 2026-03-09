@@ -96,8 +96,8 @@ Deno.serve(async (req) => {
             .update({
               full_name: userData.name || null,
               plan_type: userData.plan || "manual",
-              is_mentorado: userData.is_mentorado || false,
-              is_w3_client: userData.is_w3_client || false,
+              is_mentorado_deprecated: userData.is_mentorado || false,
+              is_w3_client_deprecated: userData.is_w3_client || false,
               access_status: "active",
               must_change_password: true,
             })
@@ -105,6 +105,33 @@ Deno.serve(async (req) => {
 
           if (profileError) {
             console.error("Profile update error:", profileError);
+          }
+
+          // Dual-write to user_attributes (source of truth)
+          const attributesToInsert = [];
+          if (userData.is_mentorado) {
+            attributesToInsert.push({
+              user_id: newUser.user.id,
+              attribute: "is_mentorado",
+              value: "true",
+              notes: "Set during bulk user creation",
+            });
+          }
+          if (userData.is_w3_client) {
+            attributesToInsert.push({
+              user_id: newUser.user.id,
+              attribute: "is_w3_client",
+              value: "true",
+              notes: "Set during bulk user creation",
+            });
+          }
+          if (attributesToInsert.length > 0) {
+            const { error: attrError } = await supabaseClient
+              .from("user_attributes")
+              .upsert(attributesToInsert, { onConflict: "user_id,attribute" });
+            if (attrError) {
+              console.error("user_attributes upsert error:", attrError);
+            }
           }
 
           results.push({

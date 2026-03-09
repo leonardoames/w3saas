@@ -9,8 +9,8 @@ export interface MentoradoRow {
   full_name: string | null;
   access_status: string;
   plan_type: string;
-  is_mentorado: boolean;
-  is_w3_client: boolean;
+  is_mentorado_deprecated: boolean;
+  is_w3_client_deprecated: boolean;
   access_expires_at: string | null;
   created_at: string;
   last_login_at: string | null;
@@ -53,7 +53,7 @@ export function useDashAdmin() {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
-        .eq("is_mentorado", true)
+        .eq("is_mentorado_deprecated", true)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as MentoradoRow[];
