@@ -8,7 +8,8 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
-  const { user, isAdmin, isLoading, hasAccess, accessDeniedReason, profile } = useAuth();
+  const { user, isAdmin, hasRole, isLoading, hasAccess, accessDeniedReason, profile } = useAuth();
+  const isMaster = isAdmin || hasRole("master");
   const location = useLocation();
 
   if (isLoading) {
@@ -32,21 +33,21 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     return <Navigate to="/auth" replace />;
   }
 
-  // Onboarding redirect (skip for admins)
-  if (profile && !profile.onboarding_completed && !isAdmin && !requireAdmin) {
+  // Onboarding redirect (skip for admins/masters)
+  if (profile && !profile.onboarding_completed && !isMaster && !requireAdmin) {
     // Only redirect if not already on onboarding
     if (location.pathname !== "/onboarding") {
       return <Navigate to="/onboarding" replace />;
     }
   }
 
-  // Admin route check
-  if (requireAdmin && !isAdmin) {
+  // Admin route check (admin or master can access)
+  if (requireAdmin && !isMaster) {
     return <Navigate to="/app" replace />;
   }
 
-  // Access check (not for admin routes, admins bypass this, onboarding bypasses this)
-  if (!requireAdmin && !hasAccess && !isAdmin && location.pathname !== "/onboarding") {
+  // Access check (not for admin routes, admins/masters bypass this, onboarding bypasses this)
+  if (!requireAdmin && !hasAccess && !isMaster && location.pathname !== "/onboarding") {
     return <Navigate to="/acesso-bloqueado" state={{ reason: accessDeniedReason }} replace />;
   }
 

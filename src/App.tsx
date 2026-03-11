@@ -41,6 +41,7 @@ import ShopeeCallback from "./pages/ShopeeCallback";
 import ShopeeAdsCallback from "./pages/ShopeeAdsCallback";
 import DashAdmin from "./pages/DashAdmin";
 import BancoDeIdeias from "./pages/BancoDeIdeias";
+import UpgradeGate from "./pages/UpgradeGate";
 
 // Admin pages
 import AdminUsers from "./pages/admin/AdminUsers";
@@ -107,6 +108,7 @@ const App = () => (
                         <Route path="/produtos" element={<Produtos />} />
                         <Route path="/calendario" element={<CalendarioComercial />} />
                         <Route path="/dash-admin" element={<DashAdmin />} />
+                        <Route path="/upgrade/:feature" element={<UpgradeGate />} />
                         <Route path="/integracoes" element={<Integracoes />} />
                         <Route path="/integracoes/shopify/callback" element={<ShopifyCallback />} />
                         <Route path="/integracoes/shopee/callback" element={<ShopeeCallback />} />

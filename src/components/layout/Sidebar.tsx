@@ -18,6 +18,8 @@ interface MenuItem {
   icon: LucideIcon;
   path: string;
   adminOnly?: boolean;
+  staffOnly?: boolean;   // only for admin/master/tutor/cs
+  lockedWithoutAmes?: boolean; // show with padlock if no cliente_ames
 }
 
 interface MenuGroup {
@@ -38,7 +40,7 @@ const menuGroups: MenuGroup[] = [
       { title: "Plano de Ação", icon: ListChecks, path: "/app/plano-acao" },
       { title: "Banco de Ideias", icon: Lightbulb, path: "/app/banco-de-ideias" },
       { title: "Integrações", icon: Activity, path: "/app/integracoes" },
-      { title: "Dash Admin", icon: Activity, path: "/app/dash-admin", adminOnly: true },
+      { title: "Dash Admin", icon: Activity, path: "/app/dash-admin", staffOnly: true },
     ],
   },
   {
@@ -55,10 +57,10 @@ const menuGroups: MenuGroup[] = [
     title: "W3 Educação",
     icon: GraduationCap,
     items: [
-      { title: "Mentoria AMES", icon: GraduationCap, path: "/app/aulas/mentoria-ames" },
-      { title: "Tutorias", icon: GraduationCap, path: "/app/aulas/tutorias" },
-      { title: "Hotseats com Léo", icon: GraduationCap, path: "/app/aulas/hotseats" },
-      { title: "Calendário Comercial", icon: CalendarDays, path: "/app/calendario" },
+      { title: "Mentoria AMES", icon: GraduationCap, path: "/app/aulas/mentoria-ames", lockedWithoutAmes: true },
+      { title: "Tutorias", icon: GraduationCap, path: "/app/aulas/tutorias", lockedWithoutAmes: true },
+      { title: "Hotseats com Léo", icon: GraduationCap, path: "/app/aulas/hotseats", lockedWithoutAmes: true },
+      { title: "Calendário Comercial", icon: CalendarDays, path: "/app/calendario", lockedWithoutAmes: true },
     ],
   },
 ];
@@ -92,22 +94,29 @@ function getActiveGroup(pathname: string): string | null {
   return null;
 }
 
+const INTERNAL_ROLES = ["admin", "master", "tutor", "cs"];
+
 function SidebarGroup({
   group,
   pathname,
   onNavClick,
-  isAdmin,
+  isStaff,
+  hasAmes,
   isOpen,
   onToggle,
 }: {
   group: MenuGroup;
   pathname: string;
   onNavClick?: () => void;
-  isAdmin?: boolean;
+  isStaff?: boolean;
+  hasAmes?: boolean;
   isOpen: boolean;
   onToggle: () => void;
 }) {
-  const visibleItems = group.items.filter((item) => !item.adminOnly || isAdmin);
+  const visibleItems = group.items.filter((item) => {
+    if (item.staffOnly && !isStaff) return false;
+    return true;
+  });
   if (visibleItems.length === 0) return null;
   const GroupIcon = group.icon;
 
@@ -133,16 +142,21 @@ function SidebarGroup({
       >
         <div className="overflow-hidden">
           <div className="ml-5 space-y-0.5 py-1 border-l border-border/50">
-            {visibleItems.map((item) => (
-              <SidebarNavLink
-                key={item.path}
-                to={item.path}
-                end={item.path === "/app"}
-                onClick={onNavClick}
-                icon={item.icon}
-                label={item.title}
-              />
-            ))}
+            {visibleItems.map((item) => {
+              const isLocked = item.lockedWithoutAmes && !isStaff && !hasAmes;
+              return (
+                <SidebarNavLink
+                  key={item.path}
+                  to={item.path}
+                  end={item.path === "/app"}
+                  onClick={isLocked ? undefined : onNavClick}
+                  icon={item.icon}
+                  label={item.title}
+                  locked={isLocked}
+                  lockedFeature={isLocked ? "w3-educacao" : undefined}
+                />
+              );
+            })}
           </div>
         </div>
       </div>
@@ -159,9 +173,13 @@ interface SidebarProps {
 
 export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: SidebarProps) {
   const isMobile = useIsMobile();
-  const { isAdmin, profile } = useAuth();
+  const { isAdmin, hasRole } = useAuth();
   const location = useLocation();
   const isExpanded = isMobile ? true : !isCollapsed;
+
+  const isStaff = isAdmin || INTERNAL_ROLES.some((r) => hasRole(r));
+  const hasAmes = hasRole("cliente_ames");
+  const showAdmin = isAdmin || hasRole("master");
 
   const initialGroup = useMemo(() => getActiveGroup(location.pathname), []);
   const [openGroup, setOpenGroup] = useState<string | null>(initialGroup);
@@ -180,7 +198,8 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
           group={group}
           pathname={location.pathname}
           onNavClick={onNav}
-          isAdmin={isAdmin}
+          isStaff={isStaff}
+          hasAmes={hasAmes}
           isOpen={openGroup === group.title}
           onToggle={() => handleToggleGroup(group.title)}
         />
@@ -189,7 +208,7 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
         <SidebarNavLink key={item.path} to={item.path} onClick={onNav} icon={item.icon} label={item.title} />
       ))}
 
-      {isAdmin && (
+      {showAdmin && (
         <div className="mt-4 pt-3 border-t border-border/30">
           <span className="block px-3 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/30 select-none">
             Sistema
@@ -220,7 +239,7 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
           <TooltipContent side="right" className="text-xs font-medium">{item.title}</TooltipContent>
         </Tooltip>
       ))}
-      {isAdmin && adminMenuItems.map((item) => (
+      {showAdmin && adminMenuItems.map((item) => (
         <Tooltip key={item.path}>
           <TooltipTrigger asChild>
             <div><SidebarNavLink to={item.path} icon={item.icon} label={item.title} isCollapsed /></div>
@@ -228,7 +247,7 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
           <TooltipContent side="right" className="text-xs font-medium">{item.title}</TooltipContent>
         </Tooltip>
       ))}
-      {isAdmin && (
+      {showAdmin && (
         <Tooltip>
           <TooltipTrigger asChild>
             <div><SidebarNavLink to="/admin" icon={Shield} label="Admin" isCollapsed /></div>

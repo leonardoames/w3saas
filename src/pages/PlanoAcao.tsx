@@ -13,7 +13,8 @@ import { MiroEmbed } from "@/components/plano-acao/MiroEmbed";
 import { UserResourcesTab } from "@/components/plano-acao/UserResourcesTab";
 
 export default function PlanoAcao() {
-  const { user, profile } = useAuth();
+  const { user, profile, hasRole } = useAuth();
+  const hasAmes = hasRole("cliente_ames") || hasRole("admin") || hasRole("master") || hasRole("tutor") || hasRole("cs");
   const { 
     tasks, 
     loading, 
@@ -94,11 +95,11 @@ export default function PlanoAcao() {
       />
 
       <Tabs defaultValue="ames" className="w-full">
-        <TabsList className={`grid w-full ${profile?.is_mentorado ? 'grid-cols-4' : 'grid-cols-3'}`}>
+        <TabsList className={`grid w-full ${hasAmes ? 'grid-cols-4' : 'grid-cols-3'}`}>
           <TabsTrigger value="ames">Plano AMES</TabsTrigger>
           <TabsTrigger value="custom">Personalizado</TabsTrigger>
           <TabsTrigger value="recursos">Recursos</TabsTrigger>
-          {profile?.is_mentorado && (
+          {hasAmes && (
             <TabsTrigger value="mapa-mental">Mapa Mental</TabsTrigger>
           )}
         </TabsList>
@@ -176,7 +177,7 @@ export default function PlanoAcao() {
           <UserResourcesTab />
         </TabsContent>
 
-        {profile?.is_mentorado && (
+        {hasAmes && (
           <TabsContent value="mapa-mental" className="mt-6">
             <MiroEmbed />
           </TabsContent>
