@@ -20,10 +20,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Shield, Crown, Users, Key, Trash2, Save,
-  ClipboardList, Check, UserX,
+  ClipboardList, Check, UserX, ChevronDown, GraduationCap, ShoppingBag,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface UserProfile {
   id: string;
@@ -52,17 +53,28 @@ interface UserEditSheetProps {
 export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano }: UserEditSheetProps) {
   const { toast } = useToast();
 
+  // Base fields
   const [fullName, setFullName] = useState("");
   const [accessStatus, setAccessStatus] = useState("");
-  const [planType, setPlanType] = useState("");
   const [expirationDate, setExpirationDate] = useState("");
-  const [isMentorado, setIsMentorado] = useState(false);
-  const [isW3Client, setIsW3Client] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [revenueGoal, setRevenueGoal] = useState("");
 
+  // New: product roles
+  const [isClienteW3, setIsClienteW3] = useState(false);
+  const [isClienteAmes, setIsClienteAmes] = useState(false);
+  const [originalClienteW3, setOriginalClienteW3] = useState(false);
+  const [originalClienteAmes, setOriginalClienteAmes] = useState(false);
+
+  // Dash admin role
   const [dashRole, setDashRole] = useState<string>("none");
   const [originalDashRole, setOriginalDashRole] = useState<string>("none");
+
+  // Legacy fields
+  const [planType, setPlanType] = useState("");
+  const [isMentorado, setIsMentorado] = useState(false);
+  const [isW3Client, setIsW3Client] = useState(false);
+  const [legacyOpen, setLegacyOpen] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -73,28 +85,35 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
   const initForm = (u: UserProfile) => {
     setFullName(u.full_name || "");
     setAccessStatus(u.access_status);
-    setPlanType(u.plan_type);
     setExpirationDate(u.access_expires_at?.split("T")[0] || "");
-    setIsMentorado(u.is_mentorado);
-    setIsW3Client(u.is_w3_client);
     setIsAdmin(u.isAdmin || false);
     setRevenueGoal(u.revenue_goal?.toString() || "");
+    // Legacy
+    setPlanType(u.plan_type);
+    setIsMentorado(u.is_mentorado);
+    setIsW3Client(u.is_w3_client);
   };
 
-  // Fetch dash role when sheet opens
+  // Fetch roles when sheet opens
   useEffect(() => {
     if (!open || !user) return;
     supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", user.user_id)
-      .in("role", ["tutor", "cs", "master"])
-      .limit(1)
-      .maybeSingle()
       .then(({ data }) => {
-        const r = data?.role ?? "none";
-        setDashRole(r);
-        setOriginalDashRole(r);
+        const roles = (data ?? []).map((r) => r.role as string);
+        const cw3 = roles.includes("cliente_w3");
+        const cames = roles.includes("cliente_ames");
+        setIsClienteW3(cw3);
+        setIsClienteAmes(cames);
+        setOriginalClienteW3(cw3);
+        setOriginalClienteAmes(cames);
+
+        const staffRoles = ["tutor", "cs", "master"];
+        const dashR = roles.find((r) => staffRoles.includes(r)) ?? "none";
+        setDashRole(dashR);
+        setOriginalDashRole(dashR);
       });
   }, [open, user]);
 
@@ -116,7 +135,9 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
       isW3Client !== user.is_w3_client ||
       isAdmin !== (user.isAdmin || false) ||
       revenueGoal !== (user.revenue_goal?.toString() || "") ||
-      dashRole !== originalDashRole
+      dashRole !== originalDashRole ||
+      isClienteW3 !== originalClienteW3 ||
+      isClienteAmes !== originalClienteAmes
     );
   };
 
@@ -124,7 +145,6 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
     if (!user) return;
     setSaving(true);
     try {
-      // Execute updates sequentially to avoid typing issues
       if (fullName !== (user.full_name || "")) {
         const { error } = await supabase.rpc("admin_update_user_name", { target_user_id: user.user_id, new_name: fullName.trim() });
         if (error) throw error;
@@ -133,21 +153,9 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
         const { error } = await supabase.rpc("admin_update_user_status", { target_user_id: user.user_id, new_status: accessStatus });
         if (error) throw error;
       }
-      if (planType !== user.plan_type) {
-        const { error } = await supabase.rpc("admin_update_user_plan", { target_user_id: user.user_id, new_plan: planType });
-        if (error) throw error;
-      }
       if (expirationDate !== (user.access_expires_at?.split("T")[0] || "")) {
         const expDate = expirationDate ? new Date(expirationDate).toISOString() : null;
         const { error } = await supabase.rpc("admin_set_expiration", { target_user_id: user.user_id, expiration_date: expDate });
-        if (error) throw error;
-      }
-      if (isMentorado !== user.is_mentorado) {
-        const { error } = await supabase.rpc("admin_update_user_flag", { target_user_id: user.user_id, flag_name: "is_mentorado", flag_value: isMentorado });
-        if (error) throw error;
-      }
-      if (isW3Client !== user.is_w3_client) {
-        const { error } = await supabase.rpc("admin_update_user_flag", { target_user_id: user.user_id, flag_name: "is_w3_client", flag_value: isW3Client });
         if (error) throw error;
       }
       if (isAdmin !== (user.isAdmin || false)) {
@@ -159,11 +167,36 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
         const { error } = await supabase.rpc("admin_update_revenue_goal", { target_user_id: user.user_id, new_goal: goalValue });
         if (error) throw error;
       }
+      // Product roles (new system)
+      if (isClienteW3 !== originalClienteW3) {
+        const { error } = await supabase.rpc("admin_set_client_role" as any, { target_user_id: user.user_id, p_role: "cliente_w3", p_grant: isClienteW3 });
+        if (error) throw error;
+        setOriginalClienteW3(isClienteW3);
+      }
+      if (isClienteAmes !== originalClienteAmes) {
+        const { error } = await supabase.rpc("admin_set_client_role" as any, { target_user_id: user.user_id, p_role: "cliente_ames", p_grant: isClienteAmes });
+        if (error) throw error;
+        setOriginalClienteAmes(isClienteAmes);
+      }
+      // Dash role
       if (dashRole !== originalDashRole) {
         const newDashRole = dashRole === "none" ? null : dashRole;
         const { error } = await supabase.rpc("admin_set_dash_role" as any, { target_user_id: user.user_id, new_role: newDashRole });
         if (error) throw error;
         setOriginalDashRole(dashRole);
+      }
+      // Legacy flags
+      if (planType !== user.plan_type) {
+        const { error } = await supabase.rpc("admin_update_user_plan", { target_user_id: user.user_id, new_plan: planType });
+        if (error) throw error;
+      }
+      if (isMentorado !== user.is_mentorado) {
+        const { error } = await supabase.rpc("admin_update_user_flag", { target_user_id: user.user_id, flag_name: "is_mentorado", flag_value: isMentorado });
+        if (error) throw error;
+      }
+      if (isW3Client !== user.is_w3_client) {
+        const { error } = await supabase.rpc("admin_update_user_flag", { target_user_id: user.user_id, flag_name: "is_w3_client", flag_value: isW3Client });
+        if (error) throw error;
       }
 
       toast({ title: "Salvo com sucesso", description: "Todas as alterações foram aplicadas." });
@@ -246,6 +279,35 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
 
             <Separator />
 
+            {/* Produto / Acesso */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Produto / Acesso</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShoppingBag className="h-4 w-4 text-blue-500" />
+                    <div>
+                      <Label htmlFor="edit-cw3" className="cursor-pointer">Cliente W3</Label>
+                      <p className="text-xs text-muted-foreground">Acesso à plataforma</p>
+                    </div>
+                  </div>
+                  <Switch id="edit-cw3" checked={isClienteW3} onCheckedChange={setIsClienteW3} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="h-4 w-4 text-amber-500" />
+                    <div>
+                      <Label htmlFor="edit-cames" className="cursor-pointer">Cliente AMES</Label>
+                      <p className="text-xs text-muted-foreground">Desbloqueia W3 Educação</p>
+                    </div>
+                  </div>
+                  <Switch id="edit-cames" checked={isClienteAmes} onCheckedChange={setIsClienteAmes} />
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
             {/* Access */}
             <div className="space-y-4">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Acesso</h3>
@@ -260,17 +322,6 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Plano</Label>
-                <Select value={planType} onValueChange={setPlanType}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="free">Free (Gratuito)</SelectItem>
-                    <SelectItem value="paid">Paid (Pago)</SelectItem>
-                    <SelectItem value="manual">Manual</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="edit-expiration">Data de expiração</Label>
                 <Input id="edit-expiration" type="date" value={expirationDate} onChange={(e) => setExpirationDate(e.target.value)} />
                 <p className="text-xs text-muted-foreground">Deixe em branco para acesso sem expiração</p>
@@ -279,9 +330,9 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
 
             <Separator />
 
-            {/* Flags */}
+            {/* Permissões */}
             <div className="space-y-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Permissões & Flags</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Permissões</h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -289,20 +340,6 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
                     <Label htmlFor="edit-admin" className="cursor-pointer">Administrador</Label>
                   </div>
                   <Switch id="edit-admin" checked={isAdmin} onCheckedChange={setIsAdmin} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Crown className="h-4 w-4 text-amber-500" />
-                    <Label htmlFor="edit-mentorado" className="cursor-pointer">Mentorado</Label>
-                  </div>
-                  <Switch id="edit-mentorado" checked={isMentorado} onCheckedChange={setIsMentorado} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-blue-500" />
-                    <Label htmlFor="edit-w3client" className="cursor-pointer">Cliente W3</Label>
-                  </div>
-                  <Switch id="edit-w3client" checked={isW3Client} onCheckedChange={setIsW3Client} />
                 </div>
               </div>
             </div>
@@ -320,13 +357,13 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Sem papel (usuário comum)</SelectItem>
-                    <SelectItem value="tutor">Tutor — vê sua carteira</SelectItem>
                     <SelectItem value="cs">CS (Customer Success) — vê sua carteira</SelectItem>
+                    <SelectItem value="tutor">Tutor — vê carteiras das CSs supervisionadas</SelectItem>
                     <SelectItem value="master">Master — vê todos os mentorados</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Tutor e CS veem apenas os mentorados atribuídos à sua carteira. Master e Admin veem todos.
+                  CS vê só sua carteira. Tutor vê union das carteiras das CSs que supervisiona. Master e Admin veem todos.
                 </p>
               </div>
             </div>
@@ -340,6 +377,54 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
                 <Label htmlFor="edit-revenue-goal">Meta de faturamento (R$)</Label>
                 <Input id="edit-revenue-goal" type="number" min="0" step="100" value={revenueGoal} onChange={(e) => setRevenueGoal(e.target.value)} placeholder="Ex: 50000" />
               </div>
+            </div>
+
+            <Separator />
+
+            {/* Legacy (collapsible) */}
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setLegacyOpen((p) => !p)}
+                className="flex w-full items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+              >
+                <span>Info de Billing (Legado)</span>
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", legacyOpen && "rotate-180")} />
+              </button>
+              {legacyOpen && (
+                <div className="space-y-4 pt-2">
+                  <p className="text-xs text-muted-foreground">
+                    Campos mantidos para rastreio histórico e integração Stripe. Não afetam mais o controle de acesso.
+                  </p>
+                  <div className="space-y-2">
+                    <Label>Plano (Stripe)</Label>
+                    <Select value={planType} onValueChange={setPlanType}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="free">Free (Gratuito)</SelectItem>
+                        <SelectItem value="paid">Paid (Pago)</SelectItem>
+                        <SelectItem value="manual">Manual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Crown className="h-4 w-4 text-amber-500" />
+                        <Label htmlFor="edit-mentorado-legacy" className="cursor-pointer">is_mentorado</Label>
+                      </div>
+                      <Switch id="edit-mentorado-legacy" checked={isMentorado} onCheckedChange={setIsMentorado} />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-blue-500" />
+                        <Label htmlFor="edit-w3client-legacy" className="cursor-pointer">is_w3_client</Label>
+                      </div>
+                      <Switch id="edit-w3client-legacy" checked={isW3Client} onCheckedChange={setIsW3Client} />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <Separator />
