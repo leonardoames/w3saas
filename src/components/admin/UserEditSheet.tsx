@@ -259,9 +259,10 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
     setIsW3Client(u.is_w3_client);
   };
 
-  // Fetch roles when sheet opens
+  // Initialize form + roles when sheet opens
   useEffect(() => {
     if (!open || !user) return;
+    initForm(user);
     supabase
       .from("user_roles")
       .select("role")
@@ -280,10 +281,9 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
         setDashRole(dashR);
         setOriginalDashRole(dashR);
       });
-  }, [open, user]);
+  }, [open, user?.user_id]);
 
   const handleOpenChange = (isOpen: boolean) => {
-    if (isOpen && user) initForm(user);
     onOpenChange(isOpen);
   };
 
