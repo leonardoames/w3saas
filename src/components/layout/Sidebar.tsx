@@ -37,7 +37,6 @@ const menuGroups: MenuGroup[] = [
       { title: "DRE", icon: TrendingUp, path: "/app/dre" },
       { title: "Plano de Ação", icon: ListChecks, path: "/app/plano-acao" },
       { title: "Banco de Ideias", icon: Lightbulb, path: "/app/banco-de-ideias" },
-      { title: "Meus Produtos", icon: Package, path: "/app/meus-produtos" },
       { title: "Integrações", icon: Activity, path: "/app/integracoes" },
       { title: "Dash Admin", icon: Activity, path: "/app/dash-admin", adminOnly: true },
     ],
@@ -49,6 +48,7 @@ const menuGroups: MenuGroup[] = [
       { title: "Precificadora", icon: Calculator, path: "/app/calculadora" },
       { title: "Simulação de Cenários", icon: GitCompare, path: "/app/simulacao" },
       { title: "Reposição de Estoque", icon: PackageSearch, path: "/app/reposicao" },
+      { title: "Meus Produtos", icon: Package, path: "/app/meus-produtos" },
     ],
   },
   {

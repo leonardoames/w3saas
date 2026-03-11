@@ -14,7 +14,6 @@ import { RevenueHeroCard } from "@/components/dashboard/RevenueHeroCard";
 import { PlatformSelect } from "@/components/dashboard/PlatformSelect";
 import { PlatformType } from "@/lib/platformConfig";
 import { DailyAlert } from "@/components/dashboard/DailyAlert";
-import { BreakEvenCard } from "@/components/dashboard/BreakEvenCard";
 
 import { KPISkeletonGrid, ChartSkeleton, GoalSkeleton } from "@/components/dashboard/DashboardSkeletons";
 import { EmptyChartState } from "@/components/dashboard/EmptyChartState";
@@ -33,8 +32,9 @@ const KPI_TOOLTIPS = {
   vendas: "Total de pedidos registrados no período",
   sessoes: "Total de visitas à sua loja no período",
   ticket: "Faturamento ÷ número de vendas. Valor médio de cada pedido",
-  custo: "Investimento em tráfego ÷ número de vendas. Quanto custa gerar cada venda",
+  custoMidia: "Investimento ÷ Faturamento × 100 (TACoS). Percentual da receita consumida com mídia — quanto menor, melhor",
   conversao: "Vendas ÷ Sessões × 100. Percentual de visitantes que compraram",
+  custoSessao: "Investimento em tráfego ÷ Sessões. Quanto custa trazer cada visita — quanto menor, melhor",
 };
 
 export default function Dashboard() {
@@ -166,8 +166,9 @@ export default function Dashboard() {
   const sessoes = filtered.reduce((s, m) => s + m.sessoes, 0);
   const roas = investimento > 0 ? faturamento / investimento : 0;
   const ticketMedio = vendas > 0 ? faturamento / vendas : 0;
-  const custoVenda = vendas > 0 ? investimento / vendas : 0;
   const taxaConversao = sessoes > 0 ? (vendas / sessoes) * 100 : 0;
+  const custoMidia = faturamento > 0 ? (investimento / faturamento) * 100 : 0;
+  const custoSessao = sessoes > 0 ? investimento / sessoes : 0;
 
   const prevFat = prevFiltered.reduce((s, m) => s + m.receita_paga, 0);
   const prevInv = prevFiltered.reduce((s, m) => s + m.investimento, 0);
@@ -175,11 +176,11 @@ export default function Dashboard() {
   const prevSessoes = prevFiltered.reduce((s, m) => s + m.sessoes, 0);
   const prevRoas = prevInv > 0 ? prevFat / prevInv : 0;
   const prevTicket = prevVendas > 0 ? prevFat / prevVendas : 0;
-  const prevCusto = prevVendas > 0 ? prevInv / prevVendas : 0;
   const prevConversao = prevSessoes > 0 ? (prevVendas / prevSessoes) * 100 : 0;
+  const prevCustoMidia = prevFat > 0 ? (prevInv / prevFat) * 100 : 0;
+  const prevCustoSessao = prevSessoes > 0 ? prevInv / prevSessoes : 0;
 
   const pctChange = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : undefined);
-  const daysInPeriod = differenceInCalendarDays(dateRange.to, dateRange.from) + 1;
   const hasData = filtered.length > 0;
 
   // Daily alert
@@ -270,16 +271,16 @@ export default function Dashboard() {
               isEmpty={!hasData}
             />
             <KPICard title="ROAS Médio" value={roas.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} subtitle="Receita / Investimento" change={pctChange(roas, prevRoas)} tooltip={KPI_TOOLTIPS.roas} isEmpty={!hasData} />
-            <KPICard title="Vendas" value={vendas.toLocaleString("pt-BR")} change={pctChange(vendas, prevVendas)} tooltip={KPI_TOOLTIPS.vendas} isEmpty={!hasData} />
+            <KPICard title="Custo de Mídia" value={`${custoMidia.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`} subtitle="TACoS do período" change={pctChange(custoMidia, prevCustoMidia)} invertChange tooltip={KPI_TOOLTIPS.custoMidia} isEmpty={!hasData} />
             <KPICard title="Sessões" value={sessoes.toLocaleString("pt-BR")} change={pctChange(sessoes, prevSessoes)} tooltip={KPI_TOOLTIPS.sessoes} isEmpty={!hasData} />
           </div>
 
           {/* KPIs Row 2: Secondary (smaller) */}
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <KPICard secondary title="Vendas" value={vendas.toLocaleString("pt-BR")} change={pctChange(vendas, prevVendas)} tooltip={KPI_TOOLTIPS.vendas} isEmpty={!hasData} />
             <KPICard secondary title="Ticket Médio" value={`R$ ${ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} change={pctChange(ticketMedio, prevTicket)} tooltip={KPI_TOOLTIPS.ticket} isEmpty={!hasData} />
-            <KPICard secondary title="Custo por Venda" value={`R$ ${custoVenda.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} change={pctChange(custoVenda, prevCusto)} invertChange tooltip={KPI_TOOLTIPS.custo} isEmpty={!hasData} />
             <KPICard secondary title="Taxa de Conversão" value={`${taxaConversao.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`} change={pctChange(taxaConversao, prevConversao)} tooltip={KPI_TOOLTIPS.conversao} isEmpty={!hasData} />
-            <BreakEvenCard investimento={investimento} faturamento={faturamento} days={daysInPeriod} />
+            <KPICard secondary title="Custo por Sessão" value={`R$ ${custoSessao.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} change={pctChange(custoSessao, prevCustoSessao)} invertChange tooltip={KPI_TOOLTIPS.custoSessao} isEmpty={!hasData} />
           </div>
         </>
       )}

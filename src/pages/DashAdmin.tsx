@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useDashAdmin, MentoradoRow } from "@/hooks/useDashAdmin";
+import { useDashAdmin, MentoradoRow, DashRole } from "@/hooks/useDashAdmin";
 import { AdminKPIs } from "@/components/dash-admin/AdminKPIs";
 import { AdminAlerts } from "@/components/dash-admin/AdminAlerts";
 import { AdminCharts } from "@/components/dash-admin/AdminCharts";
@@ -9,6 +9,7 @@ import { AdminTable } from "@/components/dash-admin/AdminTable";
 import { MentoradoDetailModal } from "@/components/dash-admin/MentoradoDetailModal";
 import { ColumnSelector } from "@/components/dash-admin/ColumnSelector";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, Columns3, Loader2, ShieldAlert, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
@@ -35,7 +36,7 @@ export default function DashAdmin() {
   const queryClient = useQueryClient();
   const {
     paginated, page, setPage, totalPages, filters, setFilters,
-    kpis, monthlyRevenue, top5, allColumns, exportCSV, isLoading, mentorados, allMentorados,
+    kpis, monthlyRevenue, top5, allColumns, exportCSV, isLoading, mentorados, allMentorados, myRole,
   } = useDashAdmin();
 
   const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_COLUMNS);
@@ -63,12 +64,15 @@ export default function DashAdmin() {
     );
   }
 
-  if (!isAdmin) {
+  // Allow: admin (via isAdmin), or users with a dash role (tutor/cs/master)
+  // myRole === null while still loading → don't block yet
+  const hasDashAccess = isAdmin || myRole !== null;
+  if (!isLoading && !hasDashAccess) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
         <ShieldAlert className="h-16 w-16 text-destructive" />
         <h2 className="text-xl font-semibold">Acesso restrito</h2>
-        <p className="text-muted-foreground">Apenas administradores podem acessar esta página.</p>
+        <p className="text-muted-foreground">Você precisa de permissão para acessar o Dash Admin.</p>
       </div>
     );
   }
@@ -102,9 +106,14 @@ export default function DashAdmin() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div>
-            <h1 className="page-title">Dash Admin</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="page-title">Dash Admin</h1>
+              {myRole && myRole !== "admin" && (
+                <Badge variant="outline" className="text-xs capitalize">{myRole}</Badge>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground">
-              Painel de acompanhamento · {allMentorados.length} mentorados
+              Painel de acompanhamento · {allMentorados.length} mentorados{(myRole === "tutor" || myRole === "cs") ? " da sua carteira" : ""}
             </p>
           </div>
           <Button
