@@ -48,6 +48,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminModules from "./pages/admin/AdminModules";
 import AdminBrands from "./pages/admin/AdminBrands";
 import AdminPlanoAcao from "./pages/admin/AdminPlanoAcao";
+import AdminCarteiras from "./pages/admin/AdminCarteiras";
 
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
@@ -142,6 +143,14 @@ const App = () => (
                 element={
                   <ProtectedRoute requireAdmin>
                     <AdminBrands />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/carteiras"
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <AdminCarteiras />
                   </ProtectedRoute>
                 }
               />

@@ -3,12 +3,13 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserMenu } from "@/components/layout/UserMenu";
-import { 
-  ArrowLeft, 
+import {
+  ArrowLeft,
+  BookUser,
   ClipboardList,
-  Settings, 
+  Settings,
   Store,
-  Users 
+  Users
 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -17,6 +18,7 @@ interface AdminLayoutProps {
 
 const adminLinks = [
   { href: "/admin", label: "Usuários", icon: Users },
+  { href: "/admin/carteiras", label: "Carteiras", icon: BookUser },
   { href: "/admin/modulos", label: "Módulos", icon: Settings },
   { href: "/admin/marcas", label: "Marcas", icon: Store },
   { href: "/admin/plano-acao", label: "Plano de Ação", icon: ClipboardList },
