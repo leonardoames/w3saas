@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +61,9 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
   const [isAdmin, setIsAdmin] = useState(false);
   const [revenueGoal, setRevenueGoal] = useState("");
 
+  const [dashRole, setDashRole] = useState<string>("none");
+  const [originalDashRole, setOriginalDashRole] = useState<string>("none");
+
   const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
@@ -77,6 +80,23 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
     setIsAdmin(u.isAdmin || false);
     setRevenueGoal(u.revenue_goal?.toString() || "");
   };
+
+  // Fetch dash role when sheet opens
+  useEffect(() => {
+    if (!open || !user) return;
+    supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.user_id)
+      .in("role", ["tutor", "cs", "master"])
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        const r = data?.role ?? "none";
+        setDashRole(r);
+        setOriginalDashRole(r);
+      });
+  }, [open, user]);
 
   const handleOpenChange = (isOpen: boolean) => {
     if (isOpen && user) initForm(user);
@@ -95,7 +115,8 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
       isMentorado !== user.is_mentorado ||
       isW3Client !== user.is_w3_client ||
       isAdmin !== (user.isAdmin || false) ||
-      revenueGoal !== (user.revenue_goal?.toString() || "")
+      revenueGoal !== (user.revenue_goal?.toString() || "") ||
+      dashRole !== originalDashRole
     );
   };
 
@@ -137,6 +158,12 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
         const goalValue = revenueGoal ? parseFloat(revenueGoal) : null;
         const { error } = await supabase.rpc("admin_update_revenue_goal", { target_user_id: user.user_id, new_goal: goalValue });
         if (error) throw error;
+      }
+      if (dashRole !== originalDashRole) {
+        const newDashRole = dashRole === "none" ? null : dashRole;
+        const { error } = await supabase.rpc("admin_set_dash_role" as any, { target_user_id: user.user_id, new_role: newDashRole });
+        if (error) throw error;
+        setOriginalDashRole(dashRole);
       }
 
       toast({ title: "Salvo com sucesso", description: "Todas as alterações foram aplicadas." });
@@ -277,6 +304,30 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
                   </div>
                   <Switch id="edit-w3client" checked={isW3Client} onCheckedChange={setIsW3Client} />
                 </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Dash Admin Role */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Papel no Dash Admin</h3>
+              <div className="space-y-1.5">
+                <Label>Função de acompanhamento</Label>
+                <Select value={dashRole} onValueChange={setDashRole}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sem papel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem papel (usuário comum)</SelectItem>
+                    <SelectItem value="tutor">Tutor — vê sua carteira</SelectItem>
+                    <SelectItem value="cs">CS (Customer Success) — vê sua carteira</SelectItem>
+                    <SelectItem value="master">Master — vê todos os mentorados</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Tutor e CS veem apenas os mentorados atribuídos à sua carteira. Master e Admin veem todos.
+                </p>
               </div>
             </div>
 

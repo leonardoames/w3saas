@@ -65,6 +65,9 @@ interface ChannelData {
   prevFaturamento: number;
   prevInvestimento: number;
   prevVendas: number;
+  // Shopee Ads / paid traffic enrichment (available when DB columns are populated)
+  impressoes: number | null;
+  cliques: number | null;
 }
 
 const formatCurrency = (v: number) =>
@@ -163,6 +166,8 @@ export default function AnalisePorCanal() {
       let fat = 0, inv = 0, vendas = 0;
       let prevFat = 0, prevInv = 0, prevVendas = 0;
       let hasInv = false;
+      let impressoes = 0, cliques = 0;
+      let hasAdsMetrics = false;
 
       for (const m of metricsData) {
         const dateStr = String(m.data).substring(0, 10);
@@ -175,6 +180,8 @@ export default function AnalisePorCanal() {
           inv += Number(m.investimento_trafego || 0);
           vendas += Number(m.vendas_quantidade || 0);
           if (Number(m.investimento_trafego || 0) > 0) hasInv = true;
+          if (m.impressoes != null) { impressoes += Number(m.impressoes || 0); hasAdsMetrics = true; }
+          if (m.cliques != null) { cliques += Number(m.cliques || 0); hasAdsMetrics = true; }
         }
         if (isWithinInterval(d, { start: prevFrom, end: prevTo })) {
           prevFat += Number(m.faturamento || 0);
@@ -194,6 +201,8 @@ export default function AnalisePorCanal() {
         prevFaturamento: prevFat,
         prevInvestimento: prevInv,
         prevVendas: prevVendas,
+        impressoes: hasAdsMetrics ? impressoes : null,
+        cliques: hasAdsMetrics ? cliques : null,
       });
     }
 
@@ -396,6 +405,8 @@ function ChannelCard({
   const minRoas = setting?.min_roas ?? null;
   const ticket = data.vendas > 0 ? data.faturamento / data.vendas : 0;
   const cpa = data.vendas > 0 && data.investimento > 0 ? data.investimento / data.vendas : 0;
+  const ctr = data.impressoes && data.cliques && data.impressoes > 0 ? (data.cliques / data.impressoes) * 100 : null;
+  const cpc = data.cliques && data.cliques > 0 && data.investimento > 0 ? data.investimento / data.cliques : null;
 
   const fatVar = variationPct(data.faturamento, data.prevFaturamento);
   const vendasVar = variationPct(data.vendas, data.prevVendas);
@@ -472,6 +483,24 @@ function ChannelCard({
                 Você pode escalar o investimento com segurança.
               </div>
             )}
+
+            {/* Shopee Ads / Paid Traffic metrics panel */}
+            {data.hasInvestmentData && (
+              <div className="border-t border-border/20 pt-3 space-y-2">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground/50 font-medium">Métricas de Anúncios</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <AdsMetricCell label="Impressões" value={data.impressoes != null ? formatNumber(data.impressoes) : "—"} />
+                  <AdsMetricCell label="Cliques" value={data.cliques != null ? formatNumber(data.cliques) : "—"} />
+                  <AdsMetricCell label="CTR" value={ctr != null ? `${ctr.toFixed(2)}%` : "—"} />
+                  <AdsMetricCell label="CPC" value={cpc != null ? formatCurrency(cpc) : "—"} />
+                </div>
+                {data.impressoes == null && (
+                  <p className="text-[10px] text-muted-foreground/40 italic">
+                    Impressões e cliques serão exibidos quando disponíveis via integração
+                  </p>
+                )}
+              </div>
+            )}
           </>
         )}
       </CardContent>
@@ -484,6 +513,15 @@ function MetricCell({ label, value, valueClass }: { label: string; value: string
     <div>
       <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
       <p className={`text-[22px] font-bold leading-tight ${valueClass || ""}`}>{value}</p>
+    </div>
+  );
+}
+
+function AdsMetricCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-secondary/20 rounded-md px-2.5 py-2">
+      <p className="text-[10px] text-muted-foreground/60 mb-0.5">{label}</p>
+      <p className="text-sm font-semibold text-foreground/80">{value}</p>
     </div>
   );
 }
