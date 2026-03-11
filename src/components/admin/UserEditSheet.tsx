@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Shield, Crown, Users, Key, Trash2, Save,
   ClipboardList, Check, UserX, ChevronDown, GraduationCap, ShoppingBag,
+  UserPlus, X, Search,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -50,6 +51,170 @@ interface UserEditSheetProps {
   onViewPlano: (user: UserProfile) => void;
 }
 
+// ─── Inline carteira / team manager ────────────────────────────
+interface SimpleUser { user_id: string; email: string | null; full_name: string | null; }
+
+function CarteiraSection({
+  staffId,
+  mode,
+}: {
+  staffId: string;
+  mode: "cs" | "tutor";
+}) {
+  const { toast } = useToast();
+  const [items, setItems] = useState<SimpleUser[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState("");
+  const [candidates, setCandidates] = useState<SimpleUser[]>([]);
+  const [candLoading, setCandLoading] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    if (mode === "cs") {
+      const { data } = await supabase.from("staff_carteiras").select("mentorado_id").eq("staff_id", staffId);
+      const ids = (data ?? []).map((r) => r.mentorado_id);
+      if (ids.length > 0) {
+        const { data: profiles } = await supabase.from("profiles").select("user_id, email, full_name").in("user_id", ids);
+        setItems(profiles ?? []);
+      } else setItems([]);
+    } else {
+      const { data } = await supabase.from("tutor_teams").select("cs_id").eq("tutor_id", staffId);
+      const ids = (data ?? []).map((r) => r.cs_id);
+      if (ids.length > 0) {
+        const { data: profiles } = await supabase.from("profiles").select("user_id, email, full_name").in("user_id", ids);
+        setItems(profiles ?? []);
+      } else setItems([]);
+    }
+    setLoading(false);
+  };
+
+  const loadCandidates = async () => {
+    setCandLoading(true);
+    if (mode === "cs") {
+      // All users with cliente_w3 or cliente_ames
+      const { data: roles } = await supabase.from("user_roles").select("user_id").in("role", ["cliente_w3", "cliente_ames"]);
+      const ids = [...new Set((roles ?? []).map((r) => r.user_id))].filter((id) => !items.find((i) => i.user_id === id));
+      if (ids.length > 0) {
+        const { data: profiles } = await supabase.from("profiles").select("user_id, email, full_name").in("user_id", ids);
+        setCandidates(profiles ?? []);
+      } else setCandidates([]);
+    } else {
+      // All users with cs role
+      const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "cs");
+      const ids = (roles ?? []).map((r) => r.user_id).filter((id) => !items.find((i) => i.user_id === id));
+      if (ids.length > 0) {
+        const { data: profiles } = await supabase.from("profiles").select("user_id, email, full_name").in("user_id", ids);
+        setCandidates(profiles ?? []);
+      } else setCandidates([]);
+    }
+    setCandLoading(false);
+  };
+
+  useEffect(() => { load(); }, [staffId, mode]);
+
+  const handleAdd = async (target: SimpleUser) => {
+    const rpc = mode === "cs" ? "admin_assign_staff_carteira" : "admin_assign_tutor_team";
+    const params = mode === "cs"
+      ? { p_staff_id: staffId, p_mentorado_id: target.user_id, p_assign: true }
+      : { p_tutor_id: staffId, p_cs_id: target.user_id, p_assign: true };
+    const { error } = await supabase.rpc(rpc as any, params);
+    if (error) { toast({ title: "Erro ao atribuir", description: error.message, variant: "destructive" }); return; }
+    toast({ title: mode === "cs" ? "Mentorado adicionado" : "CS adicionada" });
+    setPickerOpen(false);
+    load();
+  };
+
+  const handleRemove = async (target: SimpleUser) => {
+    const rpc = mode === "cs" ? "admin_assign_staff_carteira" : "admin_assign_tutor_team";
+    const params = mode === "cs"
+      ? { p_staff_id: staffId, p_mentorado_id: target.user_id, p_assign: false }
+      : { p_tutor_id: staffId, p_cs_id: target.user_id, p_assign: false };
+    const { error } = await supabase.rpc(rpc as any, params);
+    if (error) { toast({ title: "Erro ao remover", description: error.message, variant: "destructive" }); return; }
+    load();
+  };
+
+  const filteredCands = candidates.filter(
+    (c) => c.email?.toLowerCase().includes(pickerSearch.toLowerCase()) || c.full_name?.toLowerCase().includes(pickerSearch.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">{items.length} {mode === "cs" ? "mentorado(s)" : "CS(s)"}</span>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 text-xs"
+          onClick={() => { loadCandidates(); setPickerOpen(true); }}
+        >
+          <UserPlus className="mr-1 h-3 w-3" />
+          {mode === "cs" ? "Adicionar mentorado" : "Adicionar CS"}
+        </Button>
+      </div>
+      {loading ? (
+        <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+      ) : items.length === 0 ? (
+        <p className="text-xs text-muted-foreground italic">
+          {mode === "cs" ? "Nenhum mentorado nesta carteira." : "Nenhuma CS neste time."}
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {items.map((u) => (
+            <div key={u.user_id} className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded border bg-muted/30 text-sm">
+              <div className="min-w-0">
+                <span className="font-medium truncate">{u.full_name || u.email}</span>
+                {u.full_name && <span className="text-xs text-muted-foreground ml-1.5">{u.email}</span>}
+              </div>
+              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => handleRemove(u)}>
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Picker inline dropdown */}
+      {pickerOpen && (
+        <div className="border rounded-lg p-3 space-y-2 bg-card shadow-sm">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={pickerSearch}
+              onChange={(e) => setPickerSearch(e.target.value)}
+              placeholder="Buscar..."
+              className="pl-8 h-8 text-sm"
+              autoFocus
+            />
+          </div>
+          <div className="max-h-48 overflow-y-auto space-y-0.5">
+            {candLoading ? (
+              <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+            ) : filteredCands.length === 0 ? (
+              <p className="text-center text-xs text-muted-foreground py-4">Nenhum resultado</p>
+            ) : filteredCands.map((c) => (
+              <button
+                key={c.user_id}
+                type="button"
+                className="w-full text-left px-2.5 py-1.5 rounded text-sm hover:bg-accent transition-colors"
+                onClick={() => handleAdd(c)}
+              >
+                <span className="font-medium">{c.full_name || c.email}</span>
+                {c.full_name && <span className="text-xs text-muted-foreground ml-1.5">{c.email}</span>}
+              </button>
+            ))}
+          </div>
+          <Button size="sm" variant="ghost" className="w-full h-7 text-xs" onClick={() => { setPickerOpen(false); setPickerSearch(""); }}>
+            Fechar
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────
 export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano }: UserEditSheetProps) {
   const { toast } = useToast();
 
@@ -367,6 +532,24 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
                 </p>
               </div>
             </div>
+
+            {/* Carteira / Time (visible only for cs/tutor) */}
+            {(dashRole === "cs" || dashRole === "tutor") && (
+              <>
+                <Separator />
+                <div className="space-y-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {dashRole === "cs" ? "Carteira de Mentorados" : "Time de CSs"}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {dashRole === "cs"
+                      ? "Mentorados atribuídos a este CS. O CS vê apenas estes usuários no Dash Admin."
+                      : "CSs que este Tutor supervisiona. O Tutor vê a union das carteiras destas CSs."}
+                  </p>
+                  <CarteiraSection staffId={user.user_id} mode={dashRole as "cs" | "tutor"} />
+                </div>
+              </>
+            )}
 
             <Separator />
 
