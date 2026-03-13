@@ -258,8 +258,11 @@ export default function AnalisePorCanal() {
   // Empty state
   if (!loading && connectedChannels.length === 0) {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">Análise por Canal</h1>
+      <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
+        <div>
+          <h1 className="page-title">Análise por Canal</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Compare canais e entenda a eficiência por período</p>
+        </div>
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
             <Plug className="h-12 w-12 text-muted-foreground" />
@@ -284,7 +287,10 @@ export default function AnalisePorCanal() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold">Análise por Canal</h1>
+        <div>
+          <h1 className="page-title">Análise por Canal</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Compare canais e entenda a eficiência por período</p>
+        </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
