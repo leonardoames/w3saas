@@ -94,7 +94,7 @@ export function RevenueHeroCard({ currentRevenue, previousRevenue, userId, onGoa
   };
 
   return (
-    <Card className="border-primary/15 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+    <Card className="border-primary/15">
       <CardContent className="p-6">
         <div className="flex flex-col md:flex-row md:gap-8 gap-6">
           {/* LEFT COLUMN */}

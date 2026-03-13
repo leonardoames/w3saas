@@ -346,7 +346,7 @@ export default function Calculadora() {
                     onClick={() => handleChannelChange(ch.value)}
                     className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                       channel === ch.value
-                        ? "bg-primary text-primary-foreground shadow-sm"
+                        ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground hover:bg-accent"
                     }`}
                   >
