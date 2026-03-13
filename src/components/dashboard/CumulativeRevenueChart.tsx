@@ -128,22 +128,22 @@ export function CumulativeRevenueChart({ data, previousData, goal }: CumulativeC
       <div className="flex items-center gap-3 flex-wrap mt-2 mb-4">
         <div className="flex items-center gap-1.5">
           <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#F97316' }} />
-          <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>Acumulado Real</span>
+          <span className="text-[11px] text-muted-foreground">Acumulado Real</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'rgba(249,115,22,0.45)' }} />
-          <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>Projeção</span>
+          <span className="text-[11px] text-muted-foreground">Projeção</span>
         </div>
         {goal && goal > 0 && (
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#22C55E' }} />
-            <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>Meta</span>
+            <span className="text-[11px] text-muted-foreground">Meta</span>
           </div>
         )}
         {previousData && previousData.length > 0 && (
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
-            <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>Mês anterior</span>
+            <span className="text-[11px] text-muted-foreground">Mês anterior</span>
           </div>
         )}
       </div>
@@ -156,19 +156,19 @@ export function CumulativeRevenueChart({ data, previousData, goal }: CumulativeC
               <stop offset="95%" stopColor="rgba(249,115,22,0)" />
             </linearGradient>
           </defs>
-          <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.05)" strokeDasharray="4 4" />
+          <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.35} strokeDasharray="4 4" />
           <XAxis
             dataKey="label"
             axisLine={false}
             tickLine={false}
-            tick={{ fontSize: 11, fill: "rgba(255,255,255,0.35)" }}
+            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
             dy={6}
             interval={Math.max(0, Math.floor(totalDays / 12))}
           />
           <YAxis
             axisLine={false}
             tickLine={false}
-            tick={{ fontSize: 11, fill: "rgba(255,255,255,0.35)" }}
+            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
             tickFormatter={formatYAxis}
             width={55}
           />
@@ -192,7 +192,8 @@ export function CumulativeRevenueChart({ data, previousData, goal }: CumulativeC
           <Line
             type="monotone"
             dataKey="prevAcumulado"
-            stroke="rgba(255,255,255,0.2)"
+            stroke="hsl(var(--muted-foreground))"
+            strokeOpacity={0.45}
             strokeWidth={1}
             strokeDasharray="4 4"
             dot={false}

@@ -47,7 +47,6 @@ export function DailyRevenueBarChart({ data, goal }: DailyBarChartProps) {
   const totalDays = getDaysInMonth(now);
   const dailyGoal = goal && goal > 0 ? goal / totalDays : 0;
   const currentDay = getDate(now);
-  const currentMonth = now.getMonth();
 
   // Map actual data by day
   const dataByDay: Record<number, number> = {};
@@ -84,16 +83,16 @@ export function DailyRevenueBarChart({ data, goal }: DailyBarChartProps) {
         <div className="flex items-center gap-3 ml-auto">
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#F97316' }} />
-            <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>Faturamento</span>
+            <span className="text-[11px] text-muted-foreground">Faturamento</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#FBBF24' }} />
-            <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>Melhor dia</span>
+            <span className="text-[11px] text-muted-foreground">Melhor dia</span>
           </div>
           {dailyGoal > 0 && (
             <div className="flex items-center gap-1.5">
               <div className="w-2.5 h-0.5 rounded-full" style={{ backgroundColor: '#22C55E' }} />
-              <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.35)' }}>Meta/dia</span>
+              <span className="text-[11px] text-muted-foreground">Meta/dia</span>
             </div>
           )}
         </div>
@@ -101,23 +100,23 @@ export function DailyRevenueBarChart({ data, goal }: DailyBarChartProps) {
 
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={chartData} margin={{ top: 20, right: 5, left: -10, bottom: 0 }}>
-          <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.05)" strokeDasharray="4 4" />
+          <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.35} strokeDasharray="4 4" />
           <XAxis
             dataKey="label"
             axisLine={false}
             tickLine={false}
-            tick={{ fontSize: 11, fill: "rgba(255,255,255,0.35)" }}
+            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
             dy={6}
             interval={Math.max(0, Math.floor(totalDays / 12))}
           />
           <YAxis
             axisLine={false}
             tickLine={false}
-            tick={{ fontSize: 11, fill: "rgba(255,255,255,0.35)" }}
+            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
             tickFormatter={formatYAxis}
             width={55}
           />
-          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted) / 0.35)' }} />
           {dailyGoal > 0 && (
             <ReferenceLine
               y={dailyGoal}
@@ -139,7 +138,7 @@ export function DailyRevenueBarChart({ data, goal }: DailyBarChartProps) {
               <Cell
                 key={index}
                 fill={entry.isFuture ? 'transparent' : entry.isBest ? '#FBBF24' : 'rgba(249,115,22,0.85)'}
-                stroke={entry.isToday && !entry.isFuture ? 'rgba(255,255,255,0.6)' : 'none'}
+                stroke={entry.isToday && !entry.isFuture ? 'hsl(var(--foreground) / 0.35)' : 'none'}
                 strokeWidth={entry.isToday ? 1.5 : 0}
               />
             ))}
