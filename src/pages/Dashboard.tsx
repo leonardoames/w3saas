@@ -11,6 +11,7 @@ import { PeriodFilter } from "@/components/dashboard/PeriodFilter";
 import { DailyRevenueBarChart } from "@/components/dashboard/DailyRevenueBarChart";
 import { CumulativeRevenueChart } from "@/components/dashboard/CumulativeRevenueChart";
 import { RevenueHeroCard } from "@/components/dashboard/RevenueHeroCard";
+import { FunnelChartCard } from "@/components/dashboard/FunnelChartCard";
 import { PlatformSelect } from "@/components/dashboard/PlatformSelect";
 import { PlatformType } from "@/lib/platformConfig";
 import { DailyAlert } from "@/components/dashboard/DailyAlert";
@@ -50,6 +51,7 @@ type WidgetKey =
   | "goal"
   | "primaryKpis"
   | "secondaryKpis"
+  | "funnel"
   | "charts"
   | "cta";
 
@@ -74,6 +76,7 @@ const DEFAULT_DASHBOARD_PREFERENCES: DashboardPreferences = {
     goal: true,
     primaryKpis: true,
     secondaryKpis: true,
+    funnel: true,
     charts: true,
     cta: true,
   },
@@ -188,17 +191,19 @@ export default function Dashboard() {
     localStorage.setItem(key, JSON.stringify(preferences));
   }, [preferences, user?.id]);
 
-  const toggleWidget = (key: WidgetKey) => {
+  const setWidget = (key: WidgetKey, checked: boolean | "indeterminate") => {
+    const value = checked === true;
     setPreferences((prev) => ({
       ...prev,
-      widgets: { ...prev.widgets, [key]: !prev.widgets[key] },
+      widgets: { ...prev.widgets, [key]: value },
     }));
   };
 
-  const toggleKPI = (key: KPIKey) => {
+  const setKPI = (key: KPIKey, checked: boolean | "indeterminate") => {
+    const value = checked === true;
     setPreferences((prev) => ({
       ...prev,
-      kpis: { ...prev.kpis, [key]: !prev.kpis[key] },
+      kpis: { ...prev.kpis, [key]: value },
     }));
   };
 
@@ -284,6 +289,19 @@ export default function Dashboard() {
     return isValid(date) && date >= startOfDay(sevenAgo) && d.data !== todayStr;
   });
   const avg7d = last7.length > 0 ? last7.reduce((s, d) => s + d.receita_paga, 0) / last7.length : 0;
+
+  const filteredMetrics = useMemo(() => {
+    const rangeStart = startOfDay(dateRange.from);
+    const rangeEnd = endOfDay(dateRange.to);
+    return allMetricsRaw.filter((m) => {
+      if (selectedPlatform !== "todos" && m.platform !== selectedPlatform) return false;
+      if (!m.data) return false;
+      const date = parseISO(m.data.substring(0, 10));
+      return isValid(date) && isWithinInterval(date, { start: rangeStart, end: rangeEnd });
+    });
+  }, [allMetricsRaw, dateRange, selectedPlatform]);
+
+  const funnelClicks = filteredMetrics.reduce((sum, m) => sum + (Number(m.cliques) || 0), 0);
 
   const chartData = filtered.map((d) => ({
     data: d.data,
@@ -425,22 +443,23 @@ export default function Dashboard() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-72">
             <DropdownMenuLabel>Blocos visíveis</DropdownMenuLabel>
-            <DropdownMenuCheckboxItem checked={preferences.widgets.dailyAlert} onCheckedChange={() => toggleWidget("dailyAlert")}>Alerta diário</DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem checked={preferences.widgets.goal} onCheckedChange={() => toggleWidget("goal")}>Meta e projeção</DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem checked={preferences.widgets.primaryKpis} onCheckedChange={() => toggleWidget("primaryKpis")}>KPIs principais</DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem checked={preferences.widgets.secondaryKpis} onCheckedChange={() => toggleWidget("secondaryKpis")}>KPIs secundários</DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem checked={preferences.widgets.charts} onCheckedChange={() => toggleWidget("charts")}>Gráficos</DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem checked={preferences.widgets.cta} onCheckedChange={() => toggleWidget("cta")}>CTA final</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.widgets.dailyAlert} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setWidget("dailyAlert", v)}>Alerta diário</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.widgets.goal} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setWidget("goal", v)}>Meta e projeção</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.widgets.primaryKpis} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setWidget("primaryKpis", v)}>KPIs principais</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.widgets.secondaryKpis} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setWidget("secondaryKpis", v)}>KPIs secundários</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.widgets.funnel} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setWidget("funnel", v)}>Funil</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.widgets.charts} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setWidget("charts", v)}>Gráficos</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.widgets.cta} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setWidget("cta", v)}>CTA final</DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
             <DropdownMenuLabel>Métricas</DropdownMenuLabel>
-            <DropdownMenuCheckboxItem checked={preferences.kpis.investimento} onCheckedChange={() => toggleKPI("investimento")}>Investimento</DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem checked={preferences.kpis.roas} onCheckedChange={() => toggleKPI("roas")}>ROAS</DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem checked={preferences.kpis.custoMidia} onCheckedChange={() => toggleKPI("custoMidia")}>Custo de mídia</DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem checked={preferences.kpis.sessoes} onCheckedChange={() => toggleKPI("sessoes")}>Sessões</DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem checked={preferences.kpis.vendas} onCheckedChange={() => toggleKPI("vendas")}>Vendas</DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem checked={preferences.kpis.ticket} onCheckedChange={() => toggleKPI("ticket")}>Ticket médio</DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem checked={preferences.kpis.conversao} onCheckedChange={() => toggleKPI("conversao")}>Taxa de conversão</DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem checked={preferences.kpis.custoSessao} onCheckedChange={() => toggleKPI("custoSessao")}>Custo por sessão</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.kpis.investimento} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setKPI("investimento", v)}>Investimento</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.kpis.roas} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setKPI("roas", v)}>ROAS</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.kpis.custoMidia} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setKPI("custoMidia", v)}>Custo de mídia</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.kpis.sessoes} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setKPI("sessoes", v)}>Sessões</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.kpis.vendas} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setKPI("vendas", v)}>Vendas</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.kpis.ticket} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setKPI("ticket", v)}>Ticket médio</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.kpis.conversao} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setKPI("conversao", v)}>Taxa de conversão</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.kpis.custoSessao} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setKPI("custoSessao", v)}>Custo por sessão</DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
             <Button variant="ghost" size="sm" onClick={resetDashboard} className="w-full justify-center text-xs h-7">Restaurar padrão</Button>
           </DropdownMenuContent>
@@ -468,6 +487,10 @@ export default function Dashboard() {
           {visibleSecondary.map((item) => <div key={item.key}>{item.node}</div>)}
         </div>
       ))}
+
+      {preferences.widgets.funnel && !dataLoading && (
+        <FunnelChartCard clicks={funnelClicks} sessions={sessoes} sales={vendas} />
+      )}
 
       {roas < 2 && roas > 0 && (
         <Alert variant="destructive" className="border-destructive/30">

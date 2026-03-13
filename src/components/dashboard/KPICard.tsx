@@ -27,10 +27,10 @@ export function KPICard({ title, value, subtitle, change, onClick, dominant, inv
         "rounded-xl border border-border bg-card transition-all duration-200 ease-out relative overflow-hidden",
         secondary ? "p-3 sm:p-4" : dominant ? "p-4 sm:p-5" : "p-3 sm:p-4 md:p-5",
         isClickable 
-          ? "cursor-pointer hover:shadow-md hover:border-primary/30 hover:-translate-y-px group" 
-          : "hover:shadow-sm"
+          ? "cursor-pointer hover:border-primary/30 hover:-translate-y-px group" 
+          : ""
       )}
-      style={{ borderColor: 'hsla(24, 94%, 53%, 0.15)', boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)' }}
+      style={{ borderColor: 'hsl(var(--border))' }}
       onClick={onClick}
       role={isClickable ? "button" : undefined}
       tabIndex={isClickable ? 0 : undefined}
