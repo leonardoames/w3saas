@@ -890,10 +890,12 @@ export type Database = {
       }
       metrics_diarias: {
         Row: {
+          cliques: number | null
           created_at: string
           data: string
           faturamento: number | null
           id: string
+          impressoes: number | null
           investimento_trafego: number | null
           platform: string | null
           sessoes: number | null
@@ -903,10 +905,12 @@ export type Database = {
           vendas_valor: number | null
         }
         Insert: {
+          cliques?: number | null
           created_at?: string
           data: string
           faturamento?: number | null
           id?: string
+          impressoes?: number | null
           investimento_trafego?: number | null
           platform?: string | null
           sessoes?: number | null
@@ -916,10 +920,12 @@ export type Database = {
           vendas_valor?: number | null
         }
         Update: {
+          cliques?: number | null
           created_at?: string
           data?: string
           faturamento?: number | null
           id?: string
+          impressoes?: number | null
           investimento_trafego?: number | null
           platform?: string | null
           sessoes?: number | null
@@ -1341,6 +1347,30 @@ export type Database = {
           },
         ]
       }
+      staff_carteiras: {
+        Row: {
+          assigned_by: string | null
+          created_at: string
+          id: string
+          mentorado_id: string
+          staff_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          mentorado_id: string
+          staff_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          mentorado_id?: string
+          staff_id?: string
+        }
+        Relationships: []
+      }
       tarefas: {
         Row: {
           created_at: string
@@ -1383,6 +1413,51 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      tutor_carteiras: {
+        Row: {
+          created_at: string
+          id: string
+          mentorado_id: string
+          tutor_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mentorado_id: string
+          tutor_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mentorado_id?: string
+          tutor_id?: string
+        }
+        Relationships: []
+      }
+      tutor_teams: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          cs_id: string
+          id: string
+          tutor_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          cs_id: string
+          id?: string
+          tutor_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          cs_id?: string
+          id?: string
+          tutor_id?: string
         }
         Relationships: []
       }
@@ -1594,8 +1669,24 @@ export type Database = {
       }
     }
     Functions: {
+      admin_assign_staff_carteira: {
+        Args: { p_assign?: boolean; p_mentorado_id: string; p_staff_id: string }
+        Returns: undefined
+      }
+      admin_assign_tutor_team: {
+        Args: { p_assign?: boolean; p_cs_id: string; p_tutor_id: string }
+        Returns: undefined
+      }
       admin_delete_user: {
         Args: { target_user_id: string }
+        Returns: undefined
+      }
+      admin_set_client_role: {
+        Args: { p_grant: boolean; p_role: string; target_user_id: string }
+        Returns: undefined
+      }
+      admin_set_dash_role: {
+        Args: { new_role: string; target_user_id: string }
         Returns: undefined
       }
       admin_set_expiration: {
@@ -1668,6 +1759,12 @@ export type Database = {
       deactivate_brand: { Args: { p_brand_id: string }; Returns: undefined }
       delete_action_plan: { Args: { p_plan_id: string }; Returns: undefined }
       delete_action_task: { Args: { p_task_id: string }; Returns: undefined }
+      get_dash_admin_mentorado_ids: {
+        Args: never
+        Returns: {
+          mentorado_id: string
+        }[]
+      }
       get_user_active_brands_count: {
         Args: { check_user_id: string }
         Returns: number
@@ -1720,7 +1817,14 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user" | "tutor" | "cs" | "master" | "cliente_w3" | "cliente_ames"
+      app_role:
+        | "admin"
+        | "user"
+        | "tutor"
+        | "cs"
+        | "master"
+        | "cliente_w3"
+        | "cliente_ames"
       idea_channel:
         | "instagram"
         | "tiktok"
@@ -1882,7 +1986,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user", "tutor", "cs", "master", "cliente_w3", "cliente_ames"],
+      app_role: [
+        "admin",
+        "user",
+        "tutor",
+        "cs",
+        "master",
+        "cliente_w3",
+        "cliente_ames",
+      ],
       idea_channel: [
         "instagram",
         "tiktok",
