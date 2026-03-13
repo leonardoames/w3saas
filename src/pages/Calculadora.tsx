@@ -13,6 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { motion, AnimatePresence } from "motion/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import shopeeLogo from "@/assets/platforms/shopee.png";
+import nuvemshopLogo from "@/assets/platforms/nuvemshop.png";
+import mercadoLivreLogo from "@/assets/platforms/mercado-livre.png";
+import temuLogo from "@/assets/platforms/temu.svg";
+import tiktokLogo from "@/assets/platforms/tiktok.svg";
+import sheinLogo from "@/assets/platforms/shein.svg";
 
 export type Channel = "site" | "shopee" | "temu" | "tiktokshop" | "shein" | "meli-classico" | "meli-premium";
 
@@ -167,14 +173,14 @@ const allCostRows: { key: keyof ReturnType<typeof useCalculatorResults>["pcts"];
   { key: "extraFees", label: "Taxas Extras", inputKey: "extraFees", tooltip: "Outras taxas como antifraude, frete grátis subsidiado, etc.", channels: ["site", "shopee", "temu", "tiktokshop", "shein", "meli-classico", "meli-premium"] },
 ];
 
-const channelTabs: { value: Channel; label: string }[] = [
-  { value: "site", label: "🌐 SITE" },
-  { value: "shopee", label: "🟠 SHOPEE" },
-  { value: "temu", label: "🔶 TEMU" },
-  { value: "tiktokshop", label: "🎵 TIKTOK" },
-  { value: "shein", label: "🖤 SHEIN" },
-  { value: "meli-classico", label: "🟡 ML Clássico" },
-  { value: "meli-premium", label: "⭐ ML Premium" },
+const channelTabs: { value: Channel; label: string; icon: string }[] = [
+  { value: "site", label: "Site", icon: nuvemshopLogo },
+  { value: "shopee", label: "Shopee", icon: shopeeLogo },
+  { value: "temu", label: "Temu", icon: temuLogo },
+  { value: "tiktokshop", label: "TikTok", icon: tiktokLogo },
+  { value: "shein", label: "Shein", icon: sheinLogo },
+  { value: "meli-classico", label: "ML Clássico", icon: mercadoLivreLogo },
+  { value: "meli-premium", label: "ML Premium", icon: mercadoLivreLogo },
 ];
 
 const channelHasAutoRules = (ch: Channel) => ch !== "site";
@@ -344,13 +350,14 @@ export default function Calculadora() {
                   <button
                     key={ch.value}
                     onClick={() => handleChannelChange(ch.value)}
-                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all inline-flex items-center gap-1.5 ${
                       channel === ch.value
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground hover:bg-accent"
                     }`}
                   >
-                    {ch.label}
+                    <img src={ch.icon} alt={ch.label} className="h-3.5 w-3.5 rounded-[3px] object-contain" />
+                    <span>{ch.label}</span>
                   </button>
                 ))}
               </div>
