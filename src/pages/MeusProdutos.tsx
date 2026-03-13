@@ -99,7 +99,7 @@ export default function MeusProdutos() {
 
   const getBorderColor = (p: Product) => {
     const m = getMargin(p);
-    if (p.preco_venda == null) return "rgba(255,255,255,0.1)";
+    if (p.preco_venda == null) return "hsl(var(--border))";
     if (m === null) return "transparent";
     if (m < 15) return "#EF4444";
     if (m <= 30) return "#F97316";
@@ -115,12 +115,12 @@ export default function MeusProdutos() {
   if (isLoading || isSyncing) {
     return (
       <div className="p-6 space-y-6">
-        <div className="h-8 w-64 animate-pulse rounded" style={{ background: "rgba(255,255,255,0.05)" }} />
+        <div className="h-8 w-64 animate-pulse rounded bg-muted/30" />
         {isSyncing && (
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Sincronizando produtos do estoque...</p>
+          <p className="text-sm text-muted-foreground">Sincronizando produtos do estoque...</p>
         )}
         <div className="grid grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => <div key={i} className="h-[100px] animate-pulse rounded-xl" style={{ background: "#161616" }} />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-[100px] animate-pulse rounded-xl bg-muted/20" />)}
         </div>
       </div>
     );
@@ -168,7 +168,7 @@ export default function MeusProdutos() {
         {cardData.map((c) => (
           <div key={c.label} className="p-6 rounded-xl border border-border bg-card">
             <p className="uppercase mb-3 text-[11px] font-medium tracking-[0.1em] text-muted-foreground">{c.label}</p>
-            <p className="font-bold" style={{ fontSize: 32, color: c.valueColor || "#FFFFFF" }}>{c.value}</p>
+            <p className="font-bold" style={{ fontSize: 32, color: c.valueColor || "hsl(var(--foreground))" }}>{c.value}</p>
             <p className="mt-1 text-xs text-muted-foreground">{c.sub}</p>
           </div>
         ))}
@@ -176,9 +176,9 @@ export default function MeusProdutos() {
 
       {products.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center rounded-xl border border-border bg-card">
-          <Package className="mb-4" style={{ width: 48, height: 48, color: "rgba(255,255,255,0.1)" }} />
-          <h2 className="mb-1" style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>Nenhum produto cadastrado</h2>
-          <p className="max-w-md mb-6" style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>
+          <Package className="mb-4 h-12 w-12 text-muted-foreground/30" />
+          <h2 className="mb-1 text-base font-semibold text-foreground/80">Nenhum produto cadastrado</h2>
+          <p className="max-w-md mb-6 text-sm text-muted-foreground">
             Cadastre seus produtos para centralizar SKUs e conectar com Reposição e Simulações
           </p>
           <div className="flex gap-3">
@@ -252,23 +252,23 @@ export default function MeusProdutos() {
                 <tbody>
                   {filtered.map((p) => {
                     const margin = getMargin(p);
-                    const marginColor = margin === null ? "rgba(255,255,255,0.3)" : margin > 30 ? "#22C55E" : margin >= 15 ? "#F97316" : "#EF4444";
+                    const marginColor = margin === null ? "hsl(var(--muted-foreground))" : margin > 30 ? "#22C55E" : margin >= 15 ? "#F97316" : "#EF4444";
                     const hasReposicao = reposicaoByProductId.has(p.id);
                     const hasSimulacao = simulacaoByProductId.has(p.id);
 
                     return (
-                      <tr key={p.id} style={{ height: 56, borderBottom: "1px solid rgba(255,255,255,0.05)", borderLeft: `3px solid ${getBorderColor(p)}` }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.02)"; }}
+                      <tr key={p.id} style={{ height: 56, borderBottom: "1px solid hsl(var(--border))", borderLeft: `3px solid ${getBorderColor(p)}` }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "hsl(var(--accent) / 0.3)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ""; }}>
                         <td style={{ padding: "0 20px" }}>
-                          <div style={{ fontWeight: 600, color: "#FFFFFF", fontSize: 13 }}>{p.nome}</div>
-                          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                          <div style={{ fontWeight: 600, color: "hsl(var(--foreground))", fontSize: 13 }}>{p.nome}</div>
+                          <div style={{ fontSize: 11, color: "hsl(var(--muted-foreground))" }}>
                             SKU: {p.sku}{p.variante ? ` · ${p.variante}` : ""}
                           </div>
                           {p.origem_importacao && (
                             <span style={{
-                              fontSize: 10, background: "rgba(255,255,255,0.06)",
-                              color: "rgba(255,255,255,0.4)", borderRadius: 4,
+                              fontSize: 10, background: "hsl(var(--accent))",
+                              color: "hsl(var(--muted-foreground))", borderRadius: 4,
                               padding: "1px 6px", letterSpacing: "0.04em",
                               display: "inline-block", marginTop: 2,
                             }}>
@@ -279,13 +279,13 @@ export default function MeusProdutos() {
                         <td style={{ padding: "0 20px" }}>
                           {p.preco_venda != null ? (
                             <div>
-                              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>R$ {Number(p.preco_venda).toFixed(2)} venda</div>
-                              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                              <div style={{ fontSize: 13, color: "hsl(var(--foreground))" }}>R$ {Number(p.preco_venda).toFixed(2)} venda</div>
+                              <div style={{ fontSize: 11, color: "hsl(var(--muted-foreground))" }}>
                                 {p.custo_unitario != null ? `R$ ${Number(p.custo_unitario).toFixed(2)} custo` : "—"}
                               </div>
                             </div>
                           ) : (
-                            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.2)" }}>—</span>
+                            <span style={{ fontSize: 13, color: "hsl(var(--muted-foreground))" }}>—</span>
                           )}
                         </td>
                         <td style={{ padding: "0 20px" }}>
@@ -293,10 +293,10 @@ export default function MeusProdutos() {
                             {margin !== null ? `${margin.toFixed(1)}%` : "—"}
                           </span>
                         </td>
-                        <td style={{ padding: "0 20px", fontSize: 13, color: "rgba(255,255,255,0.85)" }}>
+                        <td style={{ padding: "0 20px", fontSize: 13, color: "hsl(var(--foreground))" }}>
                           {p.estoque_atual}
                         </td>
-                        <td style={{ padding: "0 20px", fontSize: 13, color: "rgba(255,255,255,0.85)" }}>
+                        <td style={{ padding: "0 20px", fontSize: 13, color: "hsl(var(--foreground))" }}>
                           {p.vendas_por_dia != null ? Number(p.vendas_por_dia).toFixed(1) : "—"}
                         </td>
                         <td style={{ padding: "0 20px" }}>
@@ -312,26 +312,22 @@ export default function MeusProdutos() {
                               </span>
                             )}
                             {!hasReposicao && !hasSimulacao && (
-                              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)" }}>📋 Só no catálogo</span>
+                              <span style={{ fontSize: 11, color: "hsl(var(--muted-foreground))" }}>📋 Só no catálogo</span>
                             )}
                           </div>
                         </td>
                         <td style={{ padding: "0 20px", textAlign: "right" }}>
                           <div className="flex items-center justify-end gap-3">
-                            <button onClick={() => openEdit(p)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                              onMouseEnter={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.8)"; }}
-                              onMouseLeave={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.3)"; }}>
-                              <Pencil style={{ width: 14, height: 14, color: "rgba(255,255,255,0.3)", transition: "color 0.15s" }} />
+                            <button onClick={() => openEdit(p)} className="bg-transparent border-0 p-0 cursor-pointer">
+                              <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors" />
                             </button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <button style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                                  onMouseEnter={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "#EF4444"; }}
-                                  onMouseLeave={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.3)"; }}>
-                                  <Trash2 style={{ width: 14, height: 14, color: "rgba(255,255,255,0.3)", transition: "color 0.15s" }} />
+                                <button className="bg-transparent border-0 p-0 cursor-pointer">
+                                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive transition-colors" />
                                 </button>
                               </AlertDialogTrigger>
-                              <AlertDialogContent style={{ background: "#1a1a1a", border: "1px solid #242424", borderRadius: 12, maxWidth: 480 }}>
+                              <AlertDialogContent className="max-w-[480px]">
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Remover produto?</AlertDialogTitle>
                                   <AlertDialogDescription>
