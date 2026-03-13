@@ -1,5 +1,5 @@
-import { useState, useMemo, Fragment } from "react";
-import { Plus, Package, Pencil, Trash2, ChevronRight, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { useState, useMemo, Fragment, type CSSProperties } from "react";
+import { Package, Pencil, Trash2, ChevronRight, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -22,7 +22,7 @@ function getDateLabel(dataPedido: Date) {
   if (diff < 0) return { text: "Atrasado", color: "#EF4444", weight: 700 };
   if (diff === 0) return { text: "Hoje", color: "#EF4444", weight: 700 };
   if (diff <= 7) return { text: format(dataPedido, "dd/MMM", { locale: ptBR }), color: "#F97316", weight: 600 };
-  return { text: format(dataPedido, "dd/MMM", { locale: ptBR }), color: "rgba(255,255,255,0.7)", weight: 400 };
+  return { text: format(dataPedido, "dd/MMM", { locale: ptBR }), color: "hsl(var(--muted-foreground))", weight: 400 };
 }
 
 function getStatusDot(status: ComputedFields["status"]) {
@@ -100,18 +100,18 @@ export default function ReposicaoEstoque() {
   };
 
   const SortIcon = ({ col }: { col: SortKey }) => {
-    if (sortKey !== col) return <ArrowUpDown style={{ width: 12, height: 12, color: "rgba(255,255,255,0.15)", marginLeft: 4, flexShrink: 0 }} />;
+    if (sortKey !== col) return <ArrowUpDown style={{ width: 12, height: 12, color: "hsl(var(--muted-foreground) / 0.5)", marginLeft: 4, flexShrink: 0 }} />;
     return sortDir === "asc"
-      ? <ArrowUp style={{ width: 12, height: 12, color: "rgba(255,255,255,0.5)", marginLeft: 4, flexShrink: 0 }} />
-      : <ArrowDown style={{ width: 12, height: 12, color: "rgba(255,255,255,0.5)", marginLeft: 4, flexShrink: 0 }} />;
+      ? <ArrowUp style={{ width: 12, height: 12, color: "hsl(var(--muted-foreground))", marginLeft: 4, flexShrink: 0 }} />
+      : <ArrowDown style={{ width: 12, height: 12, color: "hsl(var(--muted-foreground))", marginLeft: 4, flexShrink: 0 }} />;
   };
 
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
-        <div className="h-8 w-64 animate-pulse rounded" style={{ background: "rgba(255,255,255,0.05)" }} />
+        <div className="h-8 w-64 animate-pulse rounded bg-muted/30" />
         <div className="grid grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => <div key={i} className="h-[100px] animate-pulse rounded-xl" style={{ background: "#161616" }} />)}
+          {[1, 2, 3, 4].map((i) => <div key={i} className="h-[100px] animate-pulse rounded-xl bg-muted/20" />)}
         </div>
       </div>
     );
@@ -124,39 +124,39 @@ export default function ReposicaoEstoque() {
     { label: "Em Dia", value: counts.seguro, sub: "sem urgência", valueColor: undefined },
   ];
 
-  const thBase: React.CSSProperties = {
-    fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)",
+  const thBase: CSSProperties = {
+    fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "hsl(var(--muted-foreground))",
     height: 40, padding: "0 20px", textTransform: "uppercase", cursor: "pointer", userSelect: "none",
-    textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#111111",
+    textAlign: "left", borderBottom: "1px solid hsl(var(--border))", background: "hsl(var(--card))",
   };
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Reposição de Estoque</h1>
-        <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Gestão de ponto de reposição por SKU</p>
+        <h1 className="page-title">Reposição de Estoque</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">Gestão de ponto de reposição por SKU</p>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {cardData.map((c) => (
-          <div key={c.label} className="p-6 rounded-xl" style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <p className="uppercase mb-3" style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.1em", color: "rgba(255,255,255,0.35)" }}>{c.label}</p>
-            <p className="font-bold" style={{ fontSize: 32, color: c.valueColor || "#FFFFFF" }}>{c.value}</p>
-            <p className="mt-1" style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{c.sub}</p>
+          <div key={c.label} className="p-6 rounded-xl border border-border bg-card">
+            <p className="uppercase mb-3 text-[11px] font-medium tracking-[0.1em] text-muted-foreground">{c.label}</p>
+            <p className="font-bold" style={{ fontSize: 32, color: c.valueColor || "hsl(var(--foreground))" }}>{c.value}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{c.sub}</p>
           </div>
         ))}
       </div>
 
       {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center rounded-xl" style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <Package className="mb-4" style={{ width: 48, height: 48, color: "rgba(255,255,255,0.1)" }} />
-          <h2 className="mb-1" style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>Nenhuma peça cadastrada</h2>
-          <p className="max-w-md mb-6" style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>
+        <div className="flex flex-col items-center justify-center py-24 text-center rounded-xl border border-border bg-card">
+          <Package className="mb-4 h-12 w-12 text-muted-foreground/30" />
+          <h2 className="mb-1 text-base font-semibold text-foreground/80">Nenhuma peça cadastrada</h2>
+          <p className="max-w-md mb-6 text-sm text-muted-foreground">
             Cadastre SKUs para calcular automaticamente a data de cada pedido
           </p>
-          <button onClick={openCreate} style={{ background: "#F97316", color: "#000", fontWeight: 600, fontSize: 13, height: 36, padding: "0 16px", borderRadius: 8, border: "none", cursor: "pointer" }}>
+          <button onClick={openCreate} className="h-9 rounded-md px-4 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
             + Cadastrar Peça
           </button>
         </div>
@@ -165,18 +165,17 @@ export default function ReposicaoEstoque() {
           {/* Filter Bar */}
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative" style={{ width: 280 }}>
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2" style={{ width: 14, height: 14, color: "rgba(255,255,255,0.3)" }} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Buscar SKU ou peça..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full outline-none"
-                style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, height: 36, fontSize: 13, color: "white", padding: "0 12px 0 34px" }}
+                className="w-full outline-none h-9 text-sm px-3 pl-8 rounded-md bg-card border border-border"
               />
             </div>
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-              <SelectTrigger className="border-0 outline-none ring-0 focus:ring-0" style={{ width: 180, background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, height: 36, fontSize: 13, color: "rgba(255,255,255,0.7)" }}>
+              <SelectTrigger className="h-9 text-sm border-border bg-card" style={{ width: 180 }}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -187,7 +186,7 @@ export default function ReposicaoEstoque() {
               </SelectContent>
             </Select>
             <Select value={tipoFilter} onValueChange={(v) => setTipoFilter(v as TipoFilter)}>
-              <SelectTrigger className="border-0 outline-none ring-0 focus:ring-0" style={{ width: 180, background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, height: 36, fontSize: 13, color: "rgba(255,255,255,0.7)" }}>
+              <SelectTrigger className="h-9 text-sm border-border bg-card" style={{ width: 180 }}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -197,14 +196,14 @@ export default function ReposicaoEstoque() {
               </SelectContent>
             </Select>
             <div className="ml-auto">
-              <button onClick={openCreate} style={{ background: "#F97316", color: "#000", fontWeight: 600, fontSize: 13, height: 36, padding: "0 16px", borderRadius: 8, border: "none", cursor: "pointer" }}>
+              <button onClick={openCreate} className="h-9 rounded-md px-4 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
                 + Cadastrar Peça
               </button>
             </div>
           </div>
 
           {/* Table */}
-          <div className="overflow-hidden rounded-xl" style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
             <div className="w-full overflow-x-auto">
               <table className="w-full" style={{ borderCollapse: "collapse", minWidth: 700 }}>
                 <colgroup>
@@ -252,17 +251,17 @@ export default function ReposicaoEstoque() {
                           onClick={() => setExpandedId(isOpen ? null : item.id)}
                           style={{
                             height: 56,
-                            borderBottom: "1px solid rgba(255,255,255,0.05)",
+                            borderBottom: "1px solid hsl(var(--border))",
                             borderLeft: `3px solid ${getBorderColor(computed.status)}`,
                           }}
-                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.02)"; }}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "hsl(var(--accent) / 0.3)"; }}
                           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ""; }}
                         >
                           <td style={{ padding: "0 8px" }}>
                             <ChevronRight
                               style={{
                                 width: 14, height: 14,
-                                color: "rgba(255,255,255,0.25)",
+                                color: "hsl(var(--muted-foreground))",
                                 transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
                                 transition: "transform 0.15s",
                               }}
@@ -270,21 +269,21 @@ export default function ReposicaoEstoque() {
                           </td>
                           <td style={{ padding: "0 20px" }}>
                             <div className="flex items-center gap-1.5">
-                              <span style={{ fontWeight: 600, color: "#FFFFFF", fontSize: 13 }}>{item.nome_peca}</span>
+                              <span style={{ fontWeight: 600, color: "hsl(var(--foreground))", fontSize: 13 }}>{item.nome_peca}</span>
                               {(item as any).product_id && (
                                 <span title="Vinculado ao catálogo de produtos" style={{ fontSize: 12, cursor: "default" }}>🔗</span>
                               )}
                             </div>
-                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                            <div style={{ fontSize: 11, color: "hsl(var(--muted-foreground))" }}>
                               SKU: {item.sku}{item.variante ? ` · ${item.variante}` : ""}
                             </div>
                           </td>
-                          <td style={{ padding: "0 20px", fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+                          <td style={{ padding: "0 20px", fontSize: 12, color: "hsl(var(--muted-foreground))" }}>
                             {item.tipo_reposicao === "producao_propria" ? "Produção" : "Fornecedor"}
                           </td>
                           <td style={{ padding: "0 20px" }}>
-                            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>{item.estoque_atual}</div>
-                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>unidades</div>
+                            <div style={{ fontSize: 13, color: "hsl(var(--foreground))" }}>{item.estoque_atual}</div>
+                            <div style={{ fontSize: 11, color: "hsl(var(--muted-foreground))" }}>unidades</div>
                           </td>
                           <td style={{ padding: "0 20px" }}>
                             <Tooltip>
@@ -300,27 +299,21 @@ export default function ReposicaoEstoque() {
                           <td style={{ padding: "0 20px" }}>
                             <div className="flex items-center gap-2">
                               <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusDot.color, display: "inline-block", flexShrink: 0 }} />
-                              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>{statusDot.label}</span>
+                              <span style={{ fontSize: 12, color: "hsl(var(--foreground))" }}>{statusDot.label}</span>
                             </div>
                           </td>
                           <td style={{ padding: "0 20px", textAlign: "right" }}>
                             <div className="flex items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
                               <button
                                 onClick={() => openEdit(item)}
-                                style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                                onMouseEnter={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.8)"; }}
-                                onMouseLeave={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.3)"; }}
+                                className="bg-transparent border-0 p-0 cursor-pointer"
                               >
-                                <Pencil style={{ width: 14, height: 14, color: "rgba(255,255,255,0.3)", transition: "color 0.15s" }} />
+                                <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors" />
                               </button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                  <button
-                                    style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                                    onMouseEnter={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "#EF4444"; }}
-                                    onMouseLeave={(e) => { (e.currentTarget.firstChild as HTMLElement).style.color = "rgba(255,255,255,0.3)"; }}
-                                  >
-                                    <Trash2 style={{ width: 14, height: 14, color: "rgba(255,255,255,0.3)", transition: "color 0.15s" }} />
+                                  <button className="bg-transparent border-0 p-0 cursor-pointer">
+                                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive transition-colors" />
                                   </button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
