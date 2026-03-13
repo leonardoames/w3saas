@@ -72,15 +72,15 @@ function CarteiraSection({
   const load = async () => {
     setLoading(true);
     if (mode === "cs") {
-      const { data } = await supabase.from("staff_carteiras").select("mentorado_id").eq("staff_id", staffId);
-      const ids = (data ?? []).map((r) => r.mentorado_id);
+      const { data } = await supabase.from("staff_carteiras" as any).select("mentorado_id").eq("staff_id", staffId);
+      const ids = (data ?? []).map((r: any) => r.mentorado_id);
       if (ids.length > 0) {
         const { data: profiles } = await supabase.from("profiles").select("user_id, email, full_name").in("user_id", ids);
         setItems(profiles ?? []);
       } else setItems([]);
     } else {
-      const { data } = await supabase.from("tutor_teams").select("cs_id").eq("tutor_id", staffId);
-      const ids = (data ?? []).map((r) => r.cs_id);
+      const { data } = await supabase.from("tutor_teams" as any).select("cs_id").eq("tutor_id", staffId);
+      const ids = (data ?? []).map((r: any) => r.cs_id);
       if (ids.length > 0) {
         const { data: profiles } = await supabase.from("profiles").select("user_id, email, full_name").in("user_id", ids);
         setItems(profiles ?? []);

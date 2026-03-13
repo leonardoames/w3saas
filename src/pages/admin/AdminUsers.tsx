@@ -209,12 +209,12 @@ export default function AdminUsers() {
 
       if (profile?.user_id) {
         const promises: Promise<any>[] = [];
-        if (newUserIsAdmin) promises.push(supabase.rpc("admin_update_role", { target_user_id: profile.user_id, make_admin: true }));
-        if (newUserClienteW3) promises.push(supabase.rpc("admin_set_client_role" as any, { target_user_id: profile.user_id, p_role: "cliente_w3", p_grant: true }));
+        if (newUserIsAdmin) promises.push(supabase.rpc("admin_update_role", { target_user_id: profile.user_id, make_admin: true }) as any);
+        if (newUserClienteW3) promises.push(supabase.rpc("admin_set_client_role" as any, { target_user_id: profile.user_id, p_role: "cliente_w3", p_grant: true }) as any);
         if (newUserClienteAmes) {
-          promises.push(supabase.rpc("admin_set_client_role" as any, { target_user_id: profile.user_id, p_role: "cliente_ames", p_grant: true }));
+          promises.push(supabase.rpc("admin_set_client_role" as any, { target_user_id: profile.user_id, p_role: "cliente_ames", p_grant: true }) as any);
           // AMES implies w3 access
-          if (!newUserClienteW3) promises.push(supabase.rpc("admin_set_client_role" as any, { target_user_id: profile.user_id, p_role: "cliente_w3", p_grant: true }));
+          if (!newUserClienteW3) promises.push(supabase.rpc("admin_set_client_role" as any, { target_user_id: profile.user_id, p_role: "cliente_w3", p_grant: true }) as any);
         }
         await Promise.all(promises);
       }

@@ -289,9 +289,9 @@ export default function AdminCarteiras() {
   const loadCSCarteira = useCallback(async (cs: StaffUser) => {
     setCsAssLoading(true);
     const { data, error } = await supabase
-      .from("staff_carteiras")
+      .from("staff_carteiras" as any)
       .select("id, mentorado_id")
-      .eq("staff_id", cs.user_id);
+      .eq("staff_id", cs.user_id) as any;
 
     if (error) {
       toast({ title: "Erro ao carregar carteira", description: error.message, variant: "destructive" });
@@ -316,9 +316,9 @@ export default function AdminCarteiras() {
   const loadTutorTeam = useCallback(async (tutor: StaffUser) => {
     setTutorAssLoading(true);
     const { data, error } = await supabase
-      .from("tutor_teams")
+      .from("tutor_teams" as any)
       .select("id, cs_id")
-      .eq("tutor_id", tutor.user_id);
+      .eq("tutor_id", tutor.user_id) as any;
 
     if (error) {
       toast({ title: "Erro ao carregar time", description: error.message, variant: "destructive" });
