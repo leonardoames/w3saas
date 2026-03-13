@@ -21,6 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Check, Loader2, MoreHorizontal, Search, Shield, Trash2, UserPlus,
   UsersRound, UserX, ArrowLeft, Plus, AlertCircle, GraduationCap, ShoppingBag,
+  ArrowUpDown, ArrowDown, ArrowUp,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -81,6 +82,9 @@ function RoleBadges({ roles = [] }: { roles?: string[] }) {
   );
 }
 
+type SortKey = "full_name" | "access_status" | "roles" | "created_at" | "last_login_at";
+type SortDir = "asc" | "desc";
+
 const ROLE_FILTER_OPTIONS = [
   { value: "all", label: "Todos" },
   { value: "cliente_w3", label: "Clientes W3" },
@@ -97,6 +101,8 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [sortKey, setSortKey] = useState<SortKey>("created_at");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
 
@@ -194,6 +200,7 @@ export default function AdminUsers() {
         body: {
           users: [{ email: newUserEmail.trim(), name: newUserName.trim() || undefined, plan: "free" }],
           default_password: newUserPassword,
+          send_invite_email: false,
         },
       });
       if (error) throw error;
@@ -239,6 +246,62 @@ export default function AdminUsers() {
     if (roleFilter === "none") return !u.roles?.some((r) => r in ROLE_CONFIG);
     return u.roles?.includes(roleFilter);
   });
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir(key === "created_at" || key === "last_login_at" ? "desc" : "asc");
+  };
+
+  const sortIcon = (key: SortKey) => {
+    if (sortKey !== key) return <ArrowUpDown className="h-3 w-3 text-muted-foreground/70" />;
+    return sortDir === "asc"
+      ? <ArrowUp className="h-3 w-3 text-foreground" />
+      : <ArrowDown className="h-3 w-3 text-foreground" />;
+  };
+
+  const sortedUsers = useMemo(() => {
+    const list = [...filteredUsers];
+    list.sort((a, b) => {
+      const order = sortDir === "asc" ? 1 : -1;
+
+      if (sortKey === "created_at") {
+        return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * order;
+      }
+
+      if (sortKey === "last_login_at") {
+        const aTime = a.last_login_at ? new Date(a.last_login_at).getTime() : 0;
+        const bTime = b.last_login_at ? new Date(b.last_login_at).getTime() : 0;
+        return (aTime - bTime) * order;
+      }
+
+      if (sortKey === "roles") {
+        const aRoles = (a.roles ?? []).join(", ");
+        const bRoles = (b.roles ?? []).join(", ");
+        return aRoles.localeCompare(bRoles, "pt-BR") * order;
+      }
+
+      if (sortKey === "access_status") {
+        return (a.access_status ?? "").localeCompare(b.access_status ?? "", "pt-BR") * order;
+      }
+
+      const aName = (a.full_name || a.email || "").toLowerCase();
+      const bName = (b.full_name || b.email || "").toLowerCase();
+      return aName.localeCompare(bName, "pt-BR") * order;
+    });
+
+    return list;
+  }, [filteredUsers, sortDir, sortKey]);
+
+  const formatDateSafe = (value: string | null, includeTime = false) => {
+    if (!value) return "-";
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return "-";
+    return format(dt, includeTime ? "dd/MM/yyyy HH:mm" : "dd/MM/yyyy", { locale: ptBR });
+  };
 
   const getStatusBadge = (user: UserProfile) => {
     if (user.access_status === "suspended") return <Badge variant="destructive">Suspenso</Badge>;
@@ -322,16 +385,36 @@ export default function AdminUsers() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="min-w-[180px]">Usuário</TableHead>
-                      <TableHead className="min-w-[80px]">Status</TableHead>
-                      <TableHead className="min-w-[120px]">Roles</TableHead>
-                      <TableHead className="min-w-[100px] hidden md:table-cell">Cadastro</TableHead>
-                      <TableHead className="min-w-[120px] hidden lg:table-cell">Último login</TableHead>
+                      <TableHead className="min-w-[180px]">
+                        <button type="button" onClick={() => toggleSort("full_name")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                          Usuário {sortIcon("full_name")}
+                        </button>
+                      </TableHead>
+                      <TableHead className="min-w-[80px]">
+                        <button type="button" onClick={() => toggleSort("access_status")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                          Status {sortIcon("access_status")}
+                        </button>
+                      </TableHead>
+                      <TableHead className="min-w-[120px]">
+                        <button type="button" onClick={() => toggleSort("roles")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                          Roles {sortIcon("roles")}
+                        </button>
+                      </TableHead>
+                      <TableHead className="min-w-[100px] hidden md:table-cell">
+                        <button type="button" onClick={() => toggleSort("created_at")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                          Cadastro {sortIcon("created_at")}
+                        </button>
+                      </TableHead>
+                      <TableHead className="min-w-[120px] hidden lg:table-cell">
+                        <button type="button" onClick={() => toggleSort("last_login_at")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                          Último login {sortIcon("last_login_at")}
+                        </button>
+                      </TableHead>
                       <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.map((user) => (
+                    {sortedUsers.map((user) => (
                       <TableRow key={user.id} className="cursor-pointer hover:bg-accent/40" onClick={() => setActionsDialog({ open: true, user })}>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -344,10 +427,10 @@ export default function AdminUsers() {
                         <TableCell>{getStatusBadge(user)}</TableCell>
                         <TableCell><RoleBadges roles={user.roles} /></TableCell>
                         <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                          {format(new Date(user.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                          {formatDateSafe(user.created_at)}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                          {user.last_login_at ? format(new Date(user.last_login_at), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "-"}
+                          {formatDateSafe(user.last_login_at, true)}
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <Button
