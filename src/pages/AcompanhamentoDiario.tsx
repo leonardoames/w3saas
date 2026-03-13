@@ -291,7 +291,7 @@ export default function AcompanhamentoDiario() {
         </div>
 
         {/* Filters + Actions */}
-        <div className="bg-card border border-border rounded-lg p-4 shadow-sm space-y-4">
+        <div className="bg-card border border-border rounded-lg p-4 space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3 flex-wrap">
               <PeriodFilter
@@ -333,12 +333,12 @@ export default function AcompanhamentoDiario() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="manual">
-            <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
+            <div className="bg-card border border-border rounded-lg p-6">
               <DailyResultsTable data={filteredData} onEdit={handleEdit} onDelete={handleDelete} />
             </div>
           </TabsContent>
           <TabsContent value="integracoes">
-            <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
+            <div className="bg-card border border-border rounded-lg p-6">
               <MetricsSessionsTable data={filteredMetrics} onUpdateSessions={handleUpdateSessions} />
             </div>
           </TabsContent>
