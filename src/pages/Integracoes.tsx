@@ -76,11 +76,9 @@ const platforms: PlatformInfo[] = [
     name: "Mercado Livre",
     description: "Conecte ao Mercado Livre para importar vendas e acompanhar performance.",
     color: "bg-yellow-500",
-    fields: [
-      { key: "access_token", label: "Access Token", placeholder: "Seu access token" },
-      { key: "seller_id", label: "Seller ID", placeholder: "ID do vendedor" },
-    ],
+    fields: [],
     docsUrl: "https://developers.mercadolivre.com.br/pt_br/api-docs-pt-br",
+    oauth: true,
   },
   {
     id: "shopify",
@@ -139,7 +137,7 @@ const platforms: PlatformInfo[] = [
 ];
 
 // Platforms that have a working sync edge function
-const SYNCABLE_PLATFORMS = new Set(["nuvemshop", "shopee", "shopee_ads", "shopify", "olist_tiny"]);
+const SYNCABLE_PLATFORMS = new Set(["nuvemshop", "shopee", "shopee_ads", "shopify", "olist_tiny", "mercado_livre"]);
 
 // Webhook base URL for LGPD
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -159,6 +157,23 @@ export default function Integracoes() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const [syncing, setSyncing] = useState<string | null>(null);
+
+  // Handle OAuth callback feedback
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("status");
+    const platform = params.get("platform");
+    const error = params.get("error");
+
+    if (status === "success" && platform) {
+      toast({ title: "Integração conectada!", description: `${platform} conectado com sucesso.` });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    if (error) {
+      toast({ title: "Erro na integração", description: `Erro: ${error}`, variant: "destructive" });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     if (user) fetchIntegrations();
@@ -217,6 +232,8 @@ export default function Integracoes() {
           ? "shopee-oauth?action=authorize"
           : connectDialog.id === "shopee_ads"
           ? "shopee-ads-oauth?action=authorize"
+          : connectDialog.id === "mercado_livre"
+          ? "mercado-livre-oauth?action=authorize"
           : "shopify-oauth?action=authorize";
 
         const body = connectDialog.id === "shopee"
@@ -318,6 +335,8 @@ export default function Integracoes() {
         ? "shopee-oauth?action=authorize"
         : platform.id === "shopee_ads"
         ? "shopee-ads-oauth?action=authorize"
+        : platform.id === "mercado_livre"
+        ? "mercado-livre-oauth?action=authorize"
         : "shopify-oauth?action=authorize";
 
       const res = await supabase.functions.invoke(oauthFunction, {
