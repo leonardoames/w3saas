@@ -50,9 +50,9 @@ export function AddLessonModal({ isOpen, onClose, moduleId, moduleTitle, onSucce
       const { error } = await supabase.from("lessons").insert({
         module_id: moduleId,
         title: formData.title,
-        description: formData.description,
+        description: formData.description || null,
         panda_video_id: formData.panda_video_url,
-        duration: formData.duration,
+        duration: formData.duration || null,
         order: nextOrder,
       });
 
@@ -99,13 +99,12 @@ export function AddLessonModal({ isOpen, onClose, moduleId, moduleTitle, onSucce
           </div>
 
           <div>
-            <Label htmlFor="description">Descrição *</Label>
+            <Label htmlFor="description">Descrição</Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Descrição breve da aula"
-              required
+              placeholder="Descrição breve da aula (opcional)"
             />
           </div>
 
@@ -122,13 +121,12 @@ export function AddLessonModal({ isOpen, onClose, moduleId, moduleTitle, onSucce
           </div>
 
           <div>
-            <Label htmlFor="duration">Duração *</Label>
+            <Label htmlFor="duration">Duração</Label>
             <Input
               id="duration"
               value={formData.duration}
               onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-              placeholder="Ex: 15:30"
-              required
+              placeholder="Ex: 15:30 (opcional)"
             />
           </div>
 
