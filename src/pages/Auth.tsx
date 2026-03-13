@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Lock, CheckCircle2, Users, TrendingUp, Star, Shield, ArrowRight } from "lucide-react";
+import { AlertCircle, Lock, CheckCircle2, Users, TrendingUp, Star, Shield, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { motion } from "motion/react";
 
 const stats = [
