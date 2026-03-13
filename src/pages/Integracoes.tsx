@@ -215,6 +215,8 @@ export default function Integracoes() {
           ? "shopee-oauth?action=authorize"
           : connectDialog.id === "shopee_ads"
           ? "shopee-ads-oauth?action=authorize"
+          : connectDialog.id === "mercado_livre"
+          ? "mercado-livre-oauth?action=authorize"
           : "shopify-oauth?action=authorize";
 
         const body = connectDialog.id === "shopee"
