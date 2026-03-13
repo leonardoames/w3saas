@@ -76,11 +76,9 @@ const platforms: PlatformInfo[] = [
     name: "Mercado Livre",
     description: "Conecte ao Mercado Livre para importar vendas e acompanhar performance.",
     color: "bg-yellow-500",
-    fields: [
-      { key: "access_token", label: "Access Token", placeholder: "Seu access token" },
-      { key: "seller_id", label: "Seller ID", placeholder: "ID do vendedor" },
-    ],
+    fields: [],
     docsUrl: "https://developers.mercadolivre.com.br/pt_br/api-docs-pt-br",
+    oauth: true,
   },
   {
     id: "shopify",
