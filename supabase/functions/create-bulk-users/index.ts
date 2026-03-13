@@ -61,14 +61,16 @@ Deno.serve(async (req) => {
       throw new Error("Not authorized - admin only");
     }
 
-    const { users }: CreateUsersRequest = await req.json();
+    const { users, default_password: clientPassword }: CreateUsersRequest & { default_password?: string } = await req.json();
 
     if (!users || users.length === 0) {
       throw new Error("No users provided");
     }
 
-    // Generate a secure default password server-side
-    const default_password = crypto.randomUUID().slice(0, 12) + "A1!";
+    // Use client-provided password or generate a secure one
+    const default_password = clientPassword && clientPassword.length >= 6
+      ? clientPassword
+      : crypto.randomUUID().slice(0, 12) + "A1!";
 
     const results = [];
 
