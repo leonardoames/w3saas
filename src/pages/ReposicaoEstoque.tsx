@@ -1,5 +1,5 @@
-import { useState, useMemo, Fragment } from "react";
-import { Plus, Package, Pencil, Trash2, ChevronRight, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { useState, useMemo, Fragment, type CSSProperties } from "react";
+import { Package, Pencil, Trash2, ChevronRight, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -124,39 +124,39 @@ export default function ReposicaoEstoque() {
     { label: "Em Dia", value: counts.seguro, sub: "sem urgência", valueColor: undefined },
   ];
 
-  const thBase: React.CSSProperties = {
-    fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)",
+  const thBase: CSSProperties = {
+    fontSize: 11, fontWeight: 500, letterSpacing: "0.08em", color: "hsl(var(--muted-foreground))",
     height: 40, padding: "0 20px", textTransform: "uppercase", cursor: "pointer", userSelect: "none",
-    textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#111111",
+    textAlign: "left", borderBottom: "1px solid hsl(var(--border))", background: "hsl(var(--card))",
   };
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Reposição de Estoque</h1>
-        <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Gestão de ponto de reposição por SKU</p>
+        <h1 className="page-title">Reposição de Estoque</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">Gestão de ponto de reposição por SKU</p>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {cardData.map((c) => (
-          <div key={c.label} className="p-6 rounded-xl" style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <p className="uppercase mb-3" style={{ fontSize: 11, fontWeight: 500, letterSpacing: "0.1em", color: "rgba(255,255,255,0.35)" }}>{c.label}</p>
+          <div key={c.label} className="p-6 rounded-xl border border-border bg-card">
+            <p className="uppercase mb-3 text-[11px] font-medium tracking-[0.1em] text-muted-foreground">{c.label}</p>
             <p className="font-bold" style={{ fontSize: 32, color: c.valueColor || "#FFFFFF" }}>{c.value}</p>
-            <p className="mt-1" style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{c.sub}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{c.sub}</p>
           </div>
         ))}
       </div>
 
       {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center rounded-xl" style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="flex flex-col items-center justify-center py-24 text-center rounded-xl border border-border bg-card">
           <Package className="mb-4" style={{ width: 48, height: 48, color: "rgba(255,255,255,0.1)" }} />
           <h2 className="mb-1" style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>Nenhuma peça cadastrada</h2>
           <p className="max-w-md mb-6" style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>
             Cadastre SKUs para calcular automaticamente a data de cada pedido
           </p>
-          <button onClick={openCreate} style={{ background: "#F97316", color: "#000", fontWeight: 600, fontSize: 13, height: 36, padding: "0 16px", borderRadius: 8, border: "none", cursor: "pointer" }}>
+          <button onClick={openCreate} className="h-9 rounded-md px-4 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
             + Cadastrar Peça
           </button>
         </div>
@@ -165,18 +165,17 @@ export default function ReposicaoEstoque() {
           {/* Filter Bar */}
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative" style={{ width: 280 }}>
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2" style={{ width: 14, height: 14, color: "rgba(255,255,255,0.3)" }} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Buscar SKU ou peça..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full outline-none"
-                style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, height: 36, fontSize: 13, color: "white", padding: "0 12px 0 34px" }}
+                className="w-full outline-none h-9 text-sm px-3 pl-8 rounded-md bg-card border border-border"
               />
             </div>
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-              <SelectTrigger className="border-0 outline-none ring-0 focus:ring-0" style={{ width: 180, background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, height: 36, fontSize: 13, color: "rgba(255,255,255,0.7)" }}>
+              <SelectTrigger className="h-9 text-sm border-border bg-card" style={{ width: 180 }}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -187,7 +186,7 @@ export default function ReposicaoEstoque() {
               </SelectContent>
             </Select>
             <Select value={tipoFilter} onValueChange={(v) => setTipoFilter(v as TipoFilter)}>
-              <SelectTrigger className="border-0 outline-none ring-0 focus:ring-0" style={{ width: 180, background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, height: 36, fontSize: 13, color: "rgba(255,255,255,0.7)" }}>
+              <SelectTrigger className="h-9 text-sm border-border bg-card" style={{ width: 180 }}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -197,14 +196,14 @@ export default function ReposicaoEstoque() {
               </SelectContent>
             </Select>
             <div className="ml-auto">
-              <button onClick={openCreate} style={{ background: "#F97316", color: "#000", fontWeight: 600, fontSize: 13, height: 36, padding: "0 16px", borderRadius: 8, border: "none", cursor: "pointer" }}>
+              <button onClick={openCreate} className="h-9 rounded-md px-4 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
                 + Cadastrar Peça
               </button>
             </div>
           </div>
 
           {/* Table */}
-          <div className="overflow-hidden rounded-xl" style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
             <div className="w-full overflow-x-auto">
               <table className="w-full" style={{ borderCollapse: "collapse", minWidth: 700 }}>
                 <colgroup>
