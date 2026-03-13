@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowRight } from "lucide-react";
+import { AlertCircle, ArrowRight, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -11,9 +11,18 @@ import { PeriodFilter } from "@/components/dashboard/PeriodFilter";
 import { DailyRevenueBarChart } from "@/components/dashboard/DailyRevenueBarChart";
 import { CumulativeRevenueChart } from "@/components/dashboard/CumulativeRevenueChart";
 import { RevenueHeroCard } from "@/components/dashboard/RevenueHeroCard";
+import { FunnelChartCard } from "@/components/dashboard/FunnelChartCard";
 import { PlatformSelect } from "@/components/dashboard/PlatformSelect";
 import { PlatformType } from "@/lib/platformConfig";
 import { DailyAlert } from "@/components/dashboard/DailyAlert";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { KPISkeletonGrid, ChartSkeleton, GoalSkeleton } from "@/components/dashboard/DashboardSkeletons";
 import { EmptyChartState } from "@/components/dashboard/EmptyChartState";
@@ -37,6 +46,52 @@ const KPI_TOOLTIPS = {
   custoSessao: "Investimento em tráfego ÷ Sessões. Quanto custa trazer cada visita — quanto menor, melhor",
 };
 
+type WidgetKey =
+  | "dailyAlert"
+  | "goal"
+  | "primaryKpis"
+  | "secondaryKpis"
+  | "funnel"
+  | "charts"
+  | "cta";
+
+type KPIKey =
+  | "investimento"
+  | "roas"
+  | "custoMidia"
+  | "sessoes"
+  | "vendas"
+  | "ticket"
+  | "conversao"
+  | "custoSessao";
+
+interface DashboardPreferences {
+  widgets: Record<WidgetKey, boolean>;
+  kpis: Record<KPIKey, boolean>;
+}
+
+const DEFAULT_DASHBOARD_PREFERENCES: DashboardPreferences = {
+  widgets: {
+    dailyAlert: true,
+    goal: true,
+    primaryKpis: true,
+    secondaryKpis: true,
+    funnel: true,
+    charts: true,
+    cta: true,
+  },
+  kpis: {
+    investimento: true,
+    roas: true,
+    custoMidia: true,
+    sessoes: true,
+    vendas: true,
+    ticket: true,
+    conversao: true,
+    custoSessao: true,
+  },
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
@@ -50,6 +105,7 @@ export default function Dashboard() {
   const [dateRange, setDateRange] = useState({ from: startOfDay(subDays(new Date(), 7)), to: endOfDay(new Date()) });
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformType>("todos");
+  const [preferences, setPreferences] = useState<DashboardPreferences>(DEFAULT_DASHBOARD_PREFERENCES);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -112,6 +168,46 @@ export default function Dashboard() {
   useEffect(() => {
     if (user) loadData();
   }, [user, loadData]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const key = `dashboard_preferences:${user.id}`;
+    try {
+      const saved = localStorage.getItem(key);
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as Partial<DashboardPreferences>;
+      setPreferences({
+        widgets: { ...DEFAULT_DASHBOARD_PREFERENCES.widgets, ...(parsed.widgets || {}) },
+        kpis: { ...DEFAULT_DASHBOARD_PREFERENCES.kpis, ...(parsed.kpis || {}) },
+      });
+    } catch {
+      setPreferences(DEFAULT_DASHBOARD_PREFERENCES);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const key = `dashboard_preferences:${user.id}`;
+    localStorage.setItem(key, JSON.stringify(preferences));
+  }, [preferences, user?.id]);
+
+  const setWidget = (key: WidgetKey, checked: boolean | "indeterminate") => {
+    const value = checked === true;
+    setPreferences((prev) => ({
+      ...prev,
+      widgets: { ...prev.widgets, [key]: value },
+    }));
+  };
+
+  const setKPI = (key: KPIKey, checked: boolean | "indeterminate") => {
+    const value = checked === true;
+    setPreferences((prev) => ({
+      ...prev,
+      kpis: { ...prev.kpis, [key]: value },
+    }));
+  };
+
+  const resetDashboard = () => setPreferences(DEFAULT_DASHBOARD_PREFERENCES);
 
   const handlePeriodChange = (period: string, start: Date, end: Date) => {
     setSelectedPeriod(period);
@@ -194,6 +290,19 @@ export default function Dashboard() {
   });
   const avg7d = last7.length > 0 ? last7.reduce((s, d) => s + d.receita_paga, 0) / last7.length : 0;
 
+  const filteredMetrics = useMemo(() => {
+    const rangeStart = startOfDay(dateRange.from);
+    const rangeEnd = endOfDay(dateRange.to);
+    return allMetricsRaw.filter((m) => {
+      if (selectedPlatform !== "todos" && m.platform !== selectedPlatform) return false;
+      if (!m.data) return false;
+      const date = parseISO(m.data.substring(0, 10));
+      return isValid(date) && isWithinInterval(date, { start: rangeStart, end: rangeEnd });
+    });
+  }, [allMetricsRaw, dateRange, selectedPlatform]);
+
+  const funnelClicks = filteredMetrics.reduce((sum, m) => sum + (Number(m.cliques) || 0), 0);
+
   const chartData = filtered.map((d) => ({
     data: d.data,
     faturamento: d.receita_paga,
@@ -203,6 +312,84 @@ export default function Dashboard() {
     data: d.data,
     faturamento: d.receita_paga,
   }));
+
+  const primaryKPIItems = [
+    {
+      key: "investimento" as const,
+      node: (
+        <KPICard
+          title="Investimento em Mídia"
+          value={investimento.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+          subtitle="Total do período"
+          dominant
+          change={pctChange(investimento, prevInv)}
+          tooltip="Soma do investimento em tráfego pago no período selecionado"
+          isEmpty={!hasData}
+        />
+      ),
+    },
+    {
+      key: "roas" as const,
+      node: (
+        <KPICard
+          title="ROAS Médio"
+          value={roas.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          subtitle="Receita / Investimento"
+          change={pctChange(roas, prevRoas)}
+          tooltip={KPI_TOOLTIPS.roas}
+          isEmpty={!hasData}
+        />
+      ),
+    },
+    {
+      key: "custoMidia" as const,
+      node: (
+        <KPICard
+          title="Custo de Mídia"
+          value={`${custoMidia.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`}
+          subtitle="TACoS do período"
+          change={pctChange(custoMidia, prevCustoMidia)}
+          invertChange
+          tooltip={KPI_TOOLTIPS.custoMidia}
+          isEmpty={!hasData}
+        />
+      ),
+    },
+    {
+      key: "sessoes" as const,
+      node: (
+        <KPICard
+          title="Sessões"
+          value={sessoes.toLocaleString("pt-BR")}
+          change={pctChange(sessoes, prevSessoes)}
+          tooltip={KPI_TOOLTIPS.sessoes}
+          isEmpty={!hasData}
+        />
+      ),
+    },
+  ];
+
+  const secondaryKPIItems = [
+    {
+      key: "vendas" as const,
+      node: <KPICard secondary title="Vendas" value={vendas.toLocaleString("pt-BR")} change={pctChange(vendas, prevVendas)} tooltip={KPI_TOOLTIPS.vendas} isEmpty={!hasData} />,
+    },
+    {
+      key: "ticket" as const,
+      node: <KPICard secondary title="Ticket Médio" value={`R$ ${ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} change={pctChange(ticketMedio, prevTicket)} tooltip={KPI_TOOLTIPS.ticket} isEmpty={!hasData} />,
+    },
+    {
+      key: "conversao" as const,
+      node: <KPICard secondary title="Taxa de Conversão" value={`${taxaConversao.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`} change={pctChange(taxaConversao, prevConversao)} tooltip={KPI_TOOLTIPS.conversao} isEmpty={!hasData} />,
+    },
+    {
+      key: "custoSessao" as const,
+      node: <KPICard secondary title="Custo por Sessão" value={`R$ ${custoSessao.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} change={pctChange(custoSessao, prevCustoSessao)} invertChange tooltip={KPI_TOOLTIPS.custoSessao} isEmpty={!hasData} />,
+    },
+  ];
+
+  const visiblePrimary = primaryKPIItems.filter((item) => preferences.kpis[item.key]);
+  const visibleSecondary = secondaryKPIItems.filter((item) => preferences.kpis[item.key]);
 
   if (loading) {
     return (
@@ -247,42 +434,62 @@ export default function Dashboard() {
             onCustomRangeChange={setCustomRange}
           />
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Personalizar visão
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-72">
+            <DropdownMenuLabel>Blocos visíveis</DropdownMenuLabel>
+            <DropdownMenuCheckboxItem checked={preferences.widgets.dailyAlert} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setWidget("dailyAlert", v)}>Alerta diário</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.widgets.goal} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setWidget("goal", v)}>Meta e projeção</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.widgets.primaryKpis} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setWidget("primaryKpis", v)}>KPIs principais</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.widgets.secondaryKpis} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setWidget("secondaryKpis", v)}>KPIs secundários</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.widgets.funnel} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setWidget("funnel", v)}>Funil</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.widgets.charts} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setWidget("charts", v)}>Gráficos</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.widgets.cta} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setWidget("cta", v)}>CTA final</DropdownMenuCheckboxItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Métricas</DropdownMenuLabel>
+            <DropdownMenuCheckboxItem checked={preferences.kpis.investimento} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setKPI("investimento", v)}>Investimento</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.kpis.roas} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setKPI("roas", v)}>ROAS</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.kpis.custoMidia} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setKPI("custoMidia", v)}>Custo de mídia</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.kpis.sessoes} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setKPI("sessoes", v)}>Sessões</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.kpis.vendas} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setKPI("vendas", v)}>Vendas</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.kpis.ticket} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setKPI("ticket", v)}>Ticket médio</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.kpis.conversao} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setKPI("conversao", v)}>Taxa de conversão</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={preferences.kpis.custoSessao} onSelect={(e) => e.preventDefault()} onCheckedChange={(v) => setKPI("custoSessao", v)}>Custo por sessão</DropdownMenuCheckboxItem>
+            <DropdownMenuSeparator />
+            <Button variant="ghost" size="sm" onClick={resetDashboard} className="w-full justify-center text-xs h-7">Restaurar padrão</Button>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Daily Alert */}
-      <DailyAlert todayRevenue={todayRevenue} avgRevenue7d={avg7d} />
+      {preferences.widgets.dailyAlert && <DailyAlert todayRevenue={todayRevenue} avgRevenue7d={avg7d} />}
 
       {/* Revenue Goal + Projection */}
-      {dataLoading ? <GoalSkeleton /> : (
+      {preferences.widgets.goal && (dataLoading ? <GoalSkeleton /> : (
         <RevenueHeroCard currentRevenue={faturamento} previousRevenue={prevFat} userId={user.id} onGoalLoaded={handleGoalLoaded} />
-      )}
+      ))}
 
       {/* KPIs Row 1: Primary */}
-      {dataLoading ? <KPISkeletonGrid /> : (
-        <>
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <KPICard
-              title="Investimento em Mídia"
-              value={investimento.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-              subtitle="Total do período"
-              dominant
-              change={pctChange(investimento, prevInv)}
-              tooltip="Soma do investimento em tráfego pago no período selecionado"
-              isEmpty={!hasData}
-            />
-            <KPICard title="ROAS Médio" value={roas.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} subtitle="Receita / Investimento" change={pctChange(roas, prevRoas)} tooltip={KPI_TOOLTIPS.roas} isEmpty={!hasData} />
-            <KPICard title="Custo de Mídia" value={`${custoMidia.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`} subtitle="TACoS do período" change={pctChange(custoMidia, prevCustoMidia)} invertChange tooltip={KPI_TOOLTIPS.custoMidia} isEmpty={!hasData} />
-            <KPICard title="Sessões" value={sessoes.toLocaleString("pt-BR")} change={pctChange(sessoes, prevSessoes)} tooltip={KPI_TOOLTIPS.sessoes} isEmpty={!hasData} />
-          </div>
+      {preferences.widgets.primaryKpis && (dataLoading ? <KPISkeletonGrid /> : (
+        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+          {visiblePrimary.map((item) => <div key={item.key}>{item.node}</div>)}
+        </div>
+      ))}
 
-          {/* KPIs Row 2: Secondary (smaller) */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <KPICard secondary title="Vendas" value={vendas.toLocaleString("pt-BR")} change={pctChange(vendas, prevVendas)} tooltip={KPI_TOOLTIPS.vendas} isEmpty={!hasData} />
-            <KPICard secondary title="Ticket Médio" value={`R$ ${ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} change={pctChange(ticketMedio, prevTicket)} tooltip={KPI_TOOLTIPS.ticket} isEmpty={!hasData} />
-            <KPICard secondary title="Taxa de Conversão" value={`${taxaConversao.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`} change={pctChange(taxaConversao, prevConversao)} tooltip={KPI_TOOLTIPS.conversao} isEmpty={!hasData} />
-            <KPICard secondary title="Custo por Sessão" value={`R$ ${custoSessao.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} change={pctChange(custoSessao, prevCustoSessao)} invertChange tooltip={KPI_TOOLTIPS.custoSessao} isEmpty={!hasData} />
-          </div>
-        </>
+      {/* KPIs Row 2: Secondary (smaller) */}
+      {preferences.widgets.secondaryKpis && (dataLoading ? <KPISkeletonGrid /> : (
+        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+          {visibleSecondary.map((item) => <div key={item.key}>{item.node}</div>)}
+        </div>
+      ))}
+
+      {preferences.widgets.funnel && !dataLoading && (
+        <FunnelChartCard clicks={funnelClicks} sessions={sessoes} sales={vendas} />
       )}
 
       {roas < 2 && roas > 0 && (
@@ -293,21 +500,23 @@ export default function Dashboard() {
       )}
 
       {/* Charts */}
-      {dataLoading ? <ChartSkeleton /> : !hasData ? <EmptyChartState /> : (
+      {preferences.widgets.charts && (dataLoading ? <ChartSkeleton /> : !hasData ? <EmptyChartState /> : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <DailyRevenueBarChart data={chartData} goal={revenueGoal} />
           <CumulativeRevenueChart data={chartData} previousData={prevChartData} goal={revenueGoal} />
         </div>
-      )}
+      ))}
 
       {/* CTA sutil */}
-      <div className="rounded-lg border border-primary/10 bg-primary/[0.02] px-4 py-2 flex items-center justify-between gap-3">
-        <p className="text-xs text-muted-foreground">Gerencie seus dados no <span className="text-foreground font-medium">Acompanhamento Diário</span></p>
-        <Button variant="ghost" size="sm" onClick={() => navigate("/app/acompanhamento")} className="shrink-0 gap-1.5 h-7 text-xs text-muted-foreground hover:text-foreground">
-          Ir para Acompanhamento
-          <ArrowRight className="h-3 w-3" />
-        </Button>
-      </div>
+      {preferences.widgets.cta && (
+        <div className="rounded-lg border border-primary/10 bg-primary/[0.02] px-4 py-2 flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">Gerencie seus dados no <span className="text-foreground font-medium">Acompanhamento Diário</span></p>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/app/acompanhamento")} className="shrink-0 gap-1.5 h-7 text-xs text-muted-foreground hover:text-foreground">
+            Ir para Acompanhamento
+            <ArrowRight className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
