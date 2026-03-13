@@ -19,7 +19,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     const prev = payload.find((p: any) => p.dataKey === "prevAcumulado");
     const meta = payload.find((p: any) => p.dataKey === "metaAcumulada");
     return (
-      <div className="bg-card border border-border rounded-lg p-3 shadow-lg min-w-[180px]">
+      <div className="bg-card border border-border rounded-lg p-3 min-w-[180px]">
         <p className="text-xs text-muted-foreground mb-1.5 font-medium">Dia {label}</p>
         {real?.value != null && (
           <p className="text-sm font-bold text-foreground">
@@ -104,7 +104,7 @@ export function CumulativeRevenueChart({ data, previousData, goal }: CumulativeC
   const onTrack = goal && goal > 0 ? projectedTotal >= goal : undefined;
 
   return (
-    <div className="rounded-xl border bg-card p-5 md:p-6" style={{ borderColor: 'hsla(24, 94%, 53%, 0.15)', boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+    <div className="rounded-xl border border-border bg-card p-5 md:p-6">
       <div className="flex items-start justify-between mb-0.5">
         <div>
           <h3 className="text-sm font-medium text-foreground">Acumulado do Mês</h3>

@@ -14,7 +14,7 @@ const formatYAxis = (value: number) => {
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload?.length && payload[0].value > 0) {
     return (
-      <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
+      <div className="bg-card border border-border rounded-lg p-3">
         <p className="text-xs text-muted-foreground mb-1 font-medium">Dia {label}</p>
         <p className="text-sm font-bold text-foreground">
           R$ {payload[0].value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
@@ -77,7 +77,7 @@ export function DailyRevenueBarChart({ data, goal }: DailyBarChartProps) {
   });
 
   return (
-    <div className="rounded-xl border bg-card p-5 md:p-6" style={{ borderColor: 'hsla(24, 94%, 53%, 0.15)', boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+    <div className="rounded-xl border border-border bg-card p-5 md:p-6">
       <h3 className="text-sm font-medium text-foreground">Faturamento por Dia</h3>
       <div className="flex items-center gap-3 mt-0.5 mb-4">
         <p className="text-[11px] text-muted-foreground">Receita gerada a cada dia no período selecionado</p>
