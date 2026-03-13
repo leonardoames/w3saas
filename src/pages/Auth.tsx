@@ -170,13 +170,17 @@ export default function Auth() {
           .eq("user_id", user.id);
       }
 
+      setMustChangePassword(false);
+
+      // Wait briefly for profile to propagate, then navigate
       toast({
         title: "Senha atualizada!",
         description: "Sua nova senha foi definida com sucesso.",
       });
 
-      setMustChangePassword(false);
-      navigate("/app");
+      // Force a small delay so AuthContext can pick up the profile change
+      await new Promise((r) => setTimeout(r, 500));
+      navigate("/app", { replace: true });
     } catch (error: any) {
       setError(error.message);
     } finally {

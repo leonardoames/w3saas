@@ -55,13 +55,22 @@ export default function ResetPassword() {
       const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword });
       if (updateErr) throw updateErr;
 
+      // Also clear must_change_password flag if it was set
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from("profiles")
+          .update({ must_change_password: false })
+          .eq("user_id", user.id);
+      }
+
       setSuccess(true);
       toast({
         title: "Senha atualizada!",
         description: "Sua nova senha foi definida com sucesso.",
       });
 
-      setTimeout(() => navigate("/auth"), 2000);
+      setTimeout(() => navigate("/app", { replace: true }), 2000);
     } catch (err: any) {
       setError(err.message);
     } finally {
