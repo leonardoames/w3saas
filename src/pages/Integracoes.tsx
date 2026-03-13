@@ -158,6 +158,23 @@ export default function Integracoes() {
 
   const [syncing, setSyncing] = useState<string | null>(null);
 
+  // Handle OAuth callback feedback
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("status");
+    const platform = params.get("platform");
+    const error = params.get("error");
+
+    if (status === "success" && platform) {
+      toast({ title: "Integração conectada!", description: `${platform} conectado com sucesso.` });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    if (error) {
+      toast({ title: "Erro na integração", description: `Erro: ${error}`, variant: "destructive" });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
   useEffect(() => {
     if (user) fetchIntegrations();
   }, [user]);
