@@ -79,8 +79,8 @@ function CarteiraSection({
         setItems(profiles ?? []);
       } else setItems([]);
     } else {
-      const { data } = await supabase.from("tutor_teams").select("cs_id").eq("tutor_id", staffId);
-      const ids = (data ?? []).map((r) => r.cs_id);
+      const { data } = await supabase.from("tutor_teams" as any).select("cs_id").eq("tutor_id", staffId);
+      const ids = (data ?? []).map((r: any) => r.cs_id);
       if (ids.length > 0) {
         const { data: profiles } = await supabase.from("profiles").select("user_id, email, full_name").in("user_id", ids);
         setItems(profiles ?? []);

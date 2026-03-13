@@ -33,21 +33,24 @@ Deno.serve(async (req) => {
       throw new Error("No authorization header");
     }
 
-    const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
+    const token = authHeader.replace("Bearer ", "");
 
-    // Verify caller is authenticated
+    // Validate JWT using anon client with getClaims
     const anonClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: { user: callerUser }, error: userError } = await anonClient.auth.getUser();
+    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
 
-    if (userError || !callerUser) {
-      console.error("Auth error:", userError);
+    if (claimsError || !claimsData?.claims) {
+      console.error("Auth error:", claimsError);
       throw new Error("Not authenticated");
     }
 
-    const userId = callerUser.id;
+    const userId = claimsData.claims.sub as string;
+
+    // Use service role client for admin operations
+    const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
 
     // Check if user is admin
     const { data: isAdmin } = await supabaseClient.rpc("is_admin_user", {
@@ -105,8 +108,6 @@ Deno.serve(async (req) => {
           if (profileError) {
             console.error("Profile update error:", profileError);
           }
-
-          // Profile flags are the source of truth (user_attributes table removed)
 
           results.push({
             email: userData.email,

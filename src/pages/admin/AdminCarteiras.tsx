@@ -316,9 +316,9 @@ export default function AdminCarteiras() {
   const loadTutorTeam = useCallback(async (tutor: StaffUser) => {
     setTutorAssLoading(true);
     const { data, error } = await supabase
-      .from("tutor_teams")
+      .from("tutor_teams" as any)
       .select("id, cs_id")
-      .eq("tutor_id", tutor.user_id);
+      .eq("tutor_id", tutor.user_id) as any;
 
     if (error) {
       toast({ title: "Erro ao carregar time", description: error.message, variant: "destructive" });
