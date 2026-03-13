@@ -316,6 +316,8 @@ export default function Integracoes() {
         ? "shopee-oauth?action=authorize"
         : platform.id === "shopee_ads"
         ? "shopee-ads-oauth?action=authorize"
+        : platform.id === "mercado_livre"
+        ? "mercado-livre-oauth?action=authorize"
         : "shopify-oauth?action=authorize";
 
       const res = await supabase.functions.invoke(oauthFunction, {
