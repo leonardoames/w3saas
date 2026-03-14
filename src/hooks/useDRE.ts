@@ -39,59 +39,236 @@ export interface ReceitaAvulsa {
   valor: number;
 }
 
+export type AjusteCategoria =
+  | "descontos"
+  | "reembolsos"
+  | "chargebacks"
+  | "outras_receitas"
+  | "outras_despesas_operacionais";
+
+export interface DREAjusteMensal {
+  id: string;
+  user_id: string;
+  mes_referencia: string;
+  descricao: string;
+  categoria: AjusteCategoria;
+  valor: number;
+}
+
+interface UnifiedDaily {
+  data: string;
+  receita: number;
+  investimento: number;
+  pedidos: number;
+  sessoes: number;
+  fonteReceita: "metrics_diarias" | "daily_results";
+  fonteInvestimento: "metrics_diarias" | "daily_results";
+}
+
 export interface DRECalculated {
-  faturamentoIntegracoes: number;
-  receitasAvulsasTotal: number;
+  receitaIntegracoes: number;
+  receitaManual: number;
   receitaBruta: number;
+  descontosValor: number;
+  reembolsosValor: number;
+  chargebacksValor: number;
+  deducoesReceita: number;
+  receitaLiquida: number;
   cmvValor: number;
   impostosValor: number;
   taxasValor: number;
   freteValor: number;
+  custosVariaveis: number;
   investimentoTrafego: number;
   despesasFixasTotal: number;
   despesasAvulsasTotal: number;
+  outrasDespesasOperacionais: number;
+  lucroBruto: number;
   lucroOperacional: number;
-  margemOperacional: number;
+  lucroLiquido: number;
+  margemLiquida: number;
+  pedidosPagos: number;
+  sessoes: number;
+  ticketMedio: number;
+  taxaConversao: number;
+  cpa: number;
+  roas: number;
+  roi: number;
+}
+
+function sumByCategory(adjustments: DREAjusteMensal[], category: AjusteCategoria): number {
+  return adjustments
+    .filter((a) => a.categoria === category)
+    .reduce((sum, a) => sum + (Number(a.valor) || 0), 0);
+}
+
+function buildUnifiedDaily(metricsRows: any[], dailyRows: any[]): UnifiedDaily[] {
+  const byDate = new Map<string, UnifiedDaily>();
+
+  for (const m of metricsRows || []) {
+    const date = String(m.data).slice(0, 10);
+    const curr = byDate.get(date) || {
+      data: date,
+      receita: 0,
+      investimento: 0,
+      pedidos: 0,
+      sessoes: 0,
+      fonteReceita: "metrics_diarias" as const,
+      fonteInvestimento: "metrics_diarias" as const,
+    };
+
+    curr.receita += Number(m.faturamento) || 0;
+    curr.investimento += Number(m.investimento_trafego) || 0;
+    curr.pedidos += Number(m.vendas_quantidade) || 0;
+    curr.sessoes += Number(m.sessoes) || 0;
+    curr.fonteReceita = "metrics_diarias";
+    curr.fonteInvestimento = "metrics_diarias";
+
+    byDate.set(date, curr);
+  }
+
+  for (const d of dailyRows || []) {
+    const date = String(d.data).slice(0, 10);
+    const curr = byDate.get(date) || {
+      data: date,
+      receita: 0,
+      investimento: 0,
+      pedidos: 0,
+      sessoes: 0,
+      fonteReceita: "daily_results" as const,
+      fonteInvestimento: "daily_results" as const,
+    };
+
+    const hasMetricsRevenue = curr.fonteReceita === "metrics_diarias" && curr.receita > 0;
+    const hasMetricsInvestment = curr.fonteInvestimento === "metrics_diarias" && curr.investimento > 0;
+
+    if (!hasMetricsRevenue) {
+      curr.receita = Number(d.receita_paga) || 0;
+      curr.pedidos = Number(d.pedidos_pagos) || curr.pedidos;
+      curr.fonteReceita = "daily_results";
+    }
+
+    if (!hasMetricsInvestment) {
+      curr.investimento = Number(d.investimento) || 0;
+      curr.fonteInvestimento = "daily_results";
+    }
+
+    if (!curr.sessoes || curr.sessoes === 0) {
+      curr.sessoes = Number(d.sessoes) || 0;
+    }
+
+    byDate.set(date, curr);
+  }
+
+  return Array.from(byDate.values());
 }
 
 function calculateDRE(
-  faturamentoIntegracoes: number,
+  unifiedDaily: UnifiedDaily[],
   receitasAvulsasTotal: number,
-  config: DREConfig | null,
-  investimentoTrafego: number,
+  despesasAvulsasTotal: number,
   despesasFixasTotal: number,
-  despesasAvulsasTotal: number
+  adjustments: DREAjusteMensal[],
+  config: DREConfig | null
 ): DRECalculated {
-  const receitaBruta = faturamentoIntegracoes + receitasAvulsasTotal;
+  const receitaIntegracoes = unifiedDaily.reduce((sum, d) => sum + d.receita, 0);
+  const investimentoTrafego = unifiedDaily.reduce((sum, d) => sum + d.investimento, 0);
+  const pedidosPagos = unifiedDaily.reduce((sum, d) => sum + d.pedidos, 0);
+  const sessoes = unifiedDaily.reduce((sum, d) => sum + d.sessoes, 0);
+
+  const outrasReceitas = sumByCategory(adjustments, "outras_receitas");
+  const descontosValor = sumByCategory(adjustments, "descontos");
+  const reembolsosValor = sumByCategory(adjustments, "reembolsos");
+  const chargebacksValor = sumByCategory(adjustments, "chargebacks");
+  const outrasDespesasOperacionais = sumByCategory(adjustments, "outras_despesas_operacionais");
+
+  const receitaManual = receitasAvulsasTotal + outrasReceitas;
+  const receitaBruta = receitaIntegracoes + receitaManual;
+
+  const deducoesReceita = descontosValor + reembolsosValor + chargebacksValor;
+  const receitaLiquida = Math.max(0, receitaBruta - deducoesReceita);
+
   const cmvPct = config?.cmv_pct || 0;
   const impostosPct = config?.impostos_pct || 0;
   const taxasPct = config?.taxas_plataforma_pct || 0;
   const fretePct = config?.frete_liquido_pct || 0;
 
-  const cmvValor = (receitaBruta * cmvPct) / 100;
-  const impostosValor = (receitaBruta * impostosPct) / 100;
-  const taxasValor = (receitaBruta * taxasPct) / 100;
-  const freteValor = (receitaBruta * fretePct) / 100;
+  const cmvValor = (receitaLiquida * cmvPct) / 100;
+  const impostosValor = (receitaLiquida * impostosPct) / 100;
+  const taxasValor = (receitaLiquida * taxasPct) / 100;
+  const freteValor = (receitaLiquida * fretePct) / 100;
 
-  const totalDeducoes =
-    cmvValor + impostosValor + taxasValor + freteValor + investimentoTrafego + despesasFixasTotal + despesasAvulsasTotal;
-  const lucroOperacional = receitaBruta - totalDeducoes;
-  const margemOperacional = receitaBruta > 0 ? (lucroOperacional / receitaBruta) * 100 : 0;
+  const custosVariaveis = cmvValor + impostosValor + taxasValor + freteValor;
+  const lucroBruto = receitaLiquida - custosVariaveis;
+  const lucroOperacional = lucroBruto - investimentoTrafego - despesasFixasTotal - despesasAvulsasTotal - outrasDespesasOperacionais;
+  const lucroLiquido = lucroOperacional;
+
+  const margemLiquida = receitaLiquida > 0 ? (lucroLiquido / receitaLiquida) * 100 : 0;
+  const ticketMedio = pedidosPagos > 0 ? receitaLiquida / pedidosPagos : 0;
+  const taxaConversao = sessoes > 0 ? (pedidosPagos / sessoes) * 100 : 0;
+  const cpa = pedidosPagos > 0 ? investimentoTrafego / pedidosPagos : 0;
+  const roas = investimentoTrafego > 0 ? receitaLiquida / investimentoTrafego : 0;
+  const roi = investimentoTrafego > 0 ? (lucroLiquido / investimentoTrafego) * 100 : 0;
 
   return {
-    faturamentoIntegracoes,
-    receitasAvulsasTotal,
+    receitaIntegracoes,
+    receitaManual,
     receitaBruta,
+    descontosValor,
+    reembolsosValor,
+    chargebacksValor,
+    deducoesReceita,
+    receitaLiquida,
     cmvValor,
     impostosValor,
     taxasValor,
     freteValor,
+    custosVariaveis,
     investimentoTrafego,
     despesasFixasTotal,
     despesasAvulsasTotal,
+    outrasDespesasOperacionais,
+    lucroBruto,
     lucroOperacional,
-    margemOperacional,
+    lucroLiquido,
+    margemLiquida,
+    pedidosPagos,
+    sessoes,
+    ticketMedio,
+    taxaConversao,
+    cpa,
+    roas,
+    roi,
   };
+}
+
+function buildDataQualityWarnings(unifiedDaily: UnifiedDaily[], config: DREConfig | null, current: DRECalculated): string[] {
+  const warnings: string[] = [];
+
+  if (!config) {
+    warnings.push("Configuração de CMV/Impostos/Taxas/Frete não definida. O lucro pode estar superestimado.");
+  }
+
+  const allPctZero = (config?.cmv_pct || 0) + (config?.impostos_pct || 0) + (config?.taxas_plataforma_pct || 0) + (config?.frete_liquido_pct || 0) === 0;
+  if (config && allPctZero) {
+    warnings.push("Todos os percentuais variáveis estão zerados. Revise CMV, impostos, taxas e frete.");
+  }
+
+  const daysWithoutSessions = unifiedDaily.filter((d) => d.receita > 0 && (!d.sessoes || d.sessoes === 0)).length;
+  if (daysWithoutSessions > 0) {
+    warnings.push(`${daysWithoutSessions} dia(s) com receita, mas sem sessões registradas.`);
+  }
+
+  const daysWithoutInvestment = unifiedDaily.filter((d) => d.receita > 0 && (!d.investimento || d.investimento === 0)).length;
+  if (daysWithoutInvestment > 0) {
+    warnings.push(`${daysWithoutInvestment} dia(s) com receita, mas sem investimento informado.`);
+  }
+
+  if (current.receitaLiquida > 0 && current.lucroLiquido < 0) {
+    warnings.push("A operação está com prejuízo líquido no período selecionado.");
+  }
+
+  return warnings;
 }
 
 export function useDRE(selectedMonth: Date, targetUserId?: string) {
@@ -111,11 +288,7 @@ export function useDRE(selectedMonth: Date, targetUserId?: string) {
   const configQuery = useQuery({
     queryKey: ["dre-config", userId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("dre_config")
-        .select("*")
-        .eq("user_id", userId)
-        .maybeSingle();
+      const { data, error } = await (supabase as any).from("dre_config").select("*").eq("user_id", userId).maybeSingle();
       if (error) throw error;
       return data as DREConfig | null;
     },
@@ -166,91 +339,119 @@ export function useDRE(selectedMonth: Date, targetUserId?: string) {
     enabled: !!userId,
   });
 
-  const integrationRevenueQuery = useQuery({
-    queryKey: ["dre-integration-revenue", userId, monthStart, monthEnd],
+  const adjustmentsQuery = useQuery({
+    queryKey: ["dre-ajustes", userId, mesReferencia],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("dre_ajustes_mensais")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("mes_referencia", mesReferencia)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data || []) as DREAjusteMensal[];
+    },
+    enabled: !!userId,
+  });
+
+  const currentMetricsQuery = useQuery({
+    queryKey: ["dre-current-metrics", userId, monthStart, monthEnd],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("metrics_diarias")
-        .select("faturamento")
+        .select("data,faturamento,investimento_trafego,sessoes,vendas_quantidade")
         .eq("user_id", userId!)
         .gte("data", monthStart)
         .lte("data", monthEnd);
       if (error) throw error;
-      return (data || []).reduce((sum, r) => sum + (Number(r.faturamento) || 0), 0);
+      return data || [];
     },
     enabled: !!userId,
   });
 
-  const investmentQuery = useQuery({
-    queryKey: ["dre-investment", userId, monthStart, monthEnd],
+  const currentDailyQuery = useQuery({
+    queryKey: ["dre-current-daily", userId, monthStart, monthEnd],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("daily_results")
-        .select("investimento")
+        .select("data,receita_paga,investimento,sessoes,pedidos_pagos")
         .eq("user_id", userId!)
         .gte("data", monthStart)
         .lte("data", monthEnd);
       if (error) throw error;
-      return (data || []).reduce((sum, r) => sum + (Number(r.investimento) || 0), 0);
+      return data || [];
     },
     enabled: !!userId,
   });
 
-  // Previous month queries
-  const prevIntegrationRevenueQuery = useQuery({
-    queryKey: ["dre-integration-revenue", userId, prevMonthStart, prevMonthEnd],
+  const prevMetricsQuery = useQuery({
+    queryKey: ["dre-prev-metrics", userId, prevMonthStart, prevMonthEnd],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("metrics_diarias")
-        .select("faturamento")
+        .select("data,faturamento,investimento_trafego,sessoes,vendas_quantidade")
         .eq("user_id", userId!)
         .gte("data", prevMonthStart)
         .lte("data", prevMonthEnd);
       if (error) throw error;
-      return (data || []).reduce((sum, r) => sum + (Number(r.faturamento) || 0), 0);
+      return data || [];
     },
     enabled: !!userId,
   });
 
-  const prevInvestmentQuery = useQuery({
-    queryKey: ["dre-investment", userId, prevMonthStart, prevMonthEnd],
+  const prevDailyQuery = useQuery({
+    queryKey: ["dre-prev-daily", userId, prevMonthStart, prevMonthEnd],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("daily_results")
-        .select("investimento")
+        .select("data,receita_paga,investimento,sessoes,pedidos_pagos")
         .eq("user_id", userId!)
         .gte("data", prevMonthStart)
         .lte("data", prevMonthEnd);
       if (error) throw error;
-      return (data || []).reduce((sum, r) => sum + (Number(r.investimento) || 0), 0);
+      return data || [];
     },
     enabled: !!userId,
   });
 
   const prevOnetimeExpensesQuery = useQuery({
-    queryKey: ["dre-despesas-avulsas", userId, prevMesReferencia],
+    queryKey: ["dre-prev-despesas-avulsas", userId, prevMesReferencia],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("dre_despesas_avulsas")
-        .select("valor")
+        .select("*")
         .eq("user_id", userId)
         .eq("mes_referencia", prevMesReferencia);
       if (error) throw error;
-      return (data || []).reduce((sum: number, d: any) => sum + (Number(d.valor) || 0), 0);
+      return (data || []) as DespesaAvulsa[];
     },
     enabled: !!userId,
   });
 
   const prevOnetimeRevenuesQuery = useQuery({
-    queryKey: ["dre-receitas-avulsas-total", userId, prevMesReferencia],
+    queryKey: ["dre-prev-receitas-avulsas", userId, prevMesReferencia],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("dre_receitas_avulsas")
-        .select("valor")
+        .select("*")
         .eq("user_id", userId)
         .eq("mes_referencia", prevMesReferencia);
       if (error) throw error;
-      return (data || []).reduce((sum: number, r: any) => sum + (Number(r.valor) || 0), 0);
+      return (data || []) as ReceitaAvulsa[];
+    },
+    enabled: !!userId,
+  });
+
+  const prevAdjustmentsQuery = useQuery({
+    queryKey: ["dre-prev-ajustes", userId, prevMesReferencia],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("dre_ajustes_mensais")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("mes_referencia", prevMesReferencia);
+      if (error) throw error;
+      return (data || []) as DREAjusteMensal[];
     },
     enabled: !!userId,
   });
@@ -259,48 +460,45 @@ export function useDRE(selectedMonth: Date, targetUserId?: string) {
   const fixedExpenses = fixedExpensesQuery.data || [];
   const onetimeExpenses = onetimeExpensesQuery.data || [];
   const onetimeRevenues = onetimeRevenuesQuery.data || [];
-  const faturamentoIntegracoes = integrationRevenueQuery.data || 0;
-  const investimentoTrafego = investmentQuery.data || 0;
+  const adjustments = adjustmentsQuery.data || [];
 
-  const despesasFixasTotal = fixedExpenses
-    .filter((d) => d.is_active)
-    .reduce((sum, d) => sum + Number(d.valor), 0);
+  const despesasFixasTotal = fixedExpenses.filter((d) => d.is_active).reduce((sum, d) => sum + Number(d.valor), 0);
   const despesasAvulsasTotal = onetimeExpenses.reduce((sum, d) => sum + Number(d.valor), 0);
   const receitasAvulsasTotal = onetimeRevenues.reduce((sum, r) => sum + Number(r.valor), 0);
 
+  const currentUnifiedDaily = buildUnifiedDaily(currentMetricsQuery.data || [], currentDailyQuery.data || []);
+  const previousUnifiedDaily = buildUnifiedDaily(prevMetricsQuery.data || [], prevDailyQuery.data || []);
+
   const currentDRE = calculateDRE(
-    faturamentoIntegracoes,
+    currentUnifiedDaily,
     receitasAvulsasTotal,
-    config,
-    investimentoTrafego,
+    despesasAvulsasTotal,
     despesasFixasTotal,
-    despesasAvulsasTotal
+    adjustments,
+    config
   );
 
   const previousDRE = calculateDRE(
-    prevIntegrationRevenueQuery.data || 0,
-    prevOnetimeRevenuesQuery.data || 0,
-    config,
-    prevInvestmentQuery.data || 0,
+    previousUnifiedDaily,
+    (prevOnetimeRevenuesQuery.data || []).reduce((sum, r) => sum + Number(r.valor), 0),
+    (prevOnetimeExpensesQuery.data || []).reduce((sum, d) => sum + Number(d.valor), 0),
     despesasFixasTotal,
-    prevOnetimeExpensesQuery.data || 0
+    prevAdjustmentsQuery.data || [],
+    config
   );
+
+  const dataQualityWarnings = buildDataQualityWarnings(currentUnifiedDaily, config, currentDRE);
 
   const isConfigured = !!config;
   const isLoading =
     configQuery.isLoading ||
     fixedExpensesQuery.isLoading ||
-    integrationRevenueQuery.isLoading ||
-    investmentQuery.isLoading;
+    currentMetricsQuery.isLoading ||
+    currentDailyQuery.isLoading;
 
-  // Mutations
   const upsertConfig = useMutation({
     mutationFn: async (values: Partial<DREConfig>) => {
-      const { data: existing } = await (supabase as any)
-        .from("dre_config")
-        .select("id")
-        .eq("user_id", userId)
-        .maybeSingle();
+      const { data: existing } = await (supabase as any).from("dre_config").select("id").eq("user_id", userId).maybeSingle();
 
       if (existing) {
         const { error } = await (supabase as any).from("dre_config").update(values).eq("user_id", userId);
@@ -373,13 +571,33 @@ export function useDRE(selectedMonth: Date, targetUserId?: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dre-receitas-avulsas"] }),
   });
 
+  const addAdjustment = useMutation({
+    mutationFn: async (values: { descricao: string; categoria: AjusteCategoria; valor: number }) => {
+      const { error } = await (supabase as any)
+        .from("dre_ajustes_mensais")
+        .insert({ user_id: userId, mes_referencia: mesReferencia, ...values });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dre-ajustes"] }),
+  });
+
+  const deleteAdjustment = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from("dre_ajustes_mensais").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dre-ajustes"] }),
+  });
+
   return {
     config,
     fixedExpenses,
     onetimeExpenses,
     onetimeRevenues,
+    adjustments,
     currentDRE,
     previousDRE,
+    dataQualityWarnings,
     isConfigured,
     isLoading,
     upsertConfig,
@@ -390,5 +608,7 @@ export function useDRE(selectedMonth: Date, targetUserId?: string) {
     deleteOnetimeExpense,
     addOnetimeRevenue,
     deleteOnetimeRevenue,
+    addAdjustment,
+    deleteAdjustment,
   };
 }

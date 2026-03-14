@@ -129,6 +129,17 @@ export default function DRE() {
         </div>
       )}
 
+      {dre.dataQualityWarnings?.length > 0 && (
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardContent className="py-3 space-y-1.5">
+            <p className="text-xs font-semibold text-amber-500 uppercase tracking-wide">Alertas de integridade financeira</p>
+            {dre.dataQualityWarnings.map((w: string) => (
+              <p key={w} className="text-xs text-amber-500/90">• {w}</p>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* DRE Statement */}
       <div className="overflow-x-auto">
         <DREStatement dre={dre} showComparison={showComparison} selectedMonth={selectedMonth} readOnly={isViewingOther} />
