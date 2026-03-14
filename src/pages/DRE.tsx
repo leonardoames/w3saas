@@ -53,7 +53,10 @@ export default function DRE() {
   if (!dre.isConfigured && !isViewingOther) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">DRE — Demonstrativo de Resultado</h1>
+        <div>
+          <h1 className="page-title">DRE — Demonstrativo de Resultado</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Acompanhe seu resultado real com visão mensal consolidada</p>
+        </div>
         <Card className="border-dashed border-2 border-primary/30">
           <CardContent className="flex flex-col items-center gap-6 py-12">
             <div className="rounded-full bg-primary/10 p-4">
@@ -93,7 +96,10 @@ export default function DRE() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold">DRE — Demonstrativo de Resultado</h1>
+        <div>
+          <h1 className="page-title">DRE — Demonstrativo de Resultado</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Acompanhe seu resultado real com visão mensal consolidada</p>
+        </div>
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedMonth((m) => subMonths(m, 1))}>
@@ -121,6 +127,17 @@ export default function DRE() {
             Visualizando DRE de <strong>{targetProfile?.full_name || targetProfile?.email || targetUserId}</strong> (somente leitura)
           </span>
         </div>
+      )}
+
+      {dre.dataQualityWarnings?.length > 0 && (
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardContent className="py-3 space-y-1.5">
+            <p className="text-xs font-semibold text-amber-500 uppercase tracking-wide">Alertas de integridade financeira</p>
+            {dre.dataQualityWarnings.map((w: string) => (
+              <p key={w} className="text-xs text-amber-500/90">• {w}</p>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       {/* DRE Statement */}

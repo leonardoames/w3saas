@@ -87,3 +87,12 @@ export const DRE_TOOLTIPS = {
 };
 
 export const FIXED_EXPENSE_CATEGORIES = FIXED_EXPENSE_PRESETS.map((p) => p.categoria);
+
+
+export const DRE_ADJUSTMENT_CATEGORIES = [
+  "descontos",
+  "reembolsos",
+  "chargebacks",
+  "outras_receitas",
+  "outras_despesas_operacionais",
+];

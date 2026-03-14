@@ -16,6 +16,8 @@ interface UserToCreate {
 
 interface CreateUsersRequest {
   users: UserToCreate[];
+  default_password?: string;
+  send_invite_email?: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -61,7 +63,7 @@ Deno.serve(async (req) => {
       throw new Error("Not authorized - admin only");
     }
 
-    const { users, default_password: clientPassword }: CreateUsersRequest & { default_password?: string } = await req.json();
+    const { users, default_password: clientPassword, send_invite_email = true }: CreateUsersRequest = await req.json();
 
     if (!users || users.length === 0) {
       throw new Error("No users provided");
@@ -76,48 +78,84 @@ Deno.serve(async (req) => {
 
     for (const userData of users) {
       try {
-        const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
-          email: userData.email,
-          password: default_password,
-          email_confirm: true,
-          user_metadata: {
-            full_name: userData.name || "",
-          },
-        });
+        let createdUserId: string | null = null;
+        let inviteSent = false;
 
-        if (createError) {
+        if (send_invite_email) {
+          const { data: invitedUser, error: inviteError } = await supabaseClient.auth.admin.inviteUserByEmail(userData.email, {
+            data: { full_name: userData.name || "" },
+          });
+
+          if (inviteError) {
+            results.push({
+              email: userData.email,
+              status: "error",
+              invite_sent: false,
+              message: inviteError.message,
+            });
+            continue;
+          }
+
+          createdUserId = invitedUser.user?.id ?? null;
+          inviteSent = true;
+        } else {
+          const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
+            email: userData.email,
+            password: default_password,
+            email_confirm: true,
+            user_metadata: {
+              full_name: userData.name || "",
+            },
+          });
+
+          if (createError) {
+            results.push({
+              email: userData.email,
+              status: "error",
+              invite_sent: false,
+              message: createError.message,
+            });
+            continue;
+          }
+
+          createdUserId = newUser.user?.id ?? null;
+        }
+
+        if (!createdUserId) {
           results.push({
             email: userData.email,
             status: "error",
-            message: createError.message,
+            invite_sent: inviteSent,
+            message: "Usuário criado sem ID retornado pela API",
           });
           continue;
         }
 
-        if (newUser?.user) {
-          const { error: profileError } = await supabaseClient
-            .from("profiles")
-            .update({
-              full_name: userData.name || null,
-              plan_type: userData.plan || "manual",
-              is_mentorado: userData.is_mentorado || false,
-              is_w3_client: userData.is_w3_client || false,
-              access_status: "active",
-              must_change_password: true,
-            })
-            .eq("user_id", newUser.user.id);
+        const { error: profileError } = await supabaseClient
+          .from("profiles")
+          .update({
+            full_name: userData.name || null,
+            plan_type: userData.plan || "manual",
+            is_mentorado: userData.is_mentorado || false,
+            is_w3_client: userData.is_w3_client || false,
+            access_status: "active",
+            must_change_password: true,
+          })
+          .eq("user_id", createdUserId);
 
-          if (profileError) {
-            console.error("Profile update error:", profileError);
-          }
-
-          results.push({
-            email: userData.email,
-            status: "success",
-            userId: newUser.user.id,
-            message: "Usuário criado com sucesso",
-          });
+        if (profileError) {
+          console.error("Profile update error:", profileError);
         }
+
+        results.push({
+          email: userData.email,
+          status: "success",
+          userId: createdUserId,
+          invite_sent: inviteSent,
+          message: inviteSent
+            ? "Usuário criado e e-mail de definição de senha enviado"
+            : "Usuário criado com sucesso",
+        });
       } catch (error: any) {
         results.push({
           email: userData.email,

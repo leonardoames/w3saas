@@ -34,6 +34,7 @@ interface ImportResult {
   email: string;
   status: "success" | "error";
   message: string;
+  invite_sent?: boolean;
 }
 
 export function BulkUserImportDialog({ open, onOpenChange, onSuccess }: BulkUserImportDialogProps) {
@@ -143,6 +144,7 @@ export function BulkUserImportDialog({ open, onOpenChange, onSuccess }: BulkUser
             is_mentorado: u.is_mentorado ?? defaultMentorado,
             is_w3_client: u.is_w3_client ?? defaultW3Client,
           })),
+          send_invite_email: true,
         },
       });
 
@@ -159,7 +161,7 @@ export function BulkUserImportDialog({ open, onOpenChange, onSuccess }: BulkUser
 
       toast({
         title: "Importação concluída",
-        description: `${successCount} usuários criados, ${errorCount} erros.`,
+        description: `${successCount} usuários criados (${importResults.filter((r) => r.invite_sent).length} e-mails enviados), ${errorCount} erros.`,
         variant: errorCount > 0 ? "destructive" : "default",
       });
 
@@ -209,7 +211,7 @@ export function BulkUserImportDialog({ open, onOpenChange, onSuccess }: BulkUser
         <SheetHeader className="px-6 py-5 border-b border-[#242424]">
           <SheetTitle className="text-foreground">Importar Usuários em Massa</SheetTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Adicione múltiplos usuários de uma vez. Cada usuário receberá um email para criar sua senha.
+            Adicione múltiplos usuários de uma vez. A plataforma envia convite por e-mail para cada usuário definir a própria senha.
           </p>
         </SheetHeader>
 
@@ -241,10 +243,19 @@ export function BulkUserImportDialog({ open, onOpenChange, onSuccess }: BulkUser
                     ) : (
                       <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
                     )}
-                    <span className="font-mono text-sm truncate">{result.email}</span>
-                    <span className="text-xs text-muted-foreground ml-auto truncate max-w-[200px]">
-                      {result.message}
-                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm truncate">{result.email}</span>
+                        {result.status === "success" && (
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${result.invite_sent ? "text-emerald-600 border-emerald-500/30 bg-emerald-500/10" : "text-amber-600 border-amber-500/30 bg-amber-500/10"}`}>
+                            {result.invite_sent ? "E-mail enviado" : "Sem envio de e-mail"}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground truncate block max-w-[320px]">
+                        {result.message}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
