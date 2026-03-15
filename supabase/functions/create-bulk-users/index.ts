@@ -37,15 +37,15 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
 
-    // Validate JWT using anon client with getClaims
+    // Validate JWT using anon client
     const anonClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+    const { data: { user }, error: userError } = await anonClient.auth.getUser(token);
 
-    if (claimsError || !claimsData?.claims) {
-      console.error("Auth error:", claimsError);
+    if (userError || !user) {
+      console.error("Auth error:", userError);
       throw new Error("Not authenticated");
     }
 
