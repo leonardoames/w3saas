@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
       throw new Error("Not authenticated");
     }
 
-    const userId = claimsData.claims.sub as string;
+    const userId = user.id;
 
     // Use service role client for admin operations
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
