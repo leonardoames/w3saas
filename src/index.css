@@ -80,10 +80,10 @@
     --background: 0 0% 5%;
     --foreground: 0 0% 96%;
 
-    --card: 0 0% 10%;
+    --card: 0 0% 11%;            /* was 10% — slightly more separation from bg */
     --card-foreground: 0 0% 96%;
 
-    --popover: 0 0% 10%;
+    --popover: 0 0% 11%;
     --popover-foreground: 0 0% 96%;
 
     --primary: 24 94% 53%;
@@ -93,8 +93,8 @@
     --secondary: 27 99% 70%;
     --secondary-foreground: 0 0% 0%;
 
-    --muted: 0 0% 14%;
-    --muted-foreground: 0 0% 55%;
+    --muted: 0 0% 17%;           /* was 14% — distinct from border */
+    --muted-foreground: 0 0% 60%; /* was 55% — better readability */
 
     --accent: 27 60% 15%;
     --accent-foreground: 24 94% 53%;
@@ -108,17 +108,17 @@
     --warning: 45 95% 60%;
     --warning-foreground: 0 0% 0%;
 
-    --border: 0 0% 14%;
-    --input: 0 0% 17%;
+    --border: 0 0% 22%;          /* was 14% — key fix, clearly visible borders */
+    --input: 0 0% 20%;           /* was 17% — visible input borders */
     --ring: 24 94% 53%;
 
     --sidebar-background: 0 0% 7%;
-    --sidebar-foreground: 0 0% 100%;
+    --sidebar-foreground: 0 0% 95%;  /* was 100% — slightly softer */
     --sidebar-primary: 24 94% 53%;
     --sidebar-primary-foreground: 0 0% 0%;
     --sidebar-accent: 24 94% 53%;
     --sidebar-accent-foreground: 0 0% 0%;
-    --sidebar-border: 0 0% 10%;
+    --sidebar-border: 0 0% 15%;  /* was 10% — visible sidebar border */
     --sidebar-ring: 24 94% 53%;
 
     --chart-1: 24 94% 53%;
@@ -128,7 +128,7 @@
     --chart-5: 0 0% 70%;
 
     --sidebar: 0 0% 7%;
-    --cta-background: 0 0% 10%;
+    --cta-background: 0 0% 13%;  /* was 10% — distinct from card */
 
     --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.2);
     --shadow-xs: 0 1px 2px 0 hsl(0 0% 0% / 0.2);
