@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { HealthScoreBadge, computeHealthScore } from "./HealthScoreBadge";
+import { ACTIVITY_TYPES, type ScheduledActivity } from "./CRMActivitiesView";
 
 export const CRM_STAGES = [
   { id: "onboarding",  label: "Onboarding",   dot: "bg-blue-500",    text: "text-blue-600 dark:text-blue-400",    bg: "bg-blue-50 dark:bg-blue-950/30" },
@@ -101,6 +102,13 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
   const [newTaskResponsible, setNewTaskResponsible] = useState("");
   const [addingTask, setAddingTask] = useState(false);
   const [staffList, setStaffList] = useState<{ user_id: string; name: string }[]>([]);
+  // Scheduled Activities
+  const [scheduledActivities, setScheduledActivities] = useState<ScheduledActivity[]>([]);
+  const [newActivityTitle, setNewActivityTitle] = useState("");
+  const [newActivityType, setNewActivityType] = useState("task");
+  const [newActivityDate, setNewActivityDate] = useState("");
+  const [newActivityAssigned, setNewActivityAssigned] = useState("");
+  const [addingActivity, setAddingActivity] = useState(false);
 
   useEffect(() => {
     if (open && userId) {
@@ -108,13 +116,14 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
     } else if (!open) {
       setData(null);
       setComment("");
+      setScheduledActivities([]);
     }
   }, [open, userId]);
 
   const loadData = async (uid: string) => {
     setLoading(true);
     try {
-      const [crmRes, profileRes, brandRes, diagRes, auditsRes, tasksRes, csRes, dailyRes, metricsRes, csTasksRes] = await Promise.all([
+      const [crmRes, profileRes, brandRes, diagRes, auditsRes, tasksRes, csRes, dailyRes, metricsRes, csTasksRes, scheduledActivitiesRes] = await Promise.all([
         (supabase as any).from("crm_clients").select("id, stage, stage_updated_at, responsible_cs_id, valor_contrato, data_inicio_contrato, data_fim_contrato, next_contact_date, quick_note").eq("user_id", uid).maybeSingle(),
         supabase.from("profiles").select("full_name, email, created_at, access_expires_at, access_status, plan_type, last_login_at").eq("user_id", uid).maybeSingle(),
         supabase.from("brands").select("name, website_url").eq("user_id", uid).maybeSingle(),
@@ -125,6 +134,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
         supabase.from("daily_results").select("receita_paga, sessoes, investimento, pedidos_pagos, data").eq("user_id", uid),
         supabase.from("metrics_diarias").select("faturamento, sessoes, investimento_trafego, vendas_quantidade, vendas_valor, data").eq("user_id", uid),
         (supabase as any).from("cs_tasks").select("id, title, due_date, completed_at, cs_id, responsible_id").eq("client_user_id", uid).order("created_at", { ascending: true }),
+        (supabase as any).from("crm_scheduled_activities").select("id, crm_client_id, client_user_id, title, type, scheduled_for, assigned_to, completed_at").eq("client_user_id", uid).order("scheduled_for", { ascending: true }),
       ]);
 
       const crmClientId: string | null = crmRes.data?.id ?? null;
@@ -178,6 +188,20 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
         });
       }
       setStaffList(Object.entries(staffMap).map(([user_id, name]) => ({ user_id, name })));
+
+      // Resolve assigned_to names for scheduled activities (uses staffMap)
+      // Also add any assigned_to IDs to staffMap if not already present
+      const assignedIds = [...new Set((scheduledActivitiesRes.data || []).map((a: any) => a.assigned_to).filter(Boolean))];
+      const missingIds = assignedIds.filter((id: string) => !staffMap[id]);
+      if (missingIds.length > 0) {
+        const { data: extraProfiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", missingIds);
+        (extraProfiles || []).forEach((p: any) => { staffMap[p.user_id] = p.full_name || p.email || "—"; });
+      }
+      setScheduledActivities((scheduledActivitiesRes.data || []).map((a: any) => ({
+        ...a,
+        assigned_name: a.assigned_to ? (staffMap[a.assigned_to] || "—") : null,
+        clientName: "",
+      })));
 
       // Resolve responsible names for cs_tasks
       const rawCsTasks = csTasksRes.data || [];
@@ -407,6 +431,52 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
   const handleDeleteCSTask = async (taskId: string) => {
     await (supabase as any).from("cs_tasks").delete().eq("id", taskId);
     setData(d => d ? { ...d, csTasks: d.csTasks.filter(t => t.id !== taskId) } : d);
+  };
+
+  const handleAddActivity = async () => {
+    if (!newActivityTitle.trim() || !newActivityDate || !userId || !user?.id) return;
+    setAddingActivity(true);
+    let crmId = data?.crmClientId;
+    if (!crmId) {
+      const { data: upserted } = await (supabase as any).from("crm_clients").upsert({
+        user_id: userId, stage: data?.stage || "onboarding",
+        stage_updated_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" }).select("id").single();
+      crmId = upserted?.id;
+      if (crmId) setData(d => d ? { ...d, crmClientId: crmId } : d);
+    }
+    if (!crmId) { setAddingActivity(false); return; }
+    const { data: inserted, error } = await (supabase as any).from("crm_scheduled_activities").insert({
+      crm_client_id: crmId,
+      client_user_id: userId,
+      title: newActivityTitle.trim(),
+      type: newActivityType,
+      scheduled_for: newActivityDate,
+      assigned_to: newActivityAssigned || null,
+      created_by: user.id,
+    }).select("id, crm_client_id, client_user_id, title, type, scheduled_for, assigned_to, completed_at").single();
+    setAddingActivity(false);
+    if (!error && inserted) {
+      const assignedName = newActivityAssigned ? (staffList.find(s => s.user_id === newActivityAssigned)?.name || null) : null;
+      setScheduledActivities(prev => [...prev, { ...inserted, assigned_name: assignedName, clientName: "" }]);
+      setNewActivityTitle("");
+      setNewActivityDate("");
+      setNewActivityAssigned("");
+      setNewActivityType("task");
+      toast({ title: "Atividade agendada" });
+    }
+  };
+
+  const handleCompleteActivity = async (id: string) => {
+    const now = new Date().toISOString();
+    await (supabase as any).from("crm_scheduled_activities").update({ completed_at: now }).eq("id", id);
+    setScheduledActivities(prev => prev.map(a => a.id === id ? { ...a, completed_at: now } : a));
+    toast({ title: "Atividade concluída" });
+  };
+
+  const handleDeleteActivity = async (id: string) => {
+    await (supabase as any).from("crm_scheduled_activities").delete().eq("id", id);
+    setScheduledActivities(prev => prev.filter(a => a.id !== id));
   };
 
   // Compute health score for drawer header
@@ -827,6 +897,92 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
 
                 {/* Atividade */}
                 <TabsContent value="activity" className="p-5 mt-0 space-y-4">
+                  {/* Scheduled Activities */}
+                  <div className="rounded-lg border p-4 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5" />
+                      Próximas Atividades
+                    </p>
+
+                    {scheduledActivities.filter(a => !a.completed_at).length > 0 && (
+                      <div className="space-y-1.5">
+                        {scheduledActivities.filter(a => !a.completed_at).map(activity => {
+                          const typeInfo = ACTIVITY_TYPES.find(t => t.id === activity.type) || ACTIVITY_TYPES[4];
+                          const Icon = typeInfo.icon;
+                          const isOverdue = activity.scheduled_for < today;
+                          return (
+                            <div key={activity.id} className={`flex items-center gap-2 group rounded-lg px-2 py-1.5 ${isOverdue ? "bg-destructive/5 border border-destructive/20" : ""}`}>
+                              <Icon className={`h-3.5 w-3.5 shrink-0 ${typeInfo.color}`} />
+                              <div className="flex-1 min-w-0">
+                                <span className="text-sm truncate block">{activity.title}</span>
+                                {activity.assigned_name && (
+                                  <span className="text-[10px] text-muted-foreground">{activity.assigned_name.split(" ")[0]}</span>
+                                )}
+                              </div>
+                              <span className={`text-xs shrink-0 font-medium ${isOverdue ? "text-destructive" : "text-muted-foreground"}`}>
+                                {new Date(activity.scheduled_for + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                              </span>
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button type="button" onClick={() => handleCompleteActivity(activity.id)} title="Concluir" className="text-muted-foreground hover:text-emerald-500 transition-colors">
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                </button>
+                                <button type="button" onClick={() => handleDeleteActivity(activity.id)} title="Remover" className="text-muted-foreground hover:text-destructive transition-colors">
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {scheduledActivities.filter(a => !a.completed_at).length === 0 && (
+                      <p className="text-xs text-muted-foreground/60 text-center py-1">Nenhuma atividade agendada</p>
+                    )}
+
+                    {/* Add activity form */}
+                    <div className="flex flex-wrap gap-2 pt-1 border-t">
+                      <Input
+                        value={newActivityTitle}
+                        onChange={e => setNewActivityTitle(e.target.value)}
+                        placeholder="Título da atividade..."
+                        className="h-7 text-xs flex-1 min-w-[120px]"
+                        onKeyDown={e => { if (e.key === "Enter") handleAddActivity(); }}
+                      />
+                      <Select value={newActivityType} onValueChange={setNewActivityType}>
+                        <SelectTrigger className="h-7 text-xs w-28">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ACTIVITY_TYPES.map(t => (
+                            <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="date"
+                        value={newActivityDate}
+                        onChange={e => setNewActivityDate(e.target.value)}
+                        className="h-7 text-xs w-32"
+                      />
+                      {staffList.length > 0 && (
+                        <Select value={newActivityAssigned} onValueChange={setNewActivityAssigned}>
+                          <SelectTrigger className="h-7 text-xs w-36">
+                            <SelectValue placeholder="Responsável" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Sem responsável</SelectItem>
+                            {staffList.map(s => (
+                              <SelectItem key={s.user_id} value={s.user_id}>{s.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <Button size="sm" className="h-7 px-2" type="button" onClick={handleAddActivity} disabled={addingActivity || !newActivityTitle.trim() || !newActivityDate}>
+                        {addingActivity ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                  </div>
+
                   {/* Comment input */}
                   <div className="space-y-2">
                     <Textarea

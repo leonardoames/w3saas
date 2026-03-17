@@ -4,12 +4,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, Search, Lock, LayoutDashboard, Columns3, List, Minimize2, Maximize2, Activity } from "lucide-react";
+import { Loader2, Search, Lock, LayoutDashboard, Columns3, List, Minimize2, Maximize2, Activity, History } from "lucide-react";
 import { CRMClientDrawer, CRM_STAGES } from "@/components/crm/CRMClientDrawer";
 import { CRMDashboardView } from "@/components/crm/CRMDashboardView";
 import { CRMAlerts } from "@/components/crm/CRMAlerts";
 import { CRMListView } from "@/components/crm/CRMListView";
 import { CRMActivitiesView } from "@/components/crm/CRMActivitiesView";
+import { CRMLogsView } from "@/components/crm/CRMLogsView";
 import { HealthScoreBadge, computeHealthScore, getHealthScoreInfo } from "@/components/crm/HealthScoreBadge";
 import { MiniSparkline } from "@/components/crm/MiniSparkline";
 import type { CRMCardExtended } from "@/components/crm/types";
@@ -277,7 +278,7 @@ export default function CRMInterno() {
   const [allClientIds, setAllClientIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [view, setView] = useState<"kanban" | "lista" | "dashboard" | "atividades">("kanban");
+  const [view, setView] = useState<"kanban" | "lista" | "dashboard" | "atividades" | "logs">("kanban");
   const [compact, setCompact] = useState(false);
   const [drawerUserId, setDrawerUserId] = useState<string | null>(null);
   const [alertFilter, setAlertFilter] = useState<{ fn: (c: CRMCardExtended) => boolean; label: string } | null>(null);
@@ -586,9 +587,18 @@ export default function CRMInterno() {
             <Activity className="h-3.5 w-3.5" />
             Atividades
           </Button>
+          <Button
+            size="sm"
+            variant={view === "logs" ? "secondary" : "ghost"}
+            className="h-7 px-3 text-xs gap-1.5"
+            onClick={() => setView("logs")}
+          >
+            <History className="h-3.5 w-3.5" />
+            Logs
+          </Button>
         </div>
 
-        {view === "kanban" && view !== "atividades" && (
+        {view === "kanban" && (
           <Button
             size="sm"
             variant="outline"
@@ -601,7 +611,7 @@ export default function CRMInterno() {
           </Button>
         )}
 
-        {(view === "kanban" || view === "lista") && view !== "atividades" && (
+        {(view === "kanban" || view === "lista") && (
           <div className="relative max-w-xs flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -621,6 +631,8 @@ export default function CRMInterno() {
         </div>
       ) : view === "atividades" ? (
         <CRMActivitiesView cards={cards} onCardClick={setDrawerUserId} />
+      ) : view === "logs" ? (
+        <CRMLogsView cards={cards} onCardClick={setDrawerUserId} />
       ) : view === "dashboard" ? (
         <CRMDashboardView clientIds={allClientIds} cards={cards} />
       ) : view === "lista" ? (
