@@ -1,12 +1,13 @@
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Circle, Play, Plus, Lock, Pencil, Trash2 } from "lucide-react";
+import { CheckCircle2, Circle, Play, Plus, Lock, Pencil, Trash2, Heart, Bookmark, Upload } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminStatus } from "@/hooks/useAdminStatus";
 import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 
 const AMES_ROLES = ["admin", "master", "tutor", "cs", "cliente_ames"];
 import { AddLessonModal } from "@/components/AddLessonModal";
@@ -15,7 +16,9 @@ import { EditModuleModal } from "@/components/aulas/EditModuleModal";
 import { EditLessonModal } from "@/components/aulas/EditLessonModal";
 import { ConfirmDeleteDialog } from "@/components/aulas/ConfirmDeleteDialog";
 import { ModuleCard, ModuleCardSkeleton } from "@/components/aulas/ModuleCard";
+import { CSVUploadModal } from "@/components/aulas/CSVUploadModal";
 import { Card, CardContent } from "@/components/ui/card";
+import { useLessonInteractions } from "@/hooks/useLessonInteractions";
 
 interface Lesson {
   id: string;
@@ -99,9 +102,15 @@ export default function Aulas() {
   const [lessonToDelete, setLessonToDelete] = useState<Lesson | null>(null);
   const [isDeletingLesson, setIsDeletingLesson] = useState(false);
 
+  // CSV Upload Modal
+  const [isCSVUploadOpen, setIsCSVUploadOpen] = useState(false);
+
   useEffect(() => {
     fetchCourseAndModules();
   }, [slug]);
+
+  const lessonIds = modules.flatMap((m) => m.lessons.map((l) => l.id));
+  const { interactions, toggleLike, toggleFavorite } = useLessonInteractions(lessonIds);
 
   const fetchCourseAndModules = async () => {
     try {
@@ -301,10 +310,16 @@ export default function Aulas() {
           </p>
         </div>
         {isAdmin && (
-          <Button onClick={() => setIsAddModuleModalOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Módulo
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setIsCSVUploadOpen(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              Importar CSV
+            </Button>
+            <Button onClick={() => setIsAddModuleModalOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Módulo
+            </Button>
+          </div>
         )}
       </div>
 
@@ -388,7 +403,7 @@ export default function Aulas() {
                         <span className="text-xs text-muted-foreground mt-2 inline-block">⏱️ {lesson.duration}</span>
                       </div>
                     </div>
-                    <div className="flex gap-2 w-full sm:w-auto items-center">
+                    <div className="flex gap-2 w-full sm:w-auto items-center flex-wrap">
                       <Button size="sm" onClick={() => watchLesson(lesson)} className="flex-1 sm:flex-none">
                         <Play className="mr-2 h-4 w-4" />
                         Assistir
@@ -400,6 +415,27 @@ export default function Aulas() {
                         className="flex-1 sm:flex-none"
                       >
                         {lesson.completed ? "Desmarcar" : "Concluir"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => toggleLike(lesson.id)}
+                        title="Curtir"
+                      >
+                        <Heart className={cn("h-4 w-4", interactions[lesson.id]?.liked && "fill-red-500 text-red-500")} />
+                        {(interactions[lesson.id]?.likeCount ?? 0) > 0 && (
+                          <span className="text-xs ml-0.5">{interactions[lesson.id]?.likeCount}</span>
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => toggleFavorite(lesson.id)}
+                        title="Favoritar"
+                      >
+                        <Bookmark className={cn("h-4 w-4", interactions[lesson.id]?.favorited && "fill-primary text-primary")} />
                       </Button>
                       {isAdmin && (
                         <>
@@ -468,6 +504,12 @@ export default function Aulas() {
       )}
 
       {/* Modals */}
+      <CSVUploadModal
+        isOpen={isCSVUploadOpen}
+        onClose={() => setIsCSVUploadOpen(false)}
+        courseId={courseId!}
+        onSuccess={fetchCourseAndModules}
+      />
       {isAdmin && (
         <>
           <AddLessonModal
