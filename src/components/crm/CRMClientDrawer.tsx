@@ -20,6 +20,31 @@ import { useAuth } from "@/contexts/AuthContext";
 import { HealthScoreBadge, computeHealthScore } from "./HealthScoreBadge";
 import { ACTIVITY_TYPES, type ScheduledActivity } from "./CRMActivitiesView";
 
+type ActivityGroup = "Atrasadas" | "Hoje" | "Esta semana" | "Próximas" | "Concluídas";
+const ACTIVITY_GROUP_ORDER: ActivityGroup[] = ["Atrasadas", "Hoje", "Esta semana", "Próximas", "Concluídas"];
+
+interface UnifiedItem {
+  id: string;
+  source: "scheduled" | "cs_task";
+  title: string;
+  type: string;
+  dueDate: string | null;
+  assignedName: string | null;
+  completedAt: string | null;
+}
+
+function getActivityGroup(dueDate: string | null, completedAt: string | null): ActivityGroup {
+  if (completedAt) return "Concluídas";
+  if (!dueDate) return "Próximas";
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const d = new Date(dueDate + "T00:00:00"); d.setHours(0, 0, 0, 0);
+  const diff = Math.floor((d.getTime() - now.getTime()) / 86400000);
+  if (diff < 0) return "Atrasadas";
+  if (diff === 0) return "Hoje";
+  if (diff <= 7) return "Esta semana";
+  return "Próximas";
+}
+
 export const CRM_STAGES = [
   { id: "onboarding",  label: "Onboarding",   dot: "bg-blue-500",    text: "text-blue-600 dark:text-blue-400",    bg: "bg-blue-50 dark:bg-blue-950/30" },
   { id: "engajado",    label: "Engajado",      dot: "bg-green-500",   text: "text-green-600 dark:text-green-400",  bg: "bg-green-50 dark:bg-green-950/30" },
@@ -103,6 +128,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
   const [addingTask, setAddingTask] = useState(false);
   const [staffList, setStaffList] = useState<{ user_id: string; name: string }[]>([]);
   // Scheduled Activities
+  const [showCompleted, setShowCompleted] = useState(false);
   const [scheduledActivities, setScheduledActivities] = useState<ScheduledActivity[]>([]);
   const [newActivityTitle, setNewActivityTitle] = useState("");
   const [newActivityType, setNewActivityType] = useState("task");
@@ -467,16 +493,36 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
     }
   };
 
-  const handleCompleteActivity = async (id: string) => {
+  const handleCompleteUnified = async (id: string, source: "scheduled" | "cs_task") => {
     const now = new Date().toISOString();
-    await (supabase as any).from("crm_scheduled_activities").update({ completed_at: now }).eq("id", id);
-    setScheduledActivities(prev => prev.map(a => a.id === id ? { ...a, completed_at: now } : a));
+    if (source === "scheduled") {
+      await (supabase as any).from("crm_scheduled_activities").update({ completed_at: now }).eq("id", id);
+      setScheduledActivities(prev => prev.map(a => a.id === id ? { ...a, completed_at: now } : a));
+    } else {
+      await (supabase as any).from("cs_tasks").update({ completed_at: now }).eq("id", id);
+      setData(d => d ? { ...d, csTasks: d.csTasks.map(t => t.id === id ? { ...t, completed_at: now } : t) } : d);
+    }
     toast({ title: "Atividade concluída" });
   };
 
-  const handleDeleteActivity = async (id: string) => {
-    await (supabase as any).from("crm_scheduled_activities").delete().eq("id", id);
-    setScheduledActivities(prev => prev.filter(a => a.id !== id));
+  const handleUncompleteUnified = async (id: string, source: "scheduled" | "cs_task") => {
+    if (source === "scheduled") {
+      await (supabase as any).from("crm_scheduled_activities").update({ completed_at: null }).eq("id", id);
+      setScheduledActivities(prev => prev.map(a => a.id === id ? { ...a, completed_at: null } : a));
+    } else {
+      await (supabase as any).from("cs_tasks").update({ completed_at: null }).eq("id", id);
+      setData(d => d ? { ...d, csTasks: d.csTasks.map(t => t.id === id ? { ...t, completed_at: null } : t) } : d);
+    }
+  };
+
+  const handleDeleteUnified = async (id: string, source: "scheduled" | "cs_task") => {
+    if (source === "scheduled") {
+      await (supabase as any).from("crm_scheduled_activities").delete().eq("id", id);
+      setScheduledActivities(prev => prev.filter(a => a.id !== id));
+    } else {
+      await (supabase as any).from("cs_tasks").delete().eq("id", id);
+      setData(d => d ? { ...d, csTasks: d.csTasks.filter(t => t.id !== id) } : d);
+    }
   };
 
   // Compute health score for drawer header
@@ -490,6 +536,31 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
 
   const stageInfo = CRM_STAGES.find(s => s.id === (data?.stage || "onboarding")) || CRM_STAGES[0];
   const today = new Date().toISOString().split("T")[0];
+
+  // Unified activity items (crm_scheduled_activities + cs_tasks)
+  const unifiedItems: UnifiedItem[] = [
+    ...scheduledActivities.map(a => ({
+      id: a.id,
+      source: "scheduled" as const,
+      title: a.title,
+      type: a.type,
+      dueDate: a.scheduled_for,
+      assignedName: a.assigned_name,
+      completedAt: a.completed_at,
+    })),
+    ...(data?.csTasks || []).map(t => ({
+      id: t.id,
+      source: "cs_task" as const,
+      title: t.title,
+      type: "task",
+      dueDate: t.due_date,
+      assignedName: t.responsible_name,
+      completedAt: t.completed_at,
+    })),
+  ];
+  const groupedUnified = new Map<ActivityGroup, UnifiedItem[]>();
+  ACTIVITY_GROUP_ORDER.forEach(g => groupedUnified.set(g, []));
+  unifiedItems.forEach(item => groupedUnified.get(getActivityGroup(item.dueDate, item.completedAt))!.push(item));
 
   // Build timeline items (comments + activity + cs_tasks completions)
   const timelineItems = data ? [
@@ -666,36 +737,19 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                     </div>
                   )}
 
-                  {/* Quick fields: next contact + note */}
-                  <div className="rounded-lg border p-4 space-y-3">
+                  {/* Nota Interna */}
+                  <div className="rounded-lg border p-4 space-y-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5" />
-                      Próximo Contato & Nota Rápida
+                      <StickyNote className="h-3.5 w-3.5" />
+                      Nota Interna
                     </p>
-                    <div className="space-y-2">
-                      <div className="space-y-1">
-                        <Label className="text-xs">Próximo Contato</Label>
-                        <Input
-                          type="date"
-                          value={nextContact}
-                          onChange={e => setNextContact(e.target.value)}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs flex items-center gap-1">
-                          <StickyNote className="h-3 w-3" />
-                          Nota Rápida
-                        </Label>
-                        <Textarea
-                          value={quickNote}
-                          onChange={e => setQuickNote(e.target.value)}
-                          placeholder="Observação rápida sobre este cliente..."
-                          rows={2}
-                          className="text-sm resize-none"
-                        />
-                      </div>
-                    </div>
+                    <Textarea
+                      value={quickNote}
+                      onChange={e => setQuickNote(e.target.value)}
+                      placeholder="Observações internas sobre este cliente..."
+                      rows={2}
+                      className="text-sm resize-none"
+                    />
                     <div className="flex justify-end">
                       <Button size="sm" variant="outline" onClick={handleSaveQuick} disabled={savingQuick}>
                         {savingQuick ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
@@ -896,56 +950,127 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                 </TabsContent>
 
                 {/* Atividade */}
-                <TabsContent value="activity" className="p-5 mt-0 space-y-4">
-                  {/* Scheduled Activities */}
-                  <div className="rounded-lg border p-4 space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5" />
-                      Próximas Atividades
-                    </p>
+                <TabsContent value="activity" className="p-5 mt-0 space-y-5">
 
-                    {scheduledActivities.filter(a => !a.completed_at).length > 0 && (
-                      <div className="space-y-1.5">
-                        {scheduledActivities.filter(a => !a.completed_at).map(activity => {
-                          const typeInfo = ACTIVITY_TYPES.find(t => t.id === activity.type) || ACTIVITY_TYPES[4];
-                          const Icon = typeInfo.icon;
-                          const isOverdue = activity.scheduled_for < today;
-                          return (
-                            <div key={activity.id} className={`flex items-center gap-2 group rounded-lg px-2 py-1.5 ${isOverdue ? "bg-destructive/5 border border-destructive/20" : ""}`}>
-                              <Icon className={`h-3.5 w-3.5 shrink-0 ${typeInfo.color}`} />
-                              <div className="flex-1 min-w-0">
-                                <span className="text-sm truncate block">{activity.title}</span>
-                                {activity.assigned_name && (
-                                  <span className="text-[10px] text-muted-foreground">{activity.assigned_name.split(" ")[0]}</span>
-                                )}
-                              </div>
-                              <span className={`text-xs shrink-0 font-medium ${isOverdue ? "text-destructive" : "text-muted-foreground"}`}>
-                                {new Date(activity.scheduled_for + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-                              </span>
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button type="button" onClick={() => handleCompleteActivity(activity.id)} title="Concluir" className="text-muted-foreground hover:text-emerald-500 transition-colors">
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
-                                </button>
-                                <button type="button" onClick={() => handleDeleteActivity(activity.id)} title="Remover" className="text-muted-foreground hover:text-destructive transition-colors">
-                                  <Trash2 className="h-3 w-3" />
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                  {/* Próximo Contato — compact CRM field */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1.5 shrink-0">
+                      <Calendar className="h-3 w-3" />
+                      Próximo contato:
+                    </span>
+                    <Input
+                      type="date"
+                      value={nextContact}
+                      onChange={e => setNextContact(e.target.value)}
+                      onBlur={handleSaveQuick}
+                      className="h-6 text-xs w-36"
+                    />
+                    {nextContact && (
+                      <span className={`text-xs shrink-0 ${nextContact < today ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                        {new Date(nextContact + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                      </span>
                     )}
-                    {scheduledActivities.filter(a => !a.completed_at).length === 0 && (
-                      <p className="text-xs text-muted-foreground/60 text-center py-1">Nenhuma atividade agendada</p>
+                  </div>
+
+                  {/* Unified Activity List */}
+                  <div>
+                    {/* Groups */}
+                    <div className="space-y-4">
+                      {ACTIVITY_GROUP_ORDER.map(group => {
+                        const items = groupedUnified.get(group) || [];
+                        if (items.length === 0) return null;
+                        if (group === "Concluídas" && !showCompleted) return null;
+                        return (
+                          <div key={group}>
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className={`text-[10px] font-semibold uppercase tracking-wide ${
+                                group === "Atrasadas" ? "text-destructive" :
+                                group === "Hoje" ? "text-primary" :
+                                "text-muted-foreground"
+                              }`}>{group}</span>
+                              <div className="flex-1 h-px bg-border" />
+                              <span className="text-[10px] text-muted-foreground">{items.length}</span>
+                            </div>
+                            <div className="space-y-1">
+                              {items.map(item => {
+                                const typeInfo = ACTIVITY_TYPES.find(t => t.id === item.type) || ACTIVITY_TYPES[4];
+                                const Icon = typeInfo.icon;
+                                const isCompleted = !!item.completedAt;
+                                const isOverdue = group === "Atrasadas";
+                                return (
+                                  <div key={`${item.source}-${item.id}`} className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 group transition-colors ${
+                                    isCompleted ? "bg-muted/20 opacity-60" :
+                                    isOverdue ? "border-destructive/30 bg-destructive/5" :
+                                    "bg-card hover:bg-muted/30"
+                                  }`}>
+                                    <button
+                                      type="button"
+                                      onClick={() => isCompleted
+                                        ? handleUncompleteUnified(item.id, item.source)
+                                        : handleCompleteUnified(item.id, item.source)
+                                      }
+                                      className="shrink-0"
+                                    >
+                                      {isCompleted
+                                        ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                        : <div className={`h-4 w-4 rounded-full border-2 transition-colors ${isOverdue ? "border-destructive" : "border-muted-foreground/30 group-hover:border-muted-foreground"}`} />
+                                      }
+                                    </button>
+                                    <Icon className={`h-3.5 w-3.5 shrink-0 ${isCompleted ? "text-muted-foreground" : typeInfo.color}`} />
+                                    <div className="flex-1 min-w-0">
+                                      <span className={`text-sm ${isCompleted ? "line-through text-muted-foreground" : ""}`}>{item.title}</span>
+                                      {item.assignedName && (
+                                        <span className="text-[10px] text-muted-foreground block leading-tight">{item.assignedName.split(" ")[0]}</span>
+                                      )}
+                                    </div>
+                                    {item.dueDate && (
+                                      <span className={`text-xs shrink-0 font-medium ${isOverdue && !isCompleted ? "text-destructive" : "text-muted-foreground"}`}>
+                                        {new Date(item.dueDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                                      </span>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteUnified(item.id, item.source)}
+                                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all shrink-0"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Empty state */}
+                    {unifiedItems.filter(i => !i.completedAt).length === 0 && (
+                      <p className="text-xs text-muted-foreground/60 text-center py-4">Nenhuma atividade pendente</p>
+                    )}
+
+                    {/* Show completed toggle */}
+                    {unifiedItems.some(i => !!i.completedAt) && (
+                      <button
+                        type="button"
+                        onClick={() => setShowCompleted(v => !v)}
+                        className="mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                      >
+                        <CheckCircle2 className="h-3 w-3" />
+                        {showCompleted
+                          ? "Ocultar concluídas"
+                          : `Ver concluídas (${unifiedItems.filter(i => !!i.completedAt).length})`
+                        }
+                      </button>
                     )}
 
                     {/* Add activity form */}
-                    <div className="flex flex-wrap gap-2 pt-1 border-t">
+                    <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t">
                       <Input
                         value={newActivityTitle}
                         onChange={e => setNewActivityTitle(e.target.value)}
-                        placeholder="Título da atividade..."
-                        className="h-7 text-xs flex-1 min-w-[120px]"
+                        placeholder="+ Nova atividade..."
+                        className="h-7 text-xs flex-1 min-w-[140px]"
                         onKeyDown={e => { if (e.key === "Enter") handleAddActivity(); }}
                       />
                       <Select value={newActivityType} onValueChange={setNewActivityType}>
@@ -977,11 +1102,13 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                           </SelectContent>
                         </Select>
                       )}
-                      <Button size="sm" className="h-7 px-2" type="button" onClick={handleAddActivity} disabled={addingActivity || !newActivityTitle.trim() || !newActivityDate}>
+                      <Button size="sm" type="button" className="h-7 px-2" onClick={handleAddActivity} disabled={addingActivity || !newActivityTitle.trim() || !newActivityDate}>
                         {addingActivity ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
                       </Button>
                     </div>
                   </div>
+
+                  <div className="border-t" />
 
                   {/* Comment input */}
                   <div className="space-y-2">
@@ -989,7 +1116,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                       value={comment}
                       onChange={e => setComment(e.target.value)}
                       placeholder="Adicionar comentário interno..."
-                      rows={3}
+                      rows={2}
                       className="text-sm resize-none"
                       onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSendComment(); }}
                     />
@@ -1002,96 +1129,18 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                     </div>
                   </div>
 
-                  {/* CS Tasks section */}
-                  <div className="rounded-lg border p-4 space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Tarefas do CS
-                    </p>
-
-                    {data.csTasks.length > 0 && (
-                      <div className="space-y-1.5">
-                        {data.csTasks.map(task => (
-                          <div key={task.id} className="flex items-center gap-2 group">
-                            <Checkbox
-                              checked={!!task.completed_at}
-                              onCheckedChange={() => handleToggleCSTask(task.id, !!task.completed_at)}
-                              className="shrink-0"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <span className={`text-sm truncate block ${task.completed_at ? "line-through text-muted-foreground" : ""}`}>
-                                {task.title}
-                              </span>
-                              {task.responsible_name && (
-                                <span className="text-[10px] text-primary/80 font-medium">{task.responsible_name}</span>
-                              )}
-                            </div>
-                            {task.due_date && (
-                              <span className={`text-[10px] shrink-0 ${task.due_date < today && !task.completed_at ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                                {new Date(task.due_date + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-                              </span>
-                            )}
-                            <button
-                              onClick={() => handleDeleteCSTask(task.id)}
-                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive shrink-0 transition-opacity"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Add task */}
-                    <div className="flex flex-wrap gap-2">
-                      <Input
-                        value={newTaskTitle}
-                        onChange={e => setNewTaskTitle(e.target.value)}
-                        placeholder="Nova tarefa..."
-                        className="h-7 text-xs flex-1 min-w-[120px]"
-                        onKeyDown={e => { if (e.key === "Enter") handleAddCSTask(); }}
-                      />
-                      <Input
-                        type="date"
-                        value={newTaskDue}
-                        onChange={e => setNewTaskDue(e.target.value)}
-                        className="h-7 text-xs w-32"
-                      />
-                      {staffList.length > 0 && (
-                        <Select value={newTaskResponsible || "__none__"} onValueChange={v => setNewTaskResponsible(v === "__none__" ? "" : v)}>
-                          <SelectTrigger className="h-7 text-xs w-36">
-                            <SelectValue placeholder="Responsável" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">Sem responsável</SelectItem>
-                            {staffList.map(s => (
-                              <SelectItem key={s.user_id} value={s.user_id}>{s.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                      <Button size="sm" className="h-7 px-2" onClick={handleAddCSTask} disabled={addingTask || !newTaskTitle.trim()}>
-                        {addingTask ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                      </Button>
-                    </div>
-                  </div>
-
                   {/* Timeline */}
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-1.5">
-                      <GitBranch className="h-3.5 w-3.5" />
-                      Histórico
-                    </p>
-
-                    {timelineItems.length === 0 ? (
-                      <p className="text-center text-sm text-muted-foreground py-6">Nenhuma atividade ainda</p>
-                    ) : (
+                  {timelineItems.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-1.5">
+                        <GitBranch className="h-3.5 w-3.5" />
+                        Histórico
+                      </p>
                       <div className="relative pl-5">
                         <div className="absolute left-2 top-0 bottom-0 w-px bg-border" />
                         <div className="space-y-3">
                           {timelineItems.map(item => (
                             <div key={item.id} className="relative">
-                              {/* Dot */}
                               <div className={`absolute -left-3 top-2 h-3 w-3 rounded-full border-2 border-background ${
                                 item.type === "comment" ? "bg-blue-500" :
                                 item.type === "cs_task_done" ? "bg-green-500" :
@@ -1111,7 +1160,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                                 ) : item.type === "cs_task_done" ? (
                                   <p className="text-xs text-muted-foreground italic flex items-center gap-1">
                                     <CheckCircle2 className="h-3 w-3 text-green-500" />
-                                    Tarefa concluída: {item.content}
+                                    Concluído: {item.content}
                                   </p>
                                 ) : (
                                   <p className="text-xs text-muted-foreground italic">
@@ -1129,8 +1178,8 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                           ))}
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </TabsContent>
               </div>
             </Tabs>
