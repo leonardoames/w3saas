@@ -464,14 +464,19 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
     setAddingActivity(true);
     let crmId = data?.crmClientId;
     if (!crmId) {
-      const { data: upserted } = await (supabase as any).from("crm_clients").upsert({
+      const { data: upserted, error: upsertError } = await (supabase as any).from("crm_clients").upsert({
         user_id: userId, stage: data?.stage || "onboarding",
         stage_updated_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       }, { onConflict: "user_id" }).select("id").single();
+      if (upsertError) console.error("[CRM] upsert error:", upsertError);
       crmId = upserted?.id;
       if (crmId) setData(d => d ? { ...d, crmClientId: crmId } : d);
     }
-    if (!crmId) { setAddingActivity(false); return; }
+    if (!crmId) {
+      toast({ title: "Erro ao criar registro CRM", description: "Não foi possível obter o ID do cliente CRM.", variant: "destructive" });
+      setAddingActivity(false);
+      return;
+    }
     const { data: inserted, error } = await (supabase as any).from("crm_scheduled_activities").insert({
       crm_client_id: crmId,
       client_user_id: userId,
@@ -482,7 +487,11 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
       created_by: user.id,
     }).select("id, crm_client_id, client_user_id, title, type, scheduled_for, assigned_to, completed_at").single();
     setAddingActivity(false);
-    if (!error && inserted) {
+    if (error) {
+      toast({ title: "Erro ao agendar atividade", description: error.message, variant: "destructive" });
+      return;
+    }
+    if (inserted) {
       const assignedName = newActivityAssigned ? (staffList.find(s => s.user_id === newActivityAssigned)?.name || null) : null;
       setScheduledActivities(prev => [...prev, { ...inserted, assigned_name: assignedName, clientName: "" }]);
       setNewActivityTitle("");
