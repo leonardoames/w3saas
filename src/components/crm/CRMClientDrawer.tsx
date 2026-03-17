@@ -1058,12 +1058,12 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                         className="h-7 text-xs w-32"
                       />
                       {staffList.length > 0 && (
-                        <Select value={newTaskResponsible} onValueChange={setNewTaskResponsible}>
+                        <Select value={newTaskResponsible || "__none__"} onValueChange={v => setNewTaskResponsible(v === "__none__" ? "" : v)}>
                           <SelectTrigger className="h-7 text-xs w-36">
                             <SelectValue placeholder="Responsável" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Sem responsável</SelectItem>
+                            <SelectItem value="__none__">Sem responsável</SelectItem>
                             {staffList.map(s => (
                               <SelectItem key={s.user_id} value={s.user_id}>{s.name}</SelectItem>
                             ))}
