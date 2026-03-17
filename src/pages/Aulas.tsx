@@ -6,6 +6,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminStatus } from "@/hooks/useAdminStatus";
+import { useAuth } from "@/contexts/AuthContext";
+
+const AMES_ROLES = ["admin", "master", "tutor", "cs", "cliente_ames"];
 import { AddLessonModal } from "@/components/AddLessonModal";
 import { AddModuleModal } from "@/components/aulas/AddModuleModal";
 import { EditModuleModal } from "@/components/aulas/EditModuleModal";
@@ -53,6 +56,15 @@ export default function Aulas() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { isAdmin, loading: adminLoading } = useAdminStatus();
+  const { userRoles, isLoading: authLoading } = useAuth();
+
+  const hasAmesAccess = userRoles.some((r) => AMES_ROLES.includes(r));
+
+  useEffect(() => {
+    if (!authLoading && !hasAmesAccess) {
+      navigate("/app/upgrade/w3-educacao", { replace: true });
+    }
+  }, [authLoading, hasAmesAccess]);
   const [courseTitle, setCourseTitle] = useState("");
   const [courseId, setCourseId] = useState<string | null>(null);
   const [modules, setModules] = useState<Module[]>([]);

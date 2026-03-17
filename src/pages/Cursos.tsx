@@ -7,6 +7,9 @@ import { Plus, GraduationCap } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminStatus } from "@/hooks/useAdminStatus";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+
+const AMES_ROLES = ["admin", "master", "tutor", "cs", "cliente_ames"];
 
 interface Course {
   id: string;
@@ -23,10 +26,19 @@ export default function Cursos() {
   const { isAdmin } = useAdminStatus();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { userRoles, isLoading: authLoading } = useAuth();
+
+  const hasAmesAccess = userRoles.some((r) => AMES_ROLES.includes(r));
 
   useEffect(() => {
-    fetchCourses();
-  }, []);
+    if (!authLoading && !hasAmesAccess) {
+      navigate("/app/upgrade/w3-educacao", { replace: true });
+    }
+  }, [authLoading, hasAmesAccess]);
+
+  useEffect(() => {
+    if (!authLoading && hasAmesAccess) fetchCourses();
+  }, [authLoading, hasAmesAccess]);
 
   const fetchCourses = async () => {
     try {
