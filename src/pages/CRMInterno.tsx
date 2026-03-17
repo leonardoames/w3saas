@@ -3,8 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, Search, Lock, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Search, Lock, AlertTriangle, LayoutDashboard, Columns3 } from "lucide-react";
 import { CRMClientDrawer, CRM_STAGES } from "@/components/crm/CRMClientDrawer";
+import { CRMDashboardView } from "@/components/crm/CRMDashboardView";
 
 interface CRMCard {
   userId: string;
@@ -221,8 +223,10 @@ export default function CRMInterno() {
   const isStaff = isAdmin || ["master", "tutor", "cs"].some(r => hasRole(r));
 
   const [cards, setCards] = useState<CRMCard[]>([]);
+  const [allClientIds, setAllClientIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [view, setView] = useState<"kanban" | "dashboard">("kanban");
   const [drawerUserId, setDrawerUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -239,9 +243,11 @@ export default function CRMInterno() {
       const clientIds: string[] = (idRows || []).map((r: any) => r.mentorado_id).filter(Boolean);
       if (clientIds.length === 0) {
         setCards([]);
+        setAllClientIds([]);
         setLoading(false);
         return;
       }
+      setAllClientIds(clientIds);
 
       const [crmRes, profilesRes, brandsRes, tasksRes, csRes] = await Promise.all([
         (supabase as any).from("crm_clients").select("id, user_id, stage, stage_updated_at").in("user_id", clientIds),
@@ -414,22 +420,49 @@ export default function CRMInterno() {
         )}
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-xs">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar cliente, loja, CS..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-9 h-9"
-        />
+      {/* View toggle + search */}
+      <div className="flex items-center gap-3">
+        <div className="flex rounded-lg border p-0.5 gap-0.5">
+          <Button
+            size="sm"
+            variant={view === "kanban" ? "secondary" : "ghost"}
+            className="h-7 px-3 text-xs gap-1.5"
+            onClick={() => setView("kanban")}
+          >
+            <Columns3 className="h-3.5 w-3.5" />
+            Kanban
+          </Button>
+          <Button
+            size="sm"
+            variant={view === "dashboard" ? "secondary" : "ghost"}
+            className="h-7 px-3 text-xs gap-1.5"
+            onClick={() => setView("dashboard")}
+          >
+            <LayoutDashboard className="h-3.5 w-3.5" />
+            Dashboard
+          </Button>
+        </div>
+
+        {view === "kanban" && (
+          <div className="relative max-w-xs flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar cliente, loja, CS..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-9 h-9"
+            />
+          </div>
+        )}
       </div>
 
-      {/* Board */}
+      {/* Content */}
       {loading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
+      ) : view === "dashboard" ? (
+        <CRMDashboardView clientIds={allClientIds} />
       ) : cards.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <p className="text-sm text-muted-foreground">Nenhum cliente na sua carteira</p>

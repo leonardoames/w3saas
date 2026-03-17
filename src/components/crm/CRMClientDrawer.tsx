@@ -4,10 +4,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Loader2, Target, DollarSign, FileText, Lightbulb, ExternalLink,
-  Send, CheckCircle2, Star, Clock, User2, TrendingUp, TrendingDown, Minus,
+  Send, CheckCircle2, Star, Clock, User2, TrendingUp, TrendingDown, Minus, Save,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +43,9 @@ interface DrawerData {
   crmClientId: string | null;
   stage: string;
   stageUpdatedAt: string | null;
+  valorContrato: number | null;
+  dataInicioContrato: string | null;
+  dataFimContrato: string | null;
   profile: { full_name: string | null; email: string | null; created_at: string | null; access_expires_at: string | null } | null;
   brand: { name: string | null; website_url: string | null } | null;
   diag: { objetivo_principal: string | null; observacoes: string | null; pontos_diagnostico: string | null; faturamento_inicial: number | null; faturamento_ideal: number | null } | null;
@@ -66,6 +71,8 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
   const [savingStage, setSavingStage] = useState(false);
   const [comment, setComment] = useState("");
   const [sendingComment, setSendingComment] = useState(false);
+  const [contractDraft, setContractDraft] = useState({ valor: "", inicio: "", fim: "" });
+  const [savingContract, setSavingContract] = useState(false);
 
   useEffect(() => {
     if (open && userId) {
@@ -80,7 +87,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
     setLoading(true);
     try {
       const [crmRes, profileRes, brandRes, diagRes, auditsRes, tasksRes, csRes] = await Promise.all([
-        (supabase as any).from("crm_clients").select("id, stage, stage_updated_at, responsible_cs_id").eq("user_id", uid).maybeSingle(),
+        (supabase as any).from("crm_clients").select("id, stage, stage_updated_at, responsible_cs_id, valor_contrato, data_inicio_contrato, data_fim_contrato").eq("user_id", uid).maybeSingle(),
         supabase.from("profiles").select("full_name, email, created_at, access_expires_at").eq("user_id", uid).maybeSingle(),
         supabase.from("brands").select("name, website_url").eq("user_id", uid).maybeSingle(),
         (supabase as any).from("diagnostico_360").select("objetivo_principal, observacoes, pontos_diagnostico, faturamento_inicial, faturamento_ideal").eq("user_id", uid).maybeSingle(),
@@ -92,6 +99,9 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
       const crmClientId: string | null = crmRes.data?.id ?? null;
       const stage = crmRes.data?.stage ?? "onboarding";
       const stageUpdatedAt = crmRes.data?.stage_updated_at ?? null;
+      const valorContrato: number | null = crmRes.data?.valor_contrato ?? null;
+      const dataInicioContrato: string | null = crmRes.data?.data_inicio_contrato ?? null;
+      const dataFimContrato: string | null = crmRes.data?.data_fim_contrato ?? null;
 
       let csName: string | null = null;
       if (csRes.data?.staff_id) {
@@ -137,10 +147,19 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
         }));
       }
 
+      setContractDraft({
+        valor: valorContrato !== null ? String(valorContrato) : "",
+        inicio: dataInicioContrato ?? "",
+        fim: dataFimContrato ?? "",
+      });
+
       setData({
         crmClientId,
         stage,
         stageUpdatedAt,
+        valorContrato,
+        dataInicioContrato,
+        dataFimContrato,
         profile: profileRes.data as any,
         brand: brandRes.data as any,
         diag: diagRes.data as any,
@@ -243,6 +262,40 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
       loadData(userId);
     }
     setSendingComment(false);
+  };
+
+  const handleSaveContract = async () => {
+    if (!userId) return;
+    setSavingContract(true);
+
+    let crmId = data?.crmClientId;
+    if (!crmId) {
+      const { data: upserted } = await (supabase as any).from("crm_clients").upsert({
+        user_id: userId, stage: data?.stage || "onboarding",
+        stage_updated_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" }).select("id").single();
+      crmId = upserted?.id;
+    }
+
+    const { error } = await (supabase as any).from("crm_clients").update({
+      valor_contrato: contractDraft.valor ? parseFloat(contractDraft.valor) : null,
+      data_inicio_contrato: contractDraft.inicio || null,
+      data_fim_contrato: contractDraft.fim || null,
+      updated_at: new Date().toISOString(),
+    }).eq("user_id", userId);
+
+    setSavingContract(false);
+    if (error) {
+      toast({ title: "Erro ao salvar contrato", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Dados do contrato salvos" });
+      setData(d => d ? {
+        ...d,
+        valorContrato: contractDraft.valor ? parseFloat(contractDraft.valor) : null,
+        dataInicioContrato: contractDraft.inicio || null,
+        dataFimContrato: contractDraft.fim || null,
+      } : d);
+    }
   };
 
   const stageInfo = CRM_STAGES.find(s => s.id === (data?.stage || "onboarding")) || CRM_STAGES[0];
@@ -396,6 +449,50 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                       Diagnóstico 360 ainda não preenchido
                     </div>
                   )}
+
+                  {/* Contract fields */}
+                  <div className="rounded-lg border p-4 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                      <DollarSign className="h-3.5 w-3.5" />
+                      Dados do Contrato
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2 space-y-1">
+                        <Label className="text-xs">Valor do Contrato (R$)</Label>
+                        <Input
+                          type="number"
+                          value={contractDraft.valor}
+                          onChange={e => setContractDraft(d => ({ ...d, valor: e.target.value }))}
+                          placeholder="Ex: 3500"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Início do contrato</Label>
+                        <Input
+                          type="date"
+                          value={contractDraft.inicio}
+                          onChange={e => setContractDraft(d => ({ ...d, inicio: e.target.value }))}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Fim / encerramento</Label>
+                        <Input
+                          type="date"
+                          value={contractDraft.fim}
+                          onChange={e => setContractDraft(d => ({ ...d, fim: e.target.value }))}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button size="sm" variant="outline" onClick={handleSaveContract} disabled={savingContract}>
+                        {savingContract ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                        Salvar contrato
+                      </Button>
+                    </div>
+                  </div>
                 </TabsContent>
 
                 {/* Financeiro */}
