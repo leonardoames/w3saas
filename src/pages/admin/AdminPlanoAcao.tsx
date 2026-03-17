@@ -16,6 +16,8 @@ import {
   List,
   Columns,
   Calendar,
+  Save,
+  DollarSign,
 } from "lucide-react";
 import { useTasks, Task, TaskStatus } from "@/hooks/useTasks";
 import { DashboardTab } from "@/components/plano-acao/DashboardTab";
@@ -28,6 +30,9 @@ import { Diagnostico360Tab } from "@/components/plano-acao/Diagnostico360Tab";
 import { AddTaskDialog } from "@/components/plano-acao/AddTaskDialog";
 import { PlanAulasTab } from "@/components/plano-acao/PlanAulasTab";
 import { PlanFerramentasTab } from "@/components/plano-acao/PlanFerramentasTab";
+import { CRM_STAGES } from "@/components/crm/CRMClientDrawer";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface UserProfile {
   user_id: string;
@@ -139,6 +144,49 @@ function UserPlanView({ user, onBack }: { user: UserProfile; onBack: () => void 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
 
+  // CRM contract data
+  const [crmDraft, setCrmDraft] = useState({ stage: "onboarding", valor: "", inicio: "", fim: "" });
+  const [loadingCrm, setLoadingCrm] = useState(false);
+  const [savingCrm, setSavingCrm] = useState(false);
+
+  useEffect(() => {
+    setLoadingCrm(true);
+    (supabase as any).from("crm_clients")
+      .select("stage, valor_contrato, data_inicio_contrato, data_fim_contrato")
+      .eq("user_id", user.user_id)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        if (data) {
+          setCrmDraft({
+            stage: data.stage || "onboarding",
+            valor: data.valor_contrato !== null && data.valor_contrato !== undefined ? String(data.valor_contrato) : "",
+            inicio: data.data_inicio_contrato || "",
+            fim: data.data_fim_contrato || "",
+          });
+        }
+        setLoadingCrm(false);
+      });
+  }, [user.user_id]);
+
+  const handleSaveCrm = async () => {
+    setSavingCrm(true);
+    const { error } = await (supabase as any).from("crm_clients").upsert({
+      user_id: user.user_id,
+      stage: crmDraft.stage,
+      stage_updated_at: new Date().toISOString(),
+      valor_contrato: crmDraft.valor ? parseFloat(crmDraft.valor) : null,
+      data_inicio_contrato: crmDraft.inicio || null,
+      data_fim_contrato: crmDraft.fim || null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
+    setSavingCrm(false);
+    if (error) {
+      toast({ title: "Erro ao salvar CRM", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "CRM atualizado com sucesso" });
+    }
+  };
+
   // Miro
   const [embedSrc, setEmbedSrc] = useState("");
   const [inputValue, setInputValue] = useState("");
@@ -230,6 +278,7 @@ function UserPlanView({ user, onBack }: { user: UserProfile; onBack: () => void 
           <TabsTrigger value="dashboard" className="text-xs sm:text-sm">Dashboard</TabsTrigger>
           <TabsTrigger value="auditorias" className="text-xs sm:text-sm">Auditorias</TabsTrigger>
           <TabsTrigger value="diagnostico" className="text-xs sm:text-sm">Diagnóstico 360</TabsTrigger>
+          <TabsTrigger value="crm" className="text-xs sm:text-sm">CRM</TabsTrigger>
           <TabsTrigger value="mapa-mental" className="text-xs sm:text-sm">Mapa Mental</TabsTrigger>
           <TabsTrigger value="aulas" className="text-xs sm:text-sm">Aulas</TabsTrigger>
           <TabsTrigger value="ferramentas" className="text-xs sm:text-sm">Ferramentas</TabsTrigger>
@@ -294,6 +343,85 @@ function UserPlanView({ user, onBack }: { user: UserProfile; onBack: () => void 
         {/* Diagnóstico 360 */}
         <TabsContent value="diagnostico" className="mt-6">
           <Diagnostico360Tab userId={user.user_id} canEdit={true} />
+        </TabsContent>
+
+        {/* CRM */}
+        <TabsContent value="crm" className="mt-6">
+          {loadingCrm ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="space-y-6 max-w-lg">
+              <div className="space-y-4 rounded-lg border p-5">
+                <p className="text-sm font-semibold flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  Dados do CRM
+                </p>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Etapa no CRM</Label>
+                  <Select value={crmDraft.stage} onValueChange={v => setCrmDraft(d => ({ ...d, stage: v }))}>
+                    <SelectTrigger className="h-9 text-sm">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`h-2 w-2 rounded-full shrink-0 ${CRM_STAGES.find(s => s.id === crmDraft.stage)?.dot || "bg-muted"}`} />
+                        <SelectValue />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CRM_STAGES.map(s => (
+                        <SelectItem key={s.id} value={s.id} className="text-sm">
+                          <span className="flex items-center gap-1.5">
+                            <span className={`h-2 w-2 rounded-full shrink-0 ${s.dot}`} />
+                            {s.label}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Valor do Contrato (R$)</Label>
+                  <Input
+                    type="number"
+                    value={crmDraft.valor}
+                    onChange={e => setCrmDraft(d => ({ ...d, valor: e.target.value }))}
+                    placeholder="Ex: 3500"
+                    className="h-9 text-sm"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Início do contrato</Label>
+                    <Input
+                      type="date"
+                      value={crmDraft.inicio}
+                      onChange={e => setCrmDraft(d => ({ ...d, inicio: e.target.value }))}
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Fim / encerramento</Label>
+                    <Input
+                      type="date"
+                      value={crmDraft.fim}
+                      onChange={e => setCrmDraft(d => ({ ...d, fim: e.target.value }))}
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={handleSaveCrm} disabled={savingCrm}>
+                    {savingCrm ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                    Salvar CRM
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         {/* Mapa Mental */}

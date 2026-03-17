@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Loader2, Target, DollarSign, FileText, Lightbulb, ExternalLink,
   Send, CheckCircle2, Star, Clock, User2, TrendingUp, TrendingDown, Minus, Save,
+  BarChart2, ShoppingCart, MousePointerClick, Package,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -46,11 +47,12 @@ interface DrawerData {
   valorContrato: number | null;
   dataInicioContrato: string | null;
   dataFimContrato: string | null;
-  profile: { full_name: string | null; email: string | null; created_at: string | null; access_expires_at: string | null } | null;
+  profile: { full_name: string | null; email: string | null; created_at: string | null; access_expires_at: string | null; access_status: string | null; plan_type: string | null } | null;
   brand: { name: string | null; website_url: string | null } | null;
   diag: { objetivo_principal: string | null; observacoes: string | null; pontos_diagnostico: string | null; faturamento_inicial: number | null; faturamento_ideal: number | null } | null;
   audits: { id: string; mes_referencia: string; faturamento: number | null; comentario: string | null }[];
   tasks: { id: string; title: string; status: string; section: string | null; sprint: number | null; due_date: string | null; priority: string | null; is_next_action: boolean }[];
+  ecommerce: { total_faturamento: number; total_sessoes: number; total_investimento: number; total_pedidos: number; revenue_this_month: number; revenue_last_month: number };
   csName: string | null;
   comments: { id: string; content: string; created_at: string; author_name: string; author_id: string }[];
   activityLog: { id: string; event: string; payload: any; created_at: string; author_name: string }[];
@@ -86,14 +88,16 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
   const loadData = async (uid: string) => {
     setLoading(true);
     try {
-      const [crmRes, profileRes, brandRes, diagRes, auditsRes, tasksRes, csRes] = await Promise.all([
+      const [crmRes, profileRes, brandRes, diagRes, auditsRes, tasksRes, csRes, dailyRes, metricsRes] = await Promise.all([
         (supabase as any).from("crm_clients").select("id, stage, stage_updated_at, responsible_cs_id, valor_contrato, data_inicio_contrato, data_fim_contrato").eq("user_id", uid).maybeSingle(),
-        supabase.from("profiles").select("full_name, email, created_at, access_expires_at").eq("user_id", uid).maybeSingle(),
+        supabase.from("profiles").select("full_name, email, created_at, access_expires_at, access_status, plan_type").eq("user_id", uid).maybeSingle(),
         supabase.from("brands").select("name, website_url").eq("user_id", uid).maybeSingle(),
         (supabase as any).from("diagnostico_360").select("objetivo_principal, observacoes, pontos_diagnostico, faturamento_inicial, faturamento_ideal").eq("user_id", uid).maybeSingle(),
         (supabase as any).from("result_audits").select("id, mes_referencia, faturamento, comentario").eq("user_id", uid).order("mes_referencia", { ascending: false }),
         supabase.from("tarefas").select("id, title, status, section, sprint, due_date, priority, is_next_action").eq("user_id", uid).order("sprint", { ascending: true, nullsFirst: false }),
         (supabase as any).from("staff_carteiras").select("staff_id").eq("mentorado_id", uid).maybeSingle(),
+        supabase.from("daily_results").select("receita_paga, sessoes, investimento, pedidos_pagos, data").eq("user_id", uid),
+        supabase.from("metrics_diarias").select("faturamento, sessoes, investimento_trafego, vendas_quantidade, vendas_valor, data").eq("user_id", uid),
       ]);
 
       const crmClientId: string | null = crmRes.data?.id ?? null;
@@ -102,6 +106,28 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
       const valorContrato: number | null = crmRes.data?.valor_contrato ?? null;
       const dataInicioContrato: string | null = crmRes.data?.data_inicio_contrato ?? null;
       const dataFimContrato: string | null = crmRes.data?.data_fim_contrato ?? null;
+
+      // Compute e-commerce metrics (same logic as useDashAdmin)
+      const ecNow = new Date();
+      const ecThisMonth = `${ecNow.getFullYear()}-${String(ecNow.getMonth() + 1).padStart(2, "0")}`;
+      const ecLastMonthDate = new Date(ecNow.getFullYear(), ecNow.getMonth() - 1, 1);
+      const ecLastMonth = `${ecLastMonthDate.getFullYear()}-${String(ecLastMonthDate.getMonth() + 1).padStart(2, "0")}`;
+      let ecFat = 0, ecSes = 0, ecInv = 0, ecPed = 0, ecThis = 0, ecLast = 0;
+      for (const r of (dailyRes.data || []) as any[]) {
+        ecFat += r.receita_paga || 0; ecSes += r.sessoes || 0;
+        ecInv += r.investimento || 0; ecPed += r.pedidos_pagos || 0;
+        const mo = (r.data || "").substring(0, 7);
+        if (mo === ecThisMonth) ecThis += r.receita_paga || 0;
+        if (mo === ecLastMonth) ecLast += r.receita_paga || 0;
+      }
+      for (const m of (metricsRes.data || []) as any[]) {
+        const mf = (m.faturamento || 0) + (m.vendas_valor || 0);
+        ecFat += mf; ecSes += m.sessoes || 0;
+        ecInv += m.investimento_trafego || 0; ecPed += m.vendas_quantidade || 0;
+        const mo = (m.data || "").substring(0, 7);
+        if (mo === ecThisMonth) ecThis += mf;
+        if (mo === ecLastMonth) ecLast += mf;
+      }
 
       let csName: string | null = null;
       if (csRes.data?.staff_id) {
@@ -160,6 +186,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
         valorContrato,
         dataInicioContrato,
         dataFimContrato,
+        ecommerce: { total_faturamento: ecFat, total_sessoes: ecSes, total_investimento: ecInv, total_pedidos: ecPed, revenue_this_month: ecThis, revenue_last_month: ecLast },
         profile: profileRes.data as any,
         brand: brandRes.data as any,
         diag: diagRes.data as any,
@@ -382,6 +409,14 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                     CS: <span className="font-medium text-foreground ml-0.5">{data.csName}</span>
                   </span>
                 )}
+                {data.profile?.access_status && (
+                  <Badge variant={data.profile.access_status === "active" ? "default" : "secondary"} className="text-[10px] h-4 px-1.5">
+                    {data.profile.access_status === "active" ? "Ativo" : data.profile.access_status}
+                  </Badge>
+                )}
+                {data.profile?.plan_type && (
+                  <span className="text-muted-foreground">{data.profile.plan_type}</span>
+                )}
                 {data.profile?.created_at && (
                   <span className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
@@ -398,10 +433,11 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
 
             {/* Tabs */}
             <Tabs defaultValue="overview" className="flex flex-col flex-1 min-h-0">
-              <TabsList className="mx-5 mt-3 h-8 w-auto shrink-0 self-start">
+              <TabsList className="mx-5 mt-3 h-8 w-auto shrink-0 self-start flex-wrap">
                 <TabsTrigger value="overview" className="text-xs h-7">Visão Geral</TabsTrigger>
                 <TabsTrigger value="financial" className="text-xs h-7">Financeiro</TabsTrigger>
                 <TabsTrigger value="plan" className="text-xs h-7">Plano de Ação</TabsTrigger>
+                <TabsTrigger value="ecommerce" className="text-xs h-7">E-commerce</TabsTrigger>
                 <TabsTrigger value="activity" className="text-xs h-7">Atividade</TabsTrigger>
               </TabsList>
 
@@ -627,6 +663,51 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                         })}
                       </div>
                     </>
+                  )}
+                </TabsContent>
+
+                {/* E-commerce */}
+                <TabsContent value="ecommerce" className="p-5 mt-0 space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: "Faturamento Total", value: formatCurrency(data.ecommerce.total_faturamento), icon: TrendingUp, color: "text-green-600" },
+                      { label: "Investimento Total", value: formatCurrency(data.ecommerce.total_investimento), icon: BarChart2, color: "text-blue-600" },
+                      { label: "Sessões Totais", value: data.ecommerce.total_sessoes.toLocaleString("pt-BR"), icon: MousePointerClick, color: "text-purple-600" },
+                      { label: "Pedidos Totais", value: data.ecommerce.total_pedidos.toLocaleString("pt-BR"), icon: Package, color: "text-amber-600" },
+                      { label: "Fat. Este Mês", value: formatCurrency(data.ecommerce.revenue_this_month), icon: ShoppingCart, color: "text-emerald-600" },
+                      { label: "Fat. Mês Passado", value: formatCurrency(data.ecommerce.revenue_last_month), icon: ShoppingCart, color: "text-slate-600" },
+                    ].map(card => {
+                      const Icon = card.icon;
+                      return (
+                        <div key={card.label} className="rounded-lg border bg-muted/30 p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Icon className={`h-3.5 w-3.5 ${card.color}`} />
+                            <p className="text-xs font-medium text-muted-foreground">{card.label}</p>
+                          </div>
+                          <p className="text-xl font-bold">{card.value}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {data.ecommerce.revenue_this_month > 0 && data.ecommerce.revenue_last_month > 0 && (() => {
+                    const pct = ((data.ecommerce.revenue_this_month - data.ecommerce.revenue_last_month) / data.ecommerce.revenue_last_month) * 100;
+                    const isUp = pct > 0;
+                    return (
+                      <div className={`flex items-center gap-3 rounded-lg p-3 ${isUp ? "bg-green-50 dark:bg-green-950/30" : "bg-red-50 dark:bg-red-950/30"}`}>
+                        {isUp ? <TrendingUp className="h-4 w-4 text-green-600 shrink-0" /> : <TrendingDown className="h-4 w-4 text-red-600 shrink-0" />}
+                        <div>
+                          <p className="text-xs text-muted-foreground">Variação mês atual vs. anterior</p>
+                          <p className={`text-sm font-bold ${isUp ? "text-green-600" : "text-red-600"}`}>
+                            {pct > 0 ? "+" : ""}{pct.toFixed(1)}%
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {data.ecommerce.total_faturamento === 0 && (
+                    <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+                      Sem dados de e-commerce registrados
+                    </div>
                   )}
                 </TabsContent>
 
