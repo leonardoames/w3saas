@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { Plug, Unplug, ExternalLink, Loader2, RefreshCw, Copy, CheckCheck } from "lucide-react";
+import { Plug, Unplug, ExternalLink, Loader2, RefreshCw, Copy, CheckCheck, Info, Clock, AlertTriangle } from "lucide-react";
 
 import shopeeLogo from "@/assets/platforms/shopee.png";
 import nuvemshopLogo from "@/assets/platforms/nuvemshop.png";
@@ -36,28 +36,43 @@ interface PlatformInfo {
   name: string;
   description: string;
   color: string;
-  fields: { key: string; label: string; placeholder: string; type?: string }[];
+  fields: { key: string; label: string; placeholder: string; type?: string; hint?: string }[];
   docsUrl?: string;
   oauth?: boolean;
+  setupHint?: string;
+  syncTags?: string[];
+  comingSoon?: boolean;
 }
 
 const platforms: PlatformInfo[] = [
   {
     id: "nuvemshop",
     name: "Nuvemshop",
-    description: "Conecte sua loja Nuvemshop para importar pedidos, produtos e métricas automaticamente.",
+    description: "Importa pedidos pagos dos últimos 90 dias automaticamente.",
     color: "bg-blue-600",
+    syncTags: ["Pedidos", "Faturamento"],
     fields: [
-      { key: "access_token", label: "Access Token", placeholder: "Cole seu access token aqui" },
-      { key: "store_id", label: "Store ID", placeholder: "ID da sua loja" },
+      {
+        key: "access_token",
+        label: "Access Token",
+        placeholder: "Cole seu access token aqui",
+        hint: "No painel Nuvemshop: Meus aplicativos → Criar aplicativo → copie o Access Token gerado.",
+      },
+      {
+        key: "store_id",
+        label: "Store ID",
+        placeholder: "Ex: 1234567",
+        hint: "Número de 7 dígitos visível na URL do painel: minha.nuvemshop.com.br/[store_id]/...",
+      },
     ],
     docsUrl: "https://tiendanube.github.io/api-documentation/intro",
   },
   {
     id: "shopee",
     name: "Shopee",
-    description: "Integre com a Shopee para acompanhar vendas, métricas e gastos com Shopee Ads.",
+    description: "Importa pedidos e faturamento da sua loja Shopee via OAuth.",
     color: "bg-orange-500",
+    syncTags: ["Pedidos", "Faturamento"],
     fields: [],
     docsUrl: "https://open.shopee.com/documents",
     oauth: true,
@@ -65,8 +80,9 @@ const platforms: PlatformInfo[] = [
   {
     id: "shopee_ads",
     name: "Shopee ADS",
-    description: "Conecte ao app de Marketing da Shopee para importar métricas de investimento em anúncios automaticamente.",
+    description: "Importa investimento em anúncios e cliques do app de Marketing da Shopee.",
     color: "bg-orange-600",
+    syncTags: ["Investimento", "Cliques"],
     fields: [],
     docsUrl: "https://open.shopee.com/documents",
     oauth: true,
@@ -74,8 +90,9 @@ const platforms: PlatformInfo[] = [
   {
     id: "mercado_livre",
     name: "Mercado Livre",
-    description: "Conecte ao Mercado Livre para importar vendas e acompanhar performance.",
+    description: "Conecte sua conta Mercado Livre via OAuth. Sincronização automática em breve.",
     color: "bg-yellow-500",
+    syncTags: ["Em breve"],
     fields: [],
     docsUrl: "https://developers.mercadolivre.com.br/pt_br/api-docs-pt-br",
     oauth: true,
@@ -83,12 +100,19 @@ const platforms: PlatformInfo[] = [
   {
     id: "shopify",
     name: "Shopify",
-    description: "Integre sua loja Shopify via OAuth. Crie um app no Shopify Partners e forneça as credenciais.",
+    description: "Importa pedidos e faturamento da sua loja Shopify via OAuth.",
     color: "bg-green-600",
+    syncTags: ["Pedidos", "Faturamento"],
+    setupHint: "Você precisará criar um app privado no Shopify Partners. Consulte a documentação para o passo a passo completo.",
     fields: [
       { key: "client_id", label: "Client ID", placeholder: "Client ID do app no Shopify Partners" },
       { key: "client_secret", label: "Client Secret", placeholder: "Client Secret do app", type: "password" },
-      { key: "shop_domain", label: "Domínio da Loja", placeholder: "sualoja.myshopify.com" },
+      {
+        key: "shop_domain",
+        label: "Domínio da Loja",
+        placeholder: "sualoja.myshopify.com",
+        hint: "Use o domínio .myshopify.com, não o domínio customizado.",
+      },
     ],
     docsUrl: "https://integra-o-w3-app-142364288732.us-west1.run.app/",
     oauth: true,
@@ -96,41 +120,71 @@ const platforms: PlatformInfo[] = [
   {
     id: "olist_tiny",
     name: "Olist Tiny (ERP)",
-    description: "Conecte ao Tiny ERP para importar pedidos, faturamento e dados de vendas automaticamente.",
+    description: "Importa pedidos e faturamento do Tiny ERP automaticamente.",
     color: "bg-indigo-600",
+    syncTags: ["Pedidos", "Faturamento"],
     fields: [
-      { key: "api_token", label: "Token da API", placeholder: "Cole seu token da API do Tiny aqui", type: "password" },
+      {
+        key: "api_token",
+        label: "Token da API",
+        placeholder: "Cole seu token da API do Tiny aqui",
+        type: "password",
+        hint: "No Tiny ERP: Configurações → Integrações → API → copie o Token de acesso.",
+      },
     ],
     docsUrl: "https://tiny.com.br/api-docs",
   },
   {
     id: "tray",
     name: "Tray",
-    description: "Conecte sua loja Tray para importar pedidos, produtos e métricas de vendas automaticamente.",
+    description: "Salve suas credenciais Tray. Sincronização automática em breve.",
     color: "bg-emerald-600",
+    syncTags: ["Em breve"],
+    comingSoon: true,
     fields: [
       { key: "api_key", label: "Chave da API", placeholder: "Cole sua chave da API da Tray aqui", type: "password" },
-      { key: "api_address", label: "Endereço da API", placeholder: "https://sualoja.commercesuite.com.br" },
+      {
+        key: "api_address",
+        label: "Endereço da API",
+        placeholder: "https://sualoja.commercesuite.com.br",
+        hint: "URL base da sua loja no formato https://sualoja.commercesuite.com.br",
+      },
     ],
     docsUrl: "https://developers.tray.com.br/",
   },
   {
     id: "loja_integrada",
     name: "Loja Integrada",
-    description: "Integre com a Loja Integrada para acompanhar vendas, pedidos e performance da sua loja.",
+    description: "Salve suas credenciais Loja Integrada. Sincronização automática em breve.",
     color: "bg-purple-600",
+    syncTags: ["Em breve"],
+    comingSoon: true,
     fields: [
-      { key: "api_key", label: "Chave da API", placeholder: "Cole sua chave da API aqui", type: "password" },
+      {
+        key: "api_key",
+        label: "Chave da API",
+        placeholder: "Cole sua chave da API aqui",
+        type: "password",
+        hint: "No painel Loja Integrada: Configurações → API → Chave de API.",
+      },
     ],
     docsUrl: "https://lojaintegrada.docs.apiary.io/",
   },
   {
     id: "bagy",
     name: "Bagy",
-    description: "Conecte sua loja Bagy para importar pedidos, produtos e métricas de vendas automaticamente.",
+    description: "Salve suas credenciais Bagy. Sincronização automática em breve.",
     color: "bg-pink-600",
+    syncTags: ["Em breve"],
+    comingSoon: true,
     fields: [
-      { key: "api_key", label: "Chave da API", placeholder: "Cole sua chave da API da Bagy aqui", type: "password" },
+      {
+        key: "api_key",
+        label: "Chave da API",
+        placeholder: "Cole sua chave da API da Bagy aqui",
+        type: "password",
+        hint: "No painel Bagy: Configurações → Integrações → API → copie sua chave.",
+      },
     ],
     docsUrl: "https://bagypro.com/desenvolvedores",
   },
@@ -379,9 +433,31 @@ export default function Integracoes() {
         </p>
       </div>
 
+      {/* Info banner */}
+      <div className="flex items-start gap-3 rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
+        <Info className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+        <div className="space-y-1">
+          <p className="font-medium text-foreground">Como funciona a sincronização</p>
+          <p>As integrações importam <strong>pedidos e faturamento</strong> automaticamente. Para ter <strong>investimento em tráfego e sessões</strong> no dashboard, conecte também o <strong>Shopee ADS</strong> ou preencha os dados manualmente no Acompanhamento Diário.</p>
+        </div>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2">
         {platforms.map((platform) => {
           const connected = isConnected(platform.id);
+          const integration = integrations[platform.id];
+          const lastSync = integration?.last_sync_at;
+          const lastSyncLabel = lastSync
+            ? (() => {
+                const diff = Math.floor((Date.now() - new Date(lastSync).getTime()) / 60000);
+                if (diff < 2) return "Sincronizado agora";
+                if (diff < 60) return `Há ${diff} min`;
+                const h = Math.floor(diff / 60);
+                if (h < 24) return `Há ${h}h`;
+                return `Há ${Math.floor(h / 24)}d`;
+              })()
+            : connected ? "Nunca sincronizado" : null;
+
           return (
             <Card key={platform.id} className={connected ? "border-primary/50" : ""}>
               <CardHeader className="pb-3">
@@ -391,7 +467,18 @@ export default function Integracoes() {
                       <img src={platformLogos[platform.id]} alt={platform.name} className="w-11 h-11 object-contain" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">{platform.name}</CardTitle>
+                      <CardTitle className="text-base">{platform.name}</CardTitle>
+                      {platform.syncTags && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {platform.syncTags.map(tag => (
+                            <span key={tag} className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                              tag === "Em breve"
+                                ? "bg-muted text-muted-foreground"
+                                : "bg-primary/10 text-primary"
+                            }`}>{tag}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <Badge variant={connected ? "default" : "secondary"}>
@@ -399,9 +486,26 @@ export default function Integracoes() {
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3">
                 <CardDescription>{platform.description}</CardDescription>
-                <div className="flex items-center gap-2">
+
+                {/* Last sync time */}
+                {lastSyncLabel && (
+                  <div className={`flex items-center gap-1.5 text-xs ${lastSync ? "text-muted-foreground" : "text-amber-600 dark:text-amber-500"}`}>
+                    <Clock className="h-3 w-3" />
+                    {lastSyncLabel}
+                  </div>
+                )}
+
+                {/* Coming soon warning */}
+                {platform.comingSoon && connected && (
+                  <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-500">
+                    <AlertTriangle className="h-3 w-3" />
+                    Credenciais salvas. Sincronização automática em desenvolvimento.
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-2">
                   {connected ? (
                     <>
                       {SYNCABLE_PLATFORMS.has(platform.id) && (
@@ -415,19 +519,11 @@ export default function Integracoes() {
                           {syncing === platform.id ? "Sincronizando..." : "Sincronizar"}
                         </Button>
                       )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openConnectDialog(platform)}
-                      >
+                      <Button variant="outline" size="sm" onClick={() => openConnectDialog(platform)}>
                         <Plug className="h-4 w-4 mr-1" />
                         Editar
                       </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDisconnect(platform.id)}
-                      >
+                      <Button variant="destructive" size="sm" onClick={() => handleDisconnect(platform.id)}>
                         <Unplug className="h-4 w-4 mr-1" />
                         Desconectar
                       </Button>
@@ -447,26 +543,17 @@ export default function Integracoes() {
                     </Button>
                   )}
                 </div>
+
                 {/* LGPD Webhook URLs for Nuvemshop */}
                 {platform.id === "nuvemshop" && connected && (
-                  <div className="mt-3 p-3 rounded-lg border bg-muted/50 space-y-2">
+                  <div className="mt-1 p-3 rounded-lg border bg-muted/50 space-y-2">
                     <p className="text-xs font-medium text-muted-foreground">URLs Webhooks LGPD (cole no painel Nuvemshop)</p>
                     {Object.entries(webhookUrls).map(([key, url]) => (
                       <div key={key} className="flex items-center gap-2">
-                        <Input
-                          readOnly
-                          value={url}
-                          className="text-xs h-8 font-mono bg-background"
-                        />
+                        <Input readOnly value={url} className="text-xs h-8 font-mono bg-background" />
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 shrink-0"
-                          onClick={() => {
-                            navigator.clipboard.writeText(url);
-                            setCopiedField(key);
-                            setTimeout(() => setCopiedField(null), 2000);
-                          }}
+                          variant="ghost" size="icon" className="h-8 w-8 shrink-0"
+                          onClick={() => { navigator.clipboard.writeText(url); setCopiedField(key); setTimeout(() => setCopiedField(null), 2000); }}
                         >
                           {copiedField === key ? <CheckCheck className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
                         </Button>
@@ -492,6 +579,12 @@ export default function Integracoes() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {connectDialog?.setupHint && (
+              <div className="flex items-start gap-2 rounded-lg border bg-muted/50 p-3 text-xs text-muted-foreground">
+                <Info className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
+                <span>{connectDialog.setupHint}</span>
+              </div>
+            )}
             {connectDialog?.fields.map((field) => (
               <div key={field.key} className="space-y-2">
                 <Label htmlFor={field.key}>{field.label}</Label>
@@ -502,6 +595,12 @@ export default function Integracoes() {
                   value={formData[field.key] || ""}
                   onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
                 />
+                {field.hint && (
+                  <p className="text-xs text-muted-foreground flex items-start gap-1.5">
+                    <Info className="h-3 w-3 mt-0.5 shrink-0" />
+                    {field.hint}
+                  </p>
+                )}
               </div>
             ))}
           </div>
