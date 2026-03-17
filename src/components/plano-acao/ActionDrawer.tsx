@@ -225,7 +225,7 @@ export function ActionDrawer({
 
   const handleSaveSprint = async (sprintStr: string) => {
     if (!task) return;
-    const sprint = sprintStr === "" ? null : parseInt(sprintStr, 10);
+    const sprint = sprintStr === "" || sprintStr === "none" ? null : parseInt(sprintStr, 10);
     await (supabase as any).from("tarefas").update({ sprint }).eq("id", task.id);
     onTaskUpdate?.(task.id, { sprint });
   };
@@ -483,14 +483,14 @@ export function ActionDrawer({
               <div className="space-y-1">
                 <Label className="text-xs">Sprint</Label>
                 <Select
-                  value={task.sprint !== null && task.sprint !== undefined ? String(task.sprint) : ""}
+                  value={task.sprint !== null && task.sprint !== undefined ? String(task.sprint) : "none"}
                   onValueChange={handleSaveSprint}
                 >
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Sem sprint" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="" className="text-xs">Sem sprint</SelectItem>
+                    <SelectItem value="none" className="text-xs">Sem sprint</SelectItem>
                     {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
                       <SelectItem key={n} value={String(n)} className="text-xs">Sprint {n}</SelectItem>
                     ))}

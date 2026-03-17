@@ -81,7 +81,7 @@ export function AddTaskDialog({
       description: editTask?.description || "",
       section: editTask?.section || defaultSection || "",
       priority: editTask?.priority || undefined,
-      sprint: editTask?.sprint !== null && editTask?.sprint !== undefined ? String(editTask.sprint) : "",
+      sprint: editTask?.sprint !== null && editTask?.sprint !== undefined ? String(editTask.sprint) : "none",
       start_date: editTask?.start_date ? new Date(editTask.start_date) : undefined,
       due_date: editTask?.due_date ? new Date(editTask.due_date) : undefined,
     },
@@ -110,7 +110,7 @@ export function AddTaskDialog({
         description: data.description || null,
         section: data.section,
         priority: data.priority || null,
-        sprint: data.sprint && data.sprint !== "" ? parseInt(data.sprint, 10) : null,
+        sprint: data.sprint && data.sprint !== "" && data.sprint !== "none" ? parseInt(data.sprint, 10) : null,
         is_next_action: editTask?.is_next_action || false,
         start_date: data.start_date ? format(data.start_date, 'yyyy-MM-dd') : null,
         due_date: data.due_date ? format(data.due_date, 'yyyy-MM-dd') : null,
@@ -219,7 +219,7 @@ export function AddTaskDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Sem sprint</SelectItem>
+                      <SelectItem value="none">Sem sprint</SelectItem>
                       {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
                         <SelectItem key={n} value={String(n)}>Sprint {n}</SelectItem>
                       ))}
