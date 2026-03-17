@@ -7,14 +7,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Loader2, Target, DollarSign, FileText, Lightbulb, ExternalLink,
   Send, CheckCircle2, Star, Clock, User2, TrendingUp, TrendingDown, Minus, Save,
-  BarChart2, ShoppingCart, MousePointerClick, Package,
+  BarChart2, ShoppingCart, MousePointerClick, Package, Plus, Trash2,
+  Calendar, StickyNote, GitBranch,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { HealthScoreBadge, computeHealthScore } from "./HealthScoreBadge";
 
 export const CRM_STAGES = [
   { id: "onboarding",  label: "Onboarding",   dot: "bg-blue-500",    text: "text-blue-600 dark:text-blue-400",    bg: "bg-blue-50 dark:bg-blue-950/30" },
@@ -40,6 +43,14 @@ const daysAgo = (d: string | null) => {
   return Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
 };
 
+interface CSTask {
+  id: string;
+  title: string;
+  due_date: string | null;
+  completed_at: string | null;
+  cs_id: string;
+}
+
 interface DrawerData {
   crmClientId: string | null;
   stage: string;
@@ -47,11 +58,14 @@ interface DrawerData {
   valorContrato: number | null;
   dataInicioContrato: string | null;
   dataFimContrato: string | null;
-  profile: { full_name: string | null; email: string | null; created_at: string | null; access_expires_at: string | null; access_status: string | null; plan_type: string | null } | null;
+  nextContactDate: string | null;
+  quickNote: string | null;
+  profile: { full_name: string | null; email: string | null; created_at: string | null; access_expires_at: string | null; access_status: string | null; plan_type: string | null; last_login_at: string | null } | null;
   brand: { name: string | null; website_url: string | null } | null;
   diag: { objetivo_principal: string | null; observacoes: string | null; pontos_diagnostico: string | null; faturamento_inicial: number | null; faturamento_ideal: number | null } | null;
   audits: { id: string; mes_referencia: string; faturamento: number | null; comentario: string | null }[];
   tasks: { id: string; title: string; status: string; section: string | null; sprint: number | null; due_date: string | null; priority: string | null; is_next_action: boolean }[];
+  csTasks: CSTask[];
   ecommerce: { total_faturamento: number; total_sessoes: number; total_investimento: number; total_pedidos: number; revenue_this_month: number; revenue_last_month: number };
   csName: string | null;
   comments: { id: string; content: string; created_at: string; author_name: string; author_id: string }[];
@@ -75,6 +89,14 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
   const [sendingComment, setSendingComment] = useState(false);
   const [contractDraft, setContractDraft] = useState({ valor: "", inicio: "", fim: "" });
   const [savingContract, setSavingContract] = useState(false);
+  // CRM quick fields
+  const [nextContact, setNextContact] = useState("");
+  const [quickNote, setQuickNote] = useState("");
+  const [savingQuick, setSavingQuick] = useState(false);
+  // CS Tasks
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskDue, setNewTaskDue] = useState("");
+  const [addingTask, setAddingTask] = useState(false);
 
   useEffect(() => {
     if (open && userId) {
@@ -88,9 +110,9 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
   const loadData = async (uid: string) => {
     setLoading(true);
     try {
-      const [crmRes, profileRes, brandRes, diagRes, auditsRes, tasksRes, csRes, dailyRes, metricsRes] = await Promise.all([
-        (supabase as any).from("crm_clients").select("id, stage, stage_updated_at, responsible_cs_id, valor_contrato, data_inicio_contrato, data_fim_contrato").eq("user_id", uid).maybeSingle(),
-        supabase.from("profiles").select("full_name, email, created_at, access_expires_at, access_status, plan_type").eq("user_id", uid).maybeSingle(),
+      const [crmRes, profileRes, brandRes, diagRes, auditsRes, tasksRes, csRes, dailyRes, metricsRes, csTasksRes] = await Promise.all([
+        (supabase as any).from("crm_clients").select("id, stage, stage_updated_at, responsible_cs_id, valor_contrato, data_inicio_contrato, data_fim_contrato, next_contact_date, quick_note").eq("user_id", uid).maybeSingle(),
+        supabase.from("profiles").select("full_name, email, created_at, access_expires_at, access_status, plan_type, last_login_at").eq("user_id", uid).maybeSingle(),
         supabase.from("brands").select("name, website_url").eq("user_id", uid).maybeSingle(),
         (supabase as any).from("diagnostico_360").select("objetivo_principal, observacoes, pontos_diagnostico, faturamento_inicial, faturamento_ideal").eq("user_id", uid).maybeSingle(),
         (supabase as any).from("result_audits").select("id, mes_referencia, faturamento, comentario").eq("user_id", uid).order("mes_referencia", { ascending: false }),
@@ -98,6 +120,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
         (supabase as any).from("staff_carteiras").select("staff_id").eq("mentorado_id", uid).maybeSingle(),
         supabase.from("daily_results").select("receita_paga, sessoes, investimento, pedidos_pagos, data").eq("user_id", uid),
         supabase.from("metrics_diarias").select("faturamento, sessoes, investimento_trafego, vendas_quantidade, vendas_valor, data").eq("user_id", uid),
+        (supabase as any).from("cs_tasks").select("id, title, due_date, completed_at, cs_id").eq("client_user_id", uid).order("created_at", { ascending: true }),
       ]);
 
       const crmClientId: string | null = crmRes.data?.id ?? null;
@@ -106,8 +129,10 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
       const valorContrato: number | null = crmRes.data?.valor_contrato ?? null;
       const dataInicioContrato: string | null = crmRes.data?.data_inicio_contrato ?? null;
       const dataFimContrato: string | null = crmRes.data?.data_fim_contrato ?? null;
+      const nextContactDate: string | null = crmRes.data?.next_contact_date ?? null;
+      const quick: string | null = crmRes.data?.quick_note ?? null;
 
-      // Compute e-commerce metrics (same logic as useDashAdmin)
+      // E-commerce metrics
       const ecNow = new Date();
       const ecThisMonth = `${ecNow.getFullYear()}-${String(ecNow.getMonth() + 1).padStart(2, "0")}`;
       const ecLastMonthDate = new Date(ecNow.getFullYear(), ecNow.getMonth() - 1, 1);
@@ -158,18 +183,12 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
         }
 
         comments = (commentsRes.data || []).map((c: any) => ({
-          id: c.id,
-          content: c.content,
-          created_at: c.created_at,
-          author_name: authorMap[c.author_id] || "—",
-          author_id: c.author_id,
+          id: c.id, content: c.content, created_at: c.created_at,
+          author_name: authorMap[c.author_id] || "—", author_id: c.author_id,
         }));
         activityLog = (logsRes.data || []).map((l: any) => ({
-          id: l.id,
-          event: l.event,
-          payload: l.payload || {},
-          created_at: l.created_at,
-          author_name: authorMap[l.author_id] || "—",
+          id: l.id, event: l.event, payload: l.payload || {},
+          created_at: l.created_at, author_name: authorMap[l.author_id] || "—",
         }));
       }
 
@@ -178,32 +197,23 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
         inicio: dataInicioContrato ?? "",
         fim: dataFimContrato ?? "",
       });
+      setNextContact(nextContactDate ?? "");
+      setQuickNote(quick ?? "");
 
       setData({
-        crmClientId,
-        stage,
-        stageUpdatedAt,
-        valorContrato,
-        dataInicioContrato,
-        dataFimContrato,
+        crmClientId, stage, stageUpdatedAt, valorContrato,
+        dataInicioContrato, dataFimContrato, nextContactDate, quickNote: quick,
         ecommerce: { total_faturamento: ecFat, total_sessoes: ecSes, total_investimento: ecInv, total_pedidos: ecPed, revenue_this_month: ecThis, revenue_last_month: ecLast },
         profile: profileRes.data as any,
         brand: brandRes.data as any,
         diag: diagRes.data as any,
         audits: auditsRes.data || [],
         tasks: (tasksRes.data || []).map((t: any) => ({
-          id: t.id,
-          title: t.title,
-          status: t.status,
-          section: t.section,
-          sprint: t.sprint,
-          due_date: t.due_date,
-          priority: t.priority,
-          is_next_action: t.is_next_action ?? false,
+          id: t.id, title: t.title, status: t.status, section: t.section,
+          sprint: t.sprint, due_date: t.due_date, priority: t.priority, is_next_action: t.is_next_action ?? false,
         })),
-        csName,
-        comments,
-        activityLog,
+        csTasks: csTasksRes.data || [],
+        csName, comments, activityLog,
       });
     } catch (err) {
       console.error("CRM drawer error:", err);
@@ -219,10 +229,8 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
     const oldStage = data.stage;
 
     const { data: upserted, error } = await (supabase as any).from("crm_clients").upsert({
-      user_id: userId,
-      stage: newStage,
-      stage_updated_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      user_id: userId, stage: newStage,
+      stage_updated_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     }, { onConflict: "user_id" }).select("id").single();
 
     if (error) {
@@ -232,20 +240,16 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
     }
 
     const crmId = upserted?.id || data.crmClientId;
-
     if (crmId) {
       await (supabase as any).from("crm_activity_log").insert({
-        crm_client_id: crmId,
-        author_id: user?.id,
-        event: "stage_changed",
-        payload: { from: oldStage, to: newStage },
+        crm_client_id: crmId, author_id: user?.id,
+        event: "stage_changed", payload: { from: oldStage, to: newStage },
       });
     }
 
     setSavingStage(false);
     toast({ title: "Etapa atualizada" });
     onStageChange(userId, newStage);
-    // Reload to refresh activity log
     loadData(userId);
   };
 
@@ -256,34 +260,23 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
     let crmId = data?.crmClientId;
     if (!crmId) {
       const { data: upserted } = await (supabase as any).from("crm_clients").upsert({
-        user_id: userId,
-        stage: data?.stage || "onboarding",
-        stage_updated_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        user_id: userId, stage: data?.stage || "onboarding",
+        stage_updated_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       }, { onConflict: "user_id" }).select("id").single();
       crmId = upserted?.id;
     }
 
-    if (!crmId) {
-      toast({ title: "Erro ao enviar comentário", variant: "destructive" });
-      setSendingComment(false);
-      return;
-    }
+    if (!crmId) { toast({ title: "Erro ao enviar comentário", variant: "destructive" }); setSendingComment(false); return; }
 
     const { error } = await (supabase as any).from("crm_comments").insert({
-      crm_client_id: crmId,
-      author_id: user?.id,
-      content: comment.trim(),
+      crm_client_id: crmId, author_id: user?.id, content: comment.trim(),
     });
 
     if (error) {
       toast({ title: "Erro ao enviar comentário", description: error.message, variant: "destructive" });
     } else {
       await (supabase as any).from("crm_activity_log").insert({
-        crm_client_id: crmId,
-        author_id: user?.id,
-        event: "commented",
-        payload: {},
+        crm_client_id: crmId, author_id: user?.id, event: "commented", payload: {},
       });
       setComment("");
       loadData(userId);
@@ -316,17 +309,93 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
       toast({ title: "Erro ao salvar contrato", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Dados do contrato salvos" });
-      setData(d => d ? {
-        ...d,
-        valorContrato: contractDraft.valor ? parseFloat(contractDraft.valor) : null,
-        dataInicioContrato: contractDraft.inicio || null,
-        dataFimContrato: contractDraft.fim || null,
-      } : d);
+      setData(d => d ? { ...d, valorContrato: contractDraft.valor ? parseFloat(contractDraft.valor) : null, dataInicioContrato: contractDraft.inicio || null, dataFimContrato: contractDraft.fim || null } : d);
     }
   };
 
+  const handleSaveQuick = async () => {
+    if (!userId) return;
+    setSavingQuick(true);
+
+    let crmId = data?.crmClientId;
+    if (!crmId) {
+      const { data: upserted } = await (supabase as any).from("crm_clients").upsert({
+        user_id: userId, stage: data?.stage || "onboarding",
+        stage_updated_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" }).select("id").single();
+      crmId = upserted?.id;
+    }
+
+    const { error } = await (supabase as any).from("crm_clients").update({
+      next_contact_date: nextContact || null,
+      quick_note: quickNote || null,
+      updated_at: new Date().toISOString(),
+    }).eq("user_id", userId);
+
+    setSavingQuick(false);
+    if (error) {
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Informações salvas" });
+      setData(d => d ? { ...d, nextContactDate: nextContact || null, quickNote: quickNote || null } : d);
+    }
+  };
+
+  const handleAddCSTask = async () => {
+    if (!newTaskTitle.trim() || !userId || !user?.id) return;
+    setAddingTask(true);
+
+    const { data: inserted, error } = await (supabase as any).from("cs_tasks").insert({
+      cs_id: user.id,
+      client_user_id: userId,
+      title: newTaskTitle.trim(),
+      due_date: newTaskDue || null,
+    }).select("id, title, due_date, completed_at, cs_id").single();
+
+    setAddingTask(false);
+    if (error) {
+      toast({ title: "Erro ao adicionar tarefa", variant: "destructive" });
+    } else {
+      setNewTaskTitle("");
+      setNewTaskDue("");
+      setData(d => d ? { ...d, csTasks: [...d.csTasks, inserted] } : d);
+    }
+  };
+
+  const handleToggleCSTask = async (taskId: string, currentlyDone: boolean) => {
+    const newValue = currentlyDone ? null : new Date().toISOString();
+    await (supabase as any).from("cs_tasks").update({ completed_at: newValue }).eq("id", taskId);
+    setData(d => d ? {
+      ...d,
+      csTasks: d.csTasks.map(t => t.id === taskId ? { ...t, completed_at: newValue } : t),
+    } : d);
+  };
+
+  const handleDeleteCSTask = async (taskId: string) => {
+    await (supabase as any).from("cs_tasks").delete().eq("id", taskId);
+    setData(d => d ? { ...d, csTasks: d.csTasks.filter(t => t.id !== taskId) } : d);
+  };
+
+  // Compute health score for drawer header
+  const healthScore = data ? computeHealthScore({
+    lastLoginDaysAgo: data.profile?.last_login_at ? Math.floor((Date.now() - new Date(data.profile.last_login_at).getTime()) / 86400000) : null,
+    completedTasks: data.tasks.filter(t => t.status === "concluida").length,
+    totalTasks: data.tasks.filter(t => t.status !== "cancelada").length,
+    sparkline: data.audits.slice(0, 4).reverse().map(a => a.faturamento),
+    stage: data.stage,
+  }) : 0;
+
   const stageInfo = CRM_STAGES.find(s => s.id === (data?.stage || "onboarding")) || CRM_STAGES[0];
   const today = new Date().toISOString().split("T")[0];
+
+  // Build timeline items (comments + activity + cs_tasks completions)
+  const timelineItems = data ? [
+    ...data.comments.map(c => ({ id: c.id, type: "comment" as const, date: c.created_at, author: c.author_name, content: c.content, payload: null })),
+    ...data.activityLog.map(l => ({ id: l.id, type: "log" as const, date: l.created_at, author: l.author_name, content: "", payload: l.payload, event: l.event })),
+    ...data.csTasks
+      .filter(t => t.completed_at)
+      .map(t => ({ id: `cs-done-${t.id}`, type: "cs_task_done" as const, date: t.completed_at!, author: "CS", content: t.title, payload: null })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) : [];
 
   return (
     <Sheet open={open} onOpenChange={v => !v && onClose()}>
@@ -340,7 +409,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
             {/* Header */}
             <div className="p-5 border-b shrink-0">
               <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   {data.brand?.name ? (
                     <div className="flex items-center gap-2 mb-1">
                       {data.brand.website_url && (
@@ -374,31 +443,34 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                   )}
                 </div>
 
-                {/* Stage selector */}
-                <div className="shrink-0 text-right">
-                  <Select value={data.stage} onValueChange={handleStageChange} disabled={savingStage}>
-                    <SelectTrigger className={`h-8 text-xs font-semibold border-0 shadow-none ${stageInfo.bg} ${stageInfo.text} min-w-[110px]`}>
-                      <div className="flex items-center gap-1.5">
-                        <span className={`h-2 w-2 rounded-full shrink-0 ${stageInfo.dot}`} />
-                        <SelectValue />
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CRM_STAGES.map(s => (
-                        <SelectItem key={s.id} value={s.id} className="text-xs">
-                          <span className="flex items-center gap-1.5">
-                            <span className={`h-2 w-2 rounded-full shrink-0 ${s.dot}`} />
-                            {s.label}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {data.stageUpdatedAt && (
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {daysAgo(data.stageUpdatedAt)}d nesta etapa
-                    </p>
-                  )}
+                <div className="flex items-start gap-2 shrink-0">
+                  <HealthScoreBadge score={healthScore} size="md" />
+                  {/* Stage selector */}
+                  <div className="text-right">
+                    <Select value={data.stage} onValueChange={handleStageChange} disabled={savingStage}>
+                      <SelectTrigger className={`h-8 text-xs font-semibold border-0 shadow-none ${stageInfo.bg} ${stageInfo.text} min-w-[110px]`}>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`h-2 w-2 rounded-full shrink-0 ${stageInfo.dot}`} />
+                          <SelectValue />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CRM_STAGES.map(s => (
+                          <SelectItem key={s.id} value={s.id} className="text-xs">
+                            <span className="flex items-center gap-1.5">
+                              <span className={`h-2 w-2 rounded-full shrink-0 ${s.dot}`} />
+                              {s.label}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {data.stageUpdatedAt && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {daysAgo(data.stageUpdatedAt)}d nesta etapa
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -421,6 +493,11 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                   <span className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     Desde {formatDate(data.profile.created_at)}
+                  </span>
+                )}
+                {data.profile?.last_login_at && (
+                  <span className="flex items-center gap-1">
+                    Último acesso: {daysAgo(data.profile.last_login_at)}d atrás
                   </span>
                 )}
                 {data.profile?.access_expires_at && (
@@ -486,6 +563,44 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                     </div>
                   )}
 
+                  {/* Quick fields: next contact + note */}
+                  <div className="rounded-lg border p-4 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5" />
+                      Próximo Contato & Nota Rápida
+                    </p>
+                    <div className="space-y-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Próximo Contato</Label>
+                        <Input
+                          type="date"
+                          value={nextContact}
+                          onChange={e => setNextContact(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs flex items-center gap-1">
+                          <StickyNote className="h-3 w-3" />
+                          Nota Rápida
+                        </Label>
+                        <Textarea
+                          value={quickNote}
+                          onChange={e => setQuickNote(e.target.value)}
+                          placeholder="Observação rápida sobre este cliente..."
+                          rows={2}
+                          className="text-sm resize-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button size="sm" variant="outline" onClick={handleSaveQuick} disabled={savingQuick}>
+                        {savingQuick ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                        Salvar
+                      </Button>
+                    </div>
+                  </div>
+
                   {/* Contract fields */}
                   <div className="rounded-lg border p-4 space-y-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
@@ -505,21 +620,11 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs">Início do contrato</Label>
-                        <Input
-                          type="date"
-                          value={contractDraft.inicio}
-                          onChange={e => setContractDraft(d => ({ ...d, inicio: e.target.value }))}
-                          className="h-8 text-sm"
-                        />
+                        <Input type="date" value={contractDraft.inicio} onChange={e => setContractDraft(d => ({ ...d, inicio: e.target.value }))} className="h-8 text-sm" />
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs">Fim / encerramento</Label>
-                        <Input
-                          type="date"
-                          value={contractDraft.fim}
-                          onChange={e => setContractDraft(d => ({ ...d, fim: e.target.value }))}
-                          className="h-8 text-sm"
-                        />
+                        <Input type="date" value={contractDraft.fim} onChange={e => setContractDraft(d => ({ ...d, fim: e.target.value }))} className="h-8 text-sm" />
                       </div>
                     </div>
                     <div className="flex justify-end">
@@ -546,20 +651,12 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                     </div>
                   </div>
 
-                  {/* Latest vs initial growth */}
                   {data.audits.length > 0 && data.diag?.faturamento_inicial && data.audits[0].faturamento && (() => {
                     const pct = ((data.audits[0].faturamento - data.diag!.faturamento_inicial!) / data.diag!.faturamento_inicial!) * 100;
-                    const isGrowing = pct > 5;
-                    const isDeclining = pct < -5;
+                    const isGrowing = pct > 5; const isDeclining = pct < -5;
                     return (
                       <div className={`flex items-center gap-3 rounded-lg p-3 ${isGrowing ? "bg-green-50 dark:bg-green-950/30" : isDeclining ? "bg-red-50 dark:bg-red-950/30" : "bg-muted/30"}`}>
-                        {isGrowing ? (
-                          <TrendingUp className="h-5 w-5 text-green-600 shrink-0" />
-                        ) : isDeclining ? (
-                          <TrendingDown className="h-5 w-5 text-red-600 shrink-0" />
-                        ) : (
-                          <Minus className="h-5 w-5 text-muted-foreground shrink-0" />
-                        )}
+                        {isGrowing ? <TrendingUp className="h-5 w-5 text-green-600 shrink-0" /> : isDeclining ? <TrendingDown className="h-5 w-5 text-red-600 shrink-0" /> : <Minus className="h-5 w-5 text-muted-foreground shrink-0" />}
                         <div>
                           <p className="text-xs text-muted-foreground">Último vs. Inicial</p>
                           <p className={`text-sm font-bold ${isGrowing ? "text-green-600" : isDeclining ? "text-red-600" : ""}`}>
@@ -627,19 +724,11 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                           </div>
                         ))}
                       </div>
-
                       <div className="space-y-1">
                         {data.tasks.map(task => {
                           const isOverdue = task.due_date && task.due_date < today && task.status !== "concluida" && task.status !== "cancelada";
                           return (
-                            <div
-                              key={task.id}
-                              className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
-                                task.status === "concluida"
-                                  ? "bg-muted/20 text-muted-foreground"
-                                  : "bg-background border"
-                              }`}
-                            >
+                            <div key={task.id} className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${task.status === "concluida" ? "bg-muted/20 text-muted-foreground" : "bg-background border"}`}>
                               {task.status === "concluida" ? (
                                 <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
                               ) : task.is_next_action ? (
@@ -647,17 +736,11 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                               ) : (
                                 <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${task.status === "em_andamento" ? "bg-blue-500" : "bg-muted-foreground/30"}`} />
                               )}
-                              <span className={`flex-1 truncate ${task.status === "concluida" ? "line-through" : ""}`}>
-                                {task.title}
-                              </span>
+                              <span className={`flex-1 truncate ${task.status === "concluida" ? "line-through" : ""}`}>{task.title}</span>
                               {task.sprint !== null && task.sprint !== undefined && (
-                                <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded shrink-0 text-muted-foreground">
-                                  S{task.sprint}
-                                </span>
+                                <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded shrink-0 text-muted-foreground">S{task.sprint}</span>
                               )}
-                              {isOverdue && (
-                                <span className="text-[10px] text-destructive font-medium shrink-0">Atrasada</span>
-                              )}
+                              {isOverdue && <span className="text-[10px] text-destructive font-medium shrink-0">Atrasada</span>}
                             </div>
                           );
                         })}
@@ -697,9 +780,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                         {isUp ? <TrendingUp className="h-4 w-4 text-green-600 shrink-0" /> : <TrendingDown className="h-4 w-4 text-red-600 shrink-0" />}
                         <div>
                           <p className="text-xs text-muted-foreground">Variação mês atual vs. anterior</p>
-                          <p className={`text-sm font-bold ${isUp ? "text-green-600" : "text-red-600"}`}>
-                            {pct > 0 ? "+" : ""}{pct.toFixed(1)}%
-                          </p>
+                          <p className={`text-sm font-bold ${isUp ? "text-green-600" : "text-red-600"}`}>{pct > 0 ? "+" : ""}{pct.toFixed(1)}%</p>
                         </div>
                       </div>
                     );
@@ -713,6 +794,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
 
                 {/* Atividade */}
                 <TabsContent value="activity" className="p-5 mt-0 space-y-4">
+                  {/* Comment input */}
                   <div className="space-y-2">
                     <Textarea
                       value={comment}
@@ -720,62 +802,126 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                       placeholder="Adicionar comentário interno..."
                       rows={3}
                       className="text-sm resize-none"
-                      onKeyDown={e => {
-                        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSendComment();
-                      }}
+                      onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSendComment(); }}
                     />
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-muted-foreground">Cmd+Enter para enviar</span>
                       <Button size="sm" onClick={handleSendComment} disabled={sendingComment || !comment.trim()}>
-                        {sendingComment ? (
-                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                        ) : (
-                          <Send className="h-3.5 w-3.5 mr-1.5" />
-                        )}
+                        {sendingComment ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
                         Comentar
                       </Button>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    {[
-                      ...data.comments.map(c => ({ ...c, type: "comment" as const })),
-                      ...data.activityLog.map(l => ({ ...l, content: "", type: "log" as const })),
-                    ]
-                      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                      .map(item => (
-                        <div
-                          key={item.id}
-                          className={`rounded-lg p-3 ${item.type === "comment" ? "bg-muted/40 border" : "bg-muted/15"}`}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-medium">{item.author_name}</span>
-                            <span className="text-[10px] text-muted-foreground">
-                              {new Date(item.created_at).toLocaleDateString("pt-BR", {
-                                day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
-                              })}
-                            </span>
-                          </div>
-                          {item.type === "comment" ? (
-                            <p className="text-sm whitespace-pre-wrap">{item.content}</p>
-                          ) : (
-                            <p className="text-xs text-muted-foreground italic">
-                              {(item as any).event === "stage_changed"
-                                ? `Etapa: ${CRM_STAGES.find(s => s.id === (item as any).payload?.from)?.label || (item as any).payload?.from} → ${CRM_STAGES.find(s => s.id === (item as any).payload?.to)?.label || (item as any).payload?.to}`
-                                : (item as any).event === "created"
-                                ? "Cliente adicionado ao CRM"
-                                : (item as any).event === "commented"
-                                ? "Adicionou um comentário"
-                                : (item as any).event}
-                            </p>
-                          )}
-                        </div>
-                      ))}
+                  {/* CS Tasks section */}
+                  <div className="rounded-lg border p-4 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Tarefas do CS
+                    </p>
 
-                    {data.comments.length === 0 && data.activityLog.length === 0 && (
-                      <p className="text-center text-sm text-muted-foreground py-6">
-                        Nenhuma atividade ainda
-                      </p>
+                    {data.csTasks.length > 0 && (
+                      <div className="space-y-1.5">
+                        {data.csTasks.map(task => (
+                          <div key={task.id} className="flex items-center gap-2 group">
+                            <Checkbox
+                              checked={!!task.completed_at}
+                              onCheckedChange={() => handleToggleCSTask(task.id, !!task.completed_at)}
+                              className="shrink-0"
+                            />
+                            <span className={`flex-1 text-sm truncate ${task.completed_at ? "line-through text-muted-foreground" : ""}`}>
+                              {task.title}
+                            </span>
+                            {task.due_date && (
+                              <span className={`text-[10px] shrink-0 ${task.due_date < today && !task.completed_at ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                                {new Date(task.due_date + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                              </span>
+                            )}
+                            <button
+                              onClick={() => handleDeleteCSTask(task.id)}
+                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive shrink-0 transition-opacity"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add task */}
+                    <div className="flex gap-2">
+                      <Input
+                        value={newTaskTitle}
+                        onChange={e => setNewTaskTitle(e.target.value)}
+                        placeholder="Nova tarefa..."
+                        className="h-7 text-xs flex-1"
+                        onKeyDown={e => { if (e.key === "Enter") handleAddCSTask(); }}
+                      />
+                      <Input
+                        type="date"
+                        value={newTaskDue}
+                        onChange={e => setNewTaskDue(e.target.value)}
+                        className="h-7 text-xs w-32"
+                      />
+                      <Button size="sm" className="h-7 px-2" onClick={handleAddCSTask} disabled={addingTask || !newTaskTitle.trim()}>
+                        {addingTask ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Timeline */}
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-1.5">
+                      <GitBranch className="h-3.5 w-3.5" />
+                      Histórico
+                    </p>
+
+                    {timelineItems.length === 0 ? (
+                      <p className="text-center text-sm text-muted-foreground py-6">Nenhuma atividade ainda</p>
+                    ) : (
+                      <div className="relative pl-5">
+                        <div className="absolute left-2 top-0 bottom-0 w-px bg-border" />
+                        <div className="space-y-3">
+                          {timelineItems.map(item => (
+                            <div key={item.id} className="relative">
+                              {/* Dot */}
+                              <div className={`absolute -left-3 top-2 h-3 w-3 rounded-full border-2 border-background ${
+                                item.type === "comment" ? "bg-blue-500" :
+                                item.type === "cs_task_done" ? "bg-green-500" :
+                                "bg-muted-foreground/50"
+                              }`} />
+                              <div className={`rounded-lg p-3 ${item.type === "comment" ? "bg-muted/40 border" : "bg-muted/15"}`}>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-xs font-medium">{item.author}</span>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {new Date(item.date).toLocaleDateString("pt-BR", {
+                                      day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+                                    })}
+                                  </span>
+                                </div>
+                                {item.type === "comment" ? (
+                                  <p className="text-sm whitespace-pre-wrap">{item.content}</p>
+                                ) : item.type === "cs_task_done" ? (
+                                  <p className="text-xs text-muted-foreground italic flex items-center gap-1">
+                                    <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                    Tarefa concluída: {item.content}
+                                  </p>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground italic">
+                                    {(item as any).event === "stage_changed"
+                                      ? `Etapa: ${CRM_STAGES.find(s => s.id === (item as any).payload?.from)?.label || (item as any).payload?.from} → ${CRM_STAGES.find(s => s.id === (item as any).payload?.to)?.label || (item as any).payload?.to}`
+                                      : (item as any).event === "created"
+                                      ? "Cliente adicionado ao CRM"
+                                      : (item as any).event === "commented"
+                                      ? "Adicionou um comentário"
+                                      : (item as any).event}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
                 </TabsContent>
