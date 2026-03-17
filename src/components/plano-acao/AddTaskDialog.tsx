@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -88,18 +88,19 @@ export function AddTaskDialog({
   });
 
   // Reset form when dialog opens/closes or editTask changes
-  useState(() => {
+  useEffect(() => {
     if (open) {
       form.reset({
         title: editTask?.title || "",
         description: editTask?.description || "",
         section: editTask?.section || defaultSection || "",
         priority: editTask?.priority || undefined,
+        sprint: editTask?.sprint !== null && editTask?.sprint !== undefined ? String(editTask.sprint) : "none",
         start_date: editTask?.start_date ? new Date(editTask.start_date) : undefined,
         due_date: editTask?.due_date ? new Date(editTask.due_date) : undefined,
       });
     }
-  });
+  }, [open]);
 
   const handleSubmit = async (data: FormData) => {
     setLoading(true);
@@ -264,6 +265,7 @@ export function AddTaskDialog({
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
+                            type="button"
                             variant="outline"
                             className={cn(
                               "justify-start text-left font-normal",
@@ -300,6 +302,7 @@ export function AddTaskDialog({
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
+                            type="button"
                             variant="outline"
                             className={cn(
                               "justify-start text-left font-normal",

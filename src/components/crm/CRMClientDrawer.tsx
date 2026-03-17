@@ -22,8 +22,8 @@ import { HealthScoreBadge, computeHealthScore } from "./HealthScoreBadge";
 export const CRM_STAGES = [
   { id: "onboarding",  label: "Onboarding",   dot: "bg-blue-500",    text: "text-blue-600 dark:text-blue-400",    bg: "bg-blue-50 dark:bg-blue-950/30" },
   { id: "engajado",    label: "Engajado",      dot: "bg-green-500",   text: "text-green-600 dark:text-green-400",  bg: "bg-green-50 dark:bg-green-950/30" },
-  { id: "risco",       label: "Risco",         dot: "bg-orange-500",  text: "text-orange-600 dark:text-orange-400", bg: "bg-orange-50 dark:bg-orange-950/30" },
   { id: "alerta",      label: "Alerta",        dot: "bg-red-500",     text: "text-red-600 dark:text-red-400",      bg: "bg-red-50 dark:bg-red-950/30" },
+  { id: "risco",       label: "Risco",         dot: "bg-orange-500",  text: "text-orange-600 dark:text-orange-400", bg: "bg-orange-50 dark:bg-orange-950/30" },
   { id: "congelado",   label: "Congelado",     dot: "bg-slate-400",   text: "text-slate-500 dark:text-slate-400",  bg: "bg-slate-50 dark:bg-slate-900/40" },
   { id: "cancelado",   label: "Cancelado",     dot: "bg-rose-700",    text: "text-rose-700 dark:text-rose-400",    bg: "bg-rose-50 dark:bg-rose-950/30" },
   { id: "reembolsado", label: "Reembolsado",   dot: "bg-purple-500",  text: "text-purple-600 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-950/30" },
@@ -49,6 +49,8 @@ interface CSTask {
   due_date: string | null;
   completed_at: string | null;
   cs_id: string;
+  responsible_id: string | null;
+  responsible_name: string | null;
 }
 
 interface DrawerData {
@@ -96,7 +98,9 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
   // CS Tasks
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDue, setNewTaskDue] = useState("");
+  const [newTaskResponsible, setNewTaskResponsible] = useState("");
   const [addingTask, setAddingTask] = useState(false);
+  const [staffList, setStaffList] = useState<{ user_id: string; name: string }[]>([]);
 
   useEffect(() => {
     if (open && userId) {
@@ -120,7 +124,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
         (supabase as any).from("staff_carteiras").select("staff_id").eq("mentorado_id", uid).maybeSingle(),
         supabase.from("daily_results").select("receita_paga, sessoes, investimento, pedidos_pagos, data").eq("user_id", uid),
         supabase.from("metrics_diarias").select("faturamento, sessoes, investimento_trafego, vendas_quantidade, vendas_valor, data").eq("user_id", uid),
-        (supabase as any).from("cs_tasks").select("id, title, due_date, completed_at, cs_id").eq("client_user_id", uid).order("created_at", { ascending: true }),
+        (supabase as any).from("cs_tasks").select("id, title, due_date, completed_at, cs_id, responsible_id").eq("client_user_id", uid).order("created_at", { ascending: true }),
       ]);
 
       const crmClientId: string | null = crmRes.data?.id ?? null;
@@ -158,6 +162,29 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
       if (csRes.data?.staff_id) {
         const { data: csProfile } = await supabase.from("profiles").select("full_name, email").eq("user_id", csRes.data.staff_id).maybeSingle();
         csName = (csProfile as any)?.full_name || (csProfile as any)?.email || null;
+      }
+
+      // Load staff list for responsible selector
+      const { data: staffRoles } = await (supabase as any)
+        .from("user_roles")
+        .select("user_id")
+        .in("role", ["cs", "tutor", "master", "admin"]);
+      const staffIds = (staffRoles || []).map((r: any) => r.user_id).filter(Boolean);
+      let staffMap: Record<string, string> = {};
+      if (staffIds.length > 0) {
+        const { data: staffProfiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", staffIds);
+        (staffProfiles || []).forEach((p: any) => {
+          staffMap[p.user_id] = p.full_name || p.email || "—";
+        });
+      }
+      setStaffList(Object.entries(staffMap).map(([user_id, name]) => ({ user_id, name })));
+
+      // Resolve responsible names for cs_tasks
+      const rawCsTasks = csTasksRes.data || [];
+      const responsibleIds = [...new Set(rawCsTasks.map((t: any) => t.responsible_id).filter(Boolean))];
+      if (responsibleIds.length > 0) {
+        const { data: rProfiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", responsibleIds);
+        (rProfiles || []).forEach((p: any) => { staffMap[p.user_id] = p.full_name || p.email || "—"; });
       }
 
       let comments: DrawerData["comments"] = [];
@@ -212,7 +239,10 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
           id: t.id, title: t.title, status: t.status, section: t.section,
           sprint: t.sprint, due_date: t.due_date, priority: t.priority, is_next_action: t.is_next_action ?? false,
         })),
-        csTasks: csTasksRes.data || [],
+        csTasks: rawCsTasks.map((t: any) => ({
+          ...t,
+          responsible_name: t.responsible_id ? (staffMap[t.responsible_id] || null) : null,
+        })),
         csName, comments, activityLog,
       });
     } catch (err) {
@@ -350,15 +380,18 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
       client_user_id: userId,
       title: newTaskTitle.trim(),
       due_date: newTaskDue || null,
-    }).select("id, title, due_date, completed_at, cs_id").single();
+      responsible_id: newTaskResponsible || null,
+    }).select("id, title, due_date, completed_at, cs_id, responsible_id").single();
 
     setAddingTask(false);
     if (error) {
       toast({ title: "Erro ao adicionar tarefa", variant: "destructive" });
     } else {
+      const respName = newTaskResponsible ? (staffList.find(s => s.user_id === newTaskResponsible)?.name || null) : null;
       setNewTaskTitle("");
       setNewTaskDue("");
-      setData(d => d ? { ...d, csTasks: [...d.csTasks, inserted] } : d);
+      setNewTaskResponsible("");
+      setData(d => d ? { ...d, csTasks: [...d.csTasks, { ...inserted, responsible_name: respName }] } : d);
     }
   };
 
@@ -829,9 +862,14 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                               onCheckedChange={() => handleToggleCSTask(task.id, !!task.completed_at)}
                               className="shrink-0"
                             />
-                            <span className={`flex-1 text-sm truncate ${task.completed_at ? "line-through text-muted-foreground" : ""}`}>
-                              {task.title}
-                            </span>
+                            <div className="flex-1 min-w-0">
+                              <span className={`text-sm truncate block ${task.completed_at ? "line-through text-muted-foreground" : ""}`}>
+                                {task.title}
+                              </span>
+                              {task.responsible_name && (
+                                <span className="text-[10px] text-primary/80 font-medium">{task.responsible_name}</span>
+                              )}
+                            </div>
                             {task.due_date && (
                               <span className={`text-[10px] shrink-0 ${task.due_date < today && !task.completed_at ? "text-destructive font-medium" : "text-muted-foreground"}`}>
                                 {new Date(task.due_date + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
@@ -849,12 +887,12 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                     )}
 
                     {/* Add task */}
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Input
                         value={newTaskTitle}
                         onChange={e => setNewTaskTitle(e.target.value)}
                         placeholder="Nova tarefa..."
-                        className="h-7 text-xs flex-1"
+                        className="h-7 text-xs flex-1 min-w-[120px]"
                         onKeyDown={e => { if (e.key === "Enter") handleAddCSTask(); }}
                       />
                       <Input
@@ -863,6 +901,19 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                         onChange={e => setNewTaskDue(e.target.value)}
                         className="h-7 text-xs w-32"
                       />
+                      {staffList.length > 0 && (
+                        <Select value={newTaskResponsible} onValueChange={setNewTaskResponsible}>
+                          <SelectTrigger className="h-7 text-xs w-36">
+                            <SelectValue placeholder="Responsável" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Sem responsável</SelectItem>
+                            {staffList.map(s => (
+                              <SelectItem key={s.user_id} value={s.user_id}>{s.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                       <Button size="sm" className="h-7 px-2" onClick={handleAddCSTask} disabled={addingTask || !newTaskTitle.trim()}>
                         {addingTask ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
                       </Button>

@@ -405,8 +405,14 @@ export function DashboardTab({ tasks, userId, canEdit = false }: DashboardTabPro
                 />
                 <Tooltip
                   formatter={(v: number) => [fmt(v), "Faturamento"]}
-                  labelStyle={{ fontSize: 12 }}
-                  contentStyle={{ fontSize: 12 }}
+                  labelStyle={{ fontSize: 12, color: "hsl(var(--foreground))" }}
+                  contentStyle={{
+                    fontSize: 12,
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "6px",
+                    color: "hsl(var(--card-foreground))",
+                  }}
                 />
                 <Area
                   type="monotone"

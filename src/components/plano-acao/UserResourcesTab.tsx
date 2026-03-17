@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,19 @@ import {
   FolderOpen,
   ChevronDown,
   ChevronUp,
+  Search,
+  X,
 } from "lucide-react";
+
+const PANDA_EMBED_BASE = "https://player-vz-75e71015-90c.tv.pandavideo.com.br/embed/?v=";
+
+interface LessonResult {
+  id: string;
+  title: string;
+  panda_video_id: string;
+  module_title: string;
+  course_title: string;
+}
 
 interface Resource {
   id: string;
@@ -56,6 +68,8 @@ function getEmbedUrl(url: string): string | null {
   // Loom
   const loom = url.match(/loom\.com\/share\/([a-f0-9]+)/i);
   if (loom) return `https://www.loom.com/embed/${loom[1]}`;
+  // Panda Video embed URL
+  if (url.includes("pandavideo.com.br/embed")) return url;
   return null;
 }
 
@@ -169,6 +183,53 @@ export function UserResourcesTab({ userId, canEdit = false }: UserResourcesTabPr
 
   const [form, setForm] = useState({ title: "", url: "", type: "video", description: "" });
 
+  // Lesson search state
+  const [lessonSearch, setLessonSearch] = useState("");
+  const [lessonResults, setLessonResults] = useState<LessonResult[]>([]);
+  const [lessonLoading, setLessonLoading] = useState(false);
+  const [selectedLesson, setSelectedLesson] = useState<LessonResult | null>(null);
+  const [lessonDropOpen, setLessonDropOpen] = useState(false);
+  const lessonSearchRef = useRef<HTMLDivElement>(null);
+  const lessonSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (lessonSearchRef.current && !lessonSearchRef.current.contains(e.target as Node)) {
+        setLessonDropOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  useEffect(() => {
+    if (lessonSearch.trim().length < 2) {
+      setLessonResults([]);
+      setLessonDropOpen(false);
+      return;
+    }
+    if (lessonSearchTimer.current) clearTimeout(lessonSearchTimer.current);
+    lessonSearchTimer.current = setTimeout(async () => {
+      setLessonLoading(true);
+      const { data } = await (supabase as any)
+        .from("lessons")
+        .select("id, title, panda_video_id, course_modules(title, courses(title))")
+        .ilike("title", `%${lessonSearch.trim()}%`)
+        .limit(10);
+      setLessonResults(
+        (data || []).map((l: any) => ({
+          id: l.id,
+          title: l.title,
+          panda_video_id: l.panda_video_id,
+          module_title: l.course_modules?.title || "",
+          course_title: l.course_modules?.courses?.title || "",
+        }))
+      );
+      setLessonLoading(false);
+      setLessonDropOpen(true);
+    }, 300);
+  }, [lessonSearch]);
+
   const fetchResources = useCallback(async () => {
     if (!targetId) return;
     setLoading(true);
@@ -201,10 +262,28 @@ export function UserResourcesTab({ userId, canEdit = false }: UserResourcesTabPr
       toast({ title: "Erro ao adicionar recurso", variant: "destructive" });
     } else {
       setForm({ title: "", url: "", type: "video", description: "" });
+      setSelectedLesson(null);
+      setLessonSearch("");
       setDialogOpen(false);
       fetchResources();
       toast({ title: "Recurso adicionado" });
     }
+  };
+
+  const handleSelectLesson = (lesson: LessonResult) => {
+    setSelectedLesson(lesson);
+    setLessonDropOpen(false);
+    setLessonSearch("");
+    setForm(f => ({
+      ...f,
+      title: lesson.title,
+      url: PANDA_EMBED_BASE + lesson.panda_video_id,
+    }));
+  };
+
+  const handleClearLesson = () => {
+    setSelectedLesson(null);
+    setForm(f => ({ ...f, title: "", url: "" }));
   };
 
   const handleDelete = async (id: string) => {
@@ -287,7 +366,7 @@ export function UserResourcesTab({ userId, canEdit = false }: UserResourcesTabPr
         </div>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={open => { setDialogOpen(open); if (!open) { setSelectedLesson(null); setLessonSearch(""); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Adicionar recurso</DialogTitle>
@@ -295,7 +374,7 @@ export function UserResourcesTab({ userId, canEdit = false }: UserResourcesTabPr
           <div className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">Tipo</Label>
-              <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
+              <Select value={form.type} onValueChange={v => { setForm(f => ({ ...f, type: v, title: "", url: "" })); setSelectedLesson(null); setLessonSearch(""); }}>
                 <SelectTrigger className="h-8">
                   <SelectValue />
                 </SelectTrigger>
@@ -305,6 +384,53 @@ export function UserResourcesTab({ userId, canEdit = false }: UserResourcesTabPr
                 </SelectContent>
               </Select>
             </div>
+
+            {form.type === "video" && (
+              <div className="space-y-1">
+                <Label className="text-xs">Buscar aula registrada</Label>
+                {selectedLesson ? (
+                  <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
+                    <BookOpen className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium truncate">{selectedLesson.title}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{selectedLesson.course_title} · {selectedLesson.module_title}</p>
+                    </div>
+                    <button type="button" onClick={handleClearLesson} className="text-muted-foreground hover:text-foreground shrink-0">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div ref={lessonSearchRef} className="relative">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        value={lessonSearch}
+                        onChange={e => setLessonSearch(e.target.value)}
+                        placeholder="Digite o nome da aula..."
+                        className="pl-8 h-8 text-sm"
+                      />
+                      {lessonLoading && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                    </div>
+                    {lessonDropOpen && lessonResults.length > 0 && (
+                      <div className="absolute left-0 top-full mt-1 z-50 w-full rounded-md border bg-popover shadow-lg max-h-52 overflow-y-auto">
+                        {lessonResults.map(l => (
+                          <button
+                            key={l.id}
+                            type="button"
+                            onClick={() => handleSelectLesson(l)}
+                            className="w-full text-left px-3 py-2 hover:bg-accent transition-colors"
+                          >
+                            <p className="text-xs font-medium truncate">{l.title}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{l.course_title} · {l.module_title}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="space-y-1">
               <Label className="text-xs">Título</Label>
               <Input
@@ -316,7 +442,7 @@ export function UserResourcesTab({ userId, canEdit = false }: UserResourcesTabPr
             </div>
             <div className="space-y-1">
               <Label className="text-xs">
-                {form.type === "video" ? "URL do vídeo (YouTube, Vimeo, Loom)" : "Link (Google Drive, etc.)"}
+                {form.type === "video" ? "URL do vídeo (YouTube, Vimeo, Loom ou Panda)" : "Link (Google Drive, etc.)"}
               </Label>
               <Input
                 value={form.url}

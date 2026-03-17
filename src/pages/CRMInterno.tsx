@@ -51,6 +51,11 @@ function CompactCard({ card, onClick }: { card: CRMCardExtended; onClick: () => 
       <p className="text-xs font-semibold truncate flex-1">
         {card.nomeLoja || card.fullName || card.email || "—"}
       </p>
+      {card.csName && (
+        <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-full font-medium truncate max-w-[72px] shrink-0 hidden sm:block">
+          {card.csName.split(" ")[0]}
+        </span>
+      )}
       {card.slaExceeded && (
         <span className="h-2 w-2 rounded-full bg-destructive shrink-0" title="SLA excedido" />
       )}

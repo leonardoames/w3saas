@@ -1,8 +1,10 @@
-import { AlertCircle, ArrowRight, SlidersHorizontal } from "lucide-react";
+import { AlertCircle, ArrowRight, SlidersHorizontal, Search, Users, X, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { format, subDays, parseISO, isWithinInterval, isValid, startOfDay, endOfDay, differenceInCalendarDays } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { useNavigate } from "react-router-dom";
@@ -92,10 +94,104 @@ const DEFAULT_DASHBOARD_PREFERENCES: DashboardPreferences = {
   },
 };
 
+interface ClientOption {
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+}
+
+function ClientSelector({ selected, onSelect, onClear }: {
+  selected: ClientOption | null;
+  onSelect: (c: ClientOption) => void;
+  onClear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [clients, setClients] = useState<ClientOption[]>([]);
+  const [loading, setLoading] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    supabase.rpc("get_dash_admin_mentorado_ids" as any).then(({ data }) => {
+      const ids = (data || []).map((r: any) => r.mentorado_id).filter(Boolean);
+      if (ids.length === 0) { setClients([]); setLoading(false); return; }
+      supabase.from("profiles").select("user_id, full_name, email").in("user_id", ids).order("full_name").then(({ data: profiles }) => {
+        setClients(profiles || []);
+        setLoading(false);
+      });
+    });
+  }, [open]);
+
+  const filtered = clients.filter(c => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return c.full_name?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q);
+  });
+
+  return (
+    <div ref={ref} className="relative">
+      {selected ? (
+        <div className="flex items-center gap-2 bg-primary/10 border border-primary/30 rounded-md px-3 py-1.5">
+          <Users className="h-3.5 w-3.5 text-primary" />
+          <span className="text-sm font-medium text-primary">{selected.full_name || selected.email}</span>
+          <button onClick={onClear} className="ml-1 text-primary/60 hover:text-primary">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ) : (
+        <Button variant="outline" size="sm" className="gap-2 h-8" onClick={() => setOpen(v => !v)}>
+          <Search className="h-3.5 w-3.5" />
+          Selecionar cliente
+          <ChevronDown className="h-3 w-3 text-muted-foreground" />
+        </Button>
+      )}
+      {open && !selected && (
+        <div className="absolute left-0 top-full mt-1 z-50 w-72 rounded-md border bg-popover shadow-lg">
+          <div className="p-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cliente..." className="pl-8 h-8 text-sm" />
+            </div>
+          </div>
+          <div className="max-h-60 overflow-y-auto py-1">
+            {loading ? (
+              <div className="flex justify-center py-4">
+                <div className="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              </div>
+            ) : filtered.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">Nenhum cliente encontrado</p>
+            ) : (
+              filtered.map(c => (
+                <button key={c.user_id} onClick={() => { onSelect(c); setOpen(false); setSearch(""); }} className="w-full text-left px-3 py-2 hover:bg-accent text-sm transition-colors">
+                  <p className="font-medium leading-tight">{c.full_name || "Sem nome"}</p>
+                  <p className="text-xs text-muted-foreground">{c.email}</p>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { isAdmin, hasRole } = useAuth();
+  const isStaff = isAdmin || hasRole("master") || hasRole("tutor") || hasRole("cs");
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedClient, setSelectedClient] = useState<ClientOption | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [allData, setAllData] = useState<DailyRow[]>([]);
   const [allMetricsRaw, setAllMetricsRaw] = useState<any[]>([]);
@@ -114,8 +210,11 @@ export default function Dashboard() {
     });
   }, []);
 
+  const viewUserId = isStaff && selectedClient ? selectedClient.user_id : user?.id;
+
   const loadData = useCallback(async () => {
     if (!user) return;
+    const targetId = isStaff && selectedClient ? selectedClient.user_id : user.id;
     setDataLoading(true);
     const last90 = subDays(new Date(), 90);
     const last90Str = format(last90, "yyyy-MM-dd");
@@ -124,13 +223,13 @@ export default function Dashboard() {
       supabase
         .from("daily_results" as any)
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", targetId)
         .gte("data", last90Str)
         .order("data", { ascending: true }),
       supabase
         .from("metrics_diarias")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", targetId)
         .gte("data", last90Str)
         .order("data", { ascending: true }),
     ]);
@@ -163,11 +262,11 @@ export default function Dashboard() {
     const merged = Object.values(dateMap).sort((a, b) => a.data.localeCompare(b.data));
     setAllData(merged);
     setDataLoading(false);
-  }, [user]);
+  }, [user, isStaff, selectedClient]);
 
   useEffect(() => {
     if (user) loadData();
-  }, [user, loadData]);
+  }, [user, loadData, selectedClient]);
 
   const prefSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prefInitialized = useRef(false);
@@ -450,9 +549,20 @@ export default function Dashboard() {
   return (
     <div className="space-y-3">
       {/* Header */}
-      <div>
-        <h1 className="page-title">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Visão consolidada dos seus resultados</p>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {selectedClient ? `Visualizando: ${selectedClient.full_name || selectedClient.email}` : "Visão consolidada dos seus resultados"}
+          </p>
+        </div>
+        {isStaff && (
+          <ClientSelector
+            selected={selectedClient}
+            onSelect={c => setSelectedClient(c)}
+            onClear={() => setSelectedClient(null)}
+          />
+        )}
       </div>
 
       {/* Period Filter */}
@@ -507,7 +617,7 @@ export default function Dashboard() {
 
       {/* Revenue Goal + Projection */}
       {preferences.widgets.goal && (dataLoading ? <GoalSkeleton /> : (
-        <RevenueHeroCard currentRevenue={faturamento} previousRevenue={prevFat} userId={user.id} onGoalLoaded={handleGoalLoaded} />
+        <RevenueHeroCard currentRevenue={faturamento} previousRevenue={prevFat} userId={viewUserId || user.id} onGoalLoaded={handleGoalLoaded} />
       ))}
 
       {/* KPIs Row 1: Primary */}
