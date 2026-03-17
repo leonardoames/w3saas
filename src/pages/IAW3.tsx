@@ -35,22 +35,53 @@ const MODES: Mode[] = [
   { id: "roteiro-influencer", label: "Influencer", icon: <Video className="h-4 w-4" />, description: "Roteiro storytelling em dias" },
 ];
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+
 export default function IAW3() {
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingContent, setStreamingContent] = useState("");
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
   const [attachedImages, setAttachedImages] = useState<{ file: File; preview: string }[]>([]);
+  const [user, setUser] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  // Load user
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+  }, []);
+
+  // Load conversation history when user or mode changes
+  useEffect(() => {
+    if (!user) return;
+    const modeKey = selectedMode ?? "default";
+    supabase
+      .from("ia_conversations" as any)
+      .select("messages")
+      .eq("user_id", user.id)
+      .eq("mode", modeKey)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.messages && Array.isArray(data.messages)) {
+          setChatHistory(data.messages as ChatMessage[]);
+        } else {
+          setChatHistory([]);
+        }
+      });
+    setFollowUpQuestions([]);
+  }, [user?.id, selectedMode]);
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatHistory]);
+  }, [chatHistory, streamingContent]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -59,6 +90,17 @@ export default function IAW3() {
       inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 200) + "px";
     }
   }, [prompt]);
+
+  const saveConversation = async (history: ChatMessage[]) => {
+    if (!user) return;
+    const modeKey = selectedMode ?? "default";
+    await supabase.from("ia_conversations" as any).upsert({
+      user_id: user.id,
+      mode: modeKey,
+      messages: history,
+      updated_at: new Date().toISOString(),
+    } as any, { onConflict: "user_id,mode" });
+  };
 
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -111,7 +153,7 @@ export default function IAW3() {
 
   const handleGenerate = async (customPrompt?: string) => {
     const messageToSend = customPrompt || prompt;
-    
+
     if (!messageToSend.trim() && attachedImages.length === 0) {
       toast({
         title: "Campo vazio",
@@ -145,38 +187,91 @@ export default function IAW3() {
     const updatedHistory = [...chatHistory, newUserMessage];
     setChatHistory(updatedHistory);
     setPrompt("");
-    // Clean up previews
     attachedImages.forEach(img => URL.revokeObjectURL(img.preview));
     setAttachedImages([]);
 
     try {
-      const { data, error } = await supabase.functions.invoke("ia-w3", {
-        body: {
+      // Get auth token for direct fetch
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Sessão expirada. Faça login novamente.");
+
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/ia-w3`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+          "apikey": SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
           userMessage: newUserMessage.content,
           mode: selectedMode,
-          chatHistory: chatHistory,
+          chatHistory: chatHistory.slice(-50),
           images: imageBase64s.length > 0 ? imageBase64s : undefined,
-        },
+        }),
       });
 
-      if (error) {
-        console.error("Edge function error:", error);
-        throw new Error(error.message || "Erro ao chamar a IA");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Erro ${response.status}`);
       }
 
-      if (data?.error) {
-        throw new Error(data.error);
+      // SSE streaming
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let accumulatedContent = "";
+      let followUps: string[] = [];
+
+      setIsStreaming(true);
+      setStreamingContent("");
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.chunk) {
+              accumulatedContent += parsed.chunk;
+              setStreamingContent(accumulatedContent);
+            }
+            if (parsed.followup) {
+              followUps = parsed.followup;
+            }
+            if (parsed.error) {
+              throw new Error(parsed.error);
+            }
+          } catch (parseErr: any) {
+            if (parseErr?.message && !parseErr.message.includes("JSON")) throw parseErr;
+          }
+        }
       }
 
-      const assistantMessage: ChatMessage = { role: "assistant", content: data.answerHtml };
-      setChatHistory([...updatedHistory, assistantMessage].slice(-20));
-      setFollowUpQuestions(data.followUpQuestions || []);
+      setIsStreaming(false);
+      setStreamingContent("");
+
+      const assistantMessage: ChatMessage = { role: "assistant", content: accumulatedContent };
+      const newHistory = [...updatedHistory, assistantMessage].slice(-50);
+      setChatHistory(newHistory);
+      setFollowUpQuestions(followUps);
+
+      // Persist to DB
+      await saveConversation(newHistory);
+
     } catch (error) {
       console.error("Error generating content:", error);
-      
-      // Remove the user message if there was an error
+      setIsStreaming(false);
+      setStreamingContent("");
       setChatHistory(chatHistory);
-      
+
       let errorMessage = "Erro ao gerar conteúdo. Tente novamente.";
       if (error instanceof Error) {
         if (error.message.includes("429") || error.message.includes("Limite")) {
@@ -187,7 +282,7 @@ export default function IAW3() {
           errorMessage = error.message;
         }
       }
-      
+
       toast({
         title: "Erro",
         description: errorMessage,
@@ -210,7 +305,15 @@ export default function IAW3() {
     handleGenerate(question);
   };
 
-  const handleClearHistory = () => {
+  const handleClearHistory = async () => {
+    if (user) {
+      const modeKey = selectedMode ?? "default";
+      await supabase
+        .from("ia_conversations" as any)
+        .delete()
+        .eq("user_id", user.id)
+        .eq("mode", modeKey);
+    }
     setChatHistory([]);
     setFollowUpQuestions([]);
     toast({
@@ -227,9 +330,6 @@ export default function IAW3() {
   };
 
   const selectedModeData = MODES.find(m => m.id === selectedMode);
-
-
-
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)]">
@@ -259,7 +359,7 @@ export default function IAW3() {
 
       {/* Chat messages area */}
       <div className="flex-1 overflow-y-auto px-4 py-6">
-        {chatHistory.length === 0 ? (
+        {chatHistory.length === 0 && !isStreaming ? (
           // Empty state - welcome screen
           <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto text-center space-y-6">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
@@ -273,7 +373,7 @@ export default function IAW3() {
                 Assistente de performance para e-commerce: diagnóstico, copy, SEO e muito mais
               </p>
             </div>
-            
+
             {/* Mode suggestions */}
             <div className="flex flex-wrap justify-center gap-2 pt-4">
               {MODES.map((mode) => (
@@ -320,7 +420,7 @@ export default function IAW3() {
                         : "w-full max-w-full"
                   )}
                 >
-                {message.role === "user" ? (
+                  {message.role === "user" ? (
                     <div>
                       {message.images && message.images.length > 0 && (
                         <div className="flex flex-wrap gap-2 mb-2">
@@ -344,9 +444,33 @@ export default function IAW3() {
                 </div>
               </div>
             ))}
-            
-            {/* Loading indicator */}
-            {isGenerating && (
+
+            {/* Streaming message */}
+            {isStreaming && (
+              <div className="flex gap-4 py-4 justify-start border-b border-border/30">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+                </div>
+                <div className="w-full max-w-full">
+                  {streamingContent ? (
+                    hasHtmlContent(streamingContent) ? (
+                      <HtmlPreviewMessage content={streamingContent} />
+                    ) : (
+                      <AiMessage content={streamingContent + " ▋"} onCopy={() => {}} />
+                    )
+                  ) : (
+                    <div className="flex items-center gap-1.5 pt-2.5">
+                      <span className="ai-loading-dot" />
+                      <span className="ai-loading-dot" />
+                      <span className="ai-loading-dot" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Loading indicator (before stream starts) */}
+            {isGenerating && !isStreaming && (
               <div className="flex gap-4 items-start">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                   <Sparkles className="h-4 w-4 text-primary" />
@@ -375,7 +499,7 @@ export default function IAW3() {
                 ))}
               </div>
             )}
-            
+
             <div ref={messagesEndRef} />
           </div>
         )}

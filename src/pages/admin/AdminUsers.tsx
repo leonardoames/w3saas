@@ -106,6 +106,11 @@ export default function AdminUsers() {
   const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
 
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false);
+
   const [planoUser, setPlanoUser] = useState<UserProfile | null>(null);
   const [actionsDialog, setActionsDialog] = useState<{ open: boolean; user: UserProfile | null }>({ open: false, user: null });
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; user: UserProfile | null }>({ open: false, user: null });
@@ -235,6 +240,47 @@ export default function AdminUsers() {
       toast({ title: "Erro ao criar usuário", description: error.message, variant: "destructive" });
     } finally {
       setAddingUser(false);
+    }
+  };
+
+  const handleBulkAction = async (action: "active" | "suspended" | "add_w3" | "add_ames") => {
+    setBulkLoading(true);
+    try {
+      const ids = Array.from(selectedIds);
+      await Promise.all(ids.map((userId) => {
+        switch (action) {
+          case "active":
+          case "suspended":
+            return supabase.rpc("admin_update_user_status", { target_user_id: userId, new_status: action });
+          case "add_w3":
+            return supabase.rpc("admin_set_client_role" as any, { target_user_id: userId, p_role: "cliente_w3", p_grant: true });
+          case "add_ames":
+            return supabase.rpc("admin_set_client_role" as any, { target_user_id: userId, p_role: "cliente_ames", p_grant: true });
+        }
+      }));
+      await fetchUsers();
+      setSelectedIds(new Set());
+      toast({ title: `${ids.length} usuário(s) atualizado(s)` });
+    } catch (error: any) {
+      toast({ title: "Erro na operação em massa", description: error.message, variant: "destructive" });
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setBulkLoading(true);
+    try {
+      const ids = Array.from(selectedIds);
+      await Promise.all(ids.map((userId) => supabase.rpc("admin_delete_user", { target_user_id: userId })));
+      await fetchUsers();
+      setSelectedIds(new Set());
+      setBulkDeleteDialog(false);
+      toast({ title: `${ids.length} usuário(s) excluído(s)` });
+    } catch (error: any) {
+      toast({ title: "Erro ao excluir usuários", description: error.message, variant: "destructive" });
+    } finally {
+      setBulkLoading(false);
     }
   };
 
@@ -385,6 +431,18 @@ export default function AdminUsers() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[40px]">
+                        <Checkbox
+                          checked={sortedUsers.length > 0 && sortedUsers.every(u => selectedIds.has(u.user_id))}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedIds(new Set(sortedUsers.map(u => u.user_id)));
+                            } else {
+                              setSelectedIds(new Set());
+                            }
+                          }}
+                        />
+                      </TableHead>
                       <TableHead className="min-w-[180px]">
                         <button type="button" onClick={() => toggleSort("full_name")} className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
                           Usuário {sortIcon("full_name")}
@@ -416,6 +474,19 @@ export default function AdminUsers() {
                   <TableBody>
                     {sortedUsers.map((user) => (
                       <TableRow key={user.id} className="cursor-pointer hover:bg-accent/40" onClick={() => setActionsDialog({ open: true, user })}>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedIds.has(user.user_id)}
+                            onCheckedChange={(checked) => {
+                              setSelectedIds(prev => {
+                                const next = new Set(prev);
+                                if (checked) next.add(user.user_id);
+                                else next.delete(user.user_id);
+                                return next;
+                              });
+                            }}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <div>
@@ -446,7 +517,7 @@ export default function AdminUsers() {
                     ))}
                     {filteredUsers.length === 0 && !loading && (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                           Nenhum usuário encontrado
                         </TableCell>
                       </TableRow>
@@ -564,6 +635,61 @@ export default function AdminUsers() {
       </AlertDialog>
 
       <BulkUserImportDialog open={bulkImportDialog} onOpenChange={setBulkImportDialog} onSuccess={fetchUsers} />
+
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm px-4 py-3 shadow-lg">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">{selectedIds.size} usuário(s) selecionado(s)</span>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())} className="h-7 text-xs">
+                Limpar seleção
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={() => handleBulkAction("active")} disabled={bulkLoading} className="h-8">
+                {bulkLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />}
+                Ativar
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => handleBulkAction("suspended")} disabled={bulkLoading} className="h-8">
+                {bulkLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <UserX className="h-3 w-3 mr-1" />}
+                Suspender
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => handleBulkAction("add_w3")} disabled={bulkLoading} className="h-8">
+                <ShoppingBag className="h-3 w-3 mr-1" />
+                Add Cliente W3
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => handleBulkAction("add_ames")} disabled={bulkLoading} className="h-8">
+                <GraduationCap className="h-3 w-3 mr-1" />
+                Add Cliente AMES
+              </Button>
+              <Button size="sm" variant="destructive" onClick={() => setBulkDeleteDialog(true)} disabled={bulkLoading} className="h-8">
+                <Trash2 className="h-3 w-3 mr-1" />
+                Excluir
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Dialog */}
+      <AlertDialog open={bulkDeleteDialog} onOpenChange={setBulkDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir {selectedIds.size} usuário(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Os {selectedIds.size} usuários selecionados serão removidos permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {bulkLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Excluir todos
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }

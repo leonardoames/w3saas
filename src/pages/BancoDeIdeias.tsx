@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Lightbulb, Plus, List, Columns3 } from "lucide-react";
+import { Lightbulb, Plus, List, Columns3, ChevronDown, ChevronUp, Camera, LayoutKanban, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -61,6 +61,14 @@ export default function BancoDeIdeias() {
   const [view, setView] = useState<"list" | "kanban">("list");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingIdea, setEditingIdea] = useState<Idea | null>(null);
+  const [tipsOpen, setTipsOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem("banco_ideias_tips_collapsed");
+      return saved === null ? true : saved !== "true";
+    } catch {
+      return true;
+    }
+  });
 
   // Filters
   const [search, setSearch] = useState("");
@@ -73,6 +81,14 @@ export default function BancoDeIdeias() {
 
   const hasFilters = !!(search || filterType !== "todos" || filterChannel !== "todos" || filterObjective !== "todos" || filterPriority !== "todos" || filterResponsible !== "todos" || filterStatus !== "todos");
 
+  const handleTipsToggle = () => {
+    setTipsOpen(prev => {
+      const next = !prev;
+      try { localStorage.setItem("banco_ideias_tips_collapsed", next ? "false" : "true"); } catch {}
+      return next;
+    });
+  };
+
   const loadIdeas = useCallback(async () => {
     if (!user) return;
     setLoading(true);
@@ -84,7 +100,18 @@ export default function BancoDeIdeias() {
     if (error) {
       toast.error("Erro ao carregar ideias");
     } else {
-      setIdeas((data as any[]) || []);
+      const list = (data as any[]) || [];
+      setIdeas(list);
+      // Auto-collapse tips when user already has ideas (only if not manually set)
+      if (list.length > 0) {
+        try {
+          const saved = localStorage.getItem("banco_ideias_tips_collapsed");
+          if (saved === null) {
+            setTipsOpen(false);
+            localStorage.setItem("banco_ideias_tips_collapsed", "true");
+          }
+        } catch {}
+      }
     }
     setLoading(false);
   }, [user]);
@@ -210,6 +237,76 @@ export default function BancoDeIdeias() {
             Nova Ideia
           </Button>
         </div>
+      </div>
+
+      {/* Tips Card */}
+      <div className="rounded-lg border border-border/60 bg-card overflow-hidden">
+        <button
+          onClick={handleTipsToggle}
+          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-accent/30 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Lightbulb className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">Como usar o Banco de Ideias</span>
+          </div>
+          {tipsOpen ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
+        </button>
+
+        {tipsOpen && (
+          <div className="px-4 pb-4 border-t border-border/40">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-primary">
+                  <Camera className="h-4 w-4" />
+                  <span className="text-sm font-semibold">Capture</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Registre qualquer ideia antes que passe. Defina tipo, formato e canal:
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Reel, Story, Review, Tutorial, UGC, Unboxing, Live...
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-primary">
+                  <LayoutKanban className="h-4 w-4" />
+                  <span className="text-sm font-semibold">Priorize</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Use o Kanban para mover ideias pelo funil:
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Ideia → Em Produção → Publicado
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-primary">
+                  <TrendingUp className="h-4 w-4" />
+                  <span className="text-sm font-semibold">Analise</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Use o score de potencial (1–5) para decidir o que produzir primeiro e maximizar resultados.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">
+                Canais: Instagram, TikTok, YouTube, Shopee, Mercado Livre...
+              </p>
+              <Button size="sm" onClick={handleNew} className="gap-1.5 shrink-0 h-7 text-xs">
+                <Plus className="h-3 w-3" />
+                Criar minha primeira ideia
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filters */}

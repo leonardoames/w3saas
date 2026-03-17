@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, CheckCircle, CreditCard, Loader2, Star } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle, CreditCard, Loader2, RefreshCw, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Plan {
@@ -57,25 +58,26 @@ const FEATURES = [
   "CRM de influenciadores",
 ];
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function Checkout() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [selectedPlan, setSelectedPlan] = useState<keyof typeof PLANS>("quarterly");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const isEmailValid = EMAIL_REGEX.test(email);
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    if (hasError) setHasError(false);
+  };
 
   const handleCheckout = async () => {
-    if (!email) {
-      toast({
-        title: "Email obrigatório",
-        description: "Por favor, insira seu email para continuar.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Basic email validation
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!isEmailValid) {
       toast({
         title: "Email inválido",
         description: "Por favor, insira um email válido.",
@@ -85,10 +87,12 @@ export default function Checkout() {
     }
 
     setLoading(true);
+    setHasError(false);
+    setErrorMessage("");
 
     try {
       const plan = PLANS[selectedPlan];
-      
+
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: {
           email,
@@ -97,21 +101,26 @@ export default function Checkout() {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Try to extract specific error message from the function response
+        const msg = error.message || "Tente novamente mais tarde.";
+        throw new Error(msg);
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
 
       if (data?.url) {
-        // Redirect to Stripe Checkout
         window.location.href = data.url;
       } else {
         throw new Error("URL de checkout não retornada");
       }
     } catch (error: any) {
       console.error("Checkout error:", error);
-      toast({
-        title: "Erro ao iniciar pagamento",
-        description: error.message || "Tente novamente mais tarde.",
-        variant: "destructive",
-      });
+      const msg = error.message || "Tente novamente mais tarde.";
+      setErrorMessage(msg);
+      setHasError(true);
     } finally {
       setLoading(false);
     }
@@ -210,9 +219,15 @@ export default function Checkout() {
                   type="email"
                   placeholder="seu@email.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={handleEmailChange}
                   disabled={loading}
+                  className={cn(
+                    email && !isEmailValid && "border-destructive focus-visible:ring-destructive"
+                  )}
                 />
+                {email && !isEmailValid && (
+                  <p className="text-xs text-destructive">Email inválido</p>
+                )}
               </div>
 
               <div className="rounded-lg border bg-muted/50 p-3">
@@ -224,24 +239,57 @@ export default function Checkout() {
                 </div>
               </div>
 
-              <Button
-                className="w-full gap-2"
-                size="lg"
-                onClick={handleCheckout}
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Redirecionando...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="h-4 w-4" />
-                    Pagar {PLANS[selectedPlan].price}
-                  </>
-                )}
-              </Button>
+              {/* Error state */}
+              {hasError && (
+                <div className="space-y-3">
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{errorMessage || "Erro ao iniciar pagamento."}</AlertDescription>
+                  </Alert>
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1 gap-2"
+                      onClick={handleCheckout}
+                      disabled={loading || !isEmailValid}
+                    >
+                      {loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      Tentar novamente
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => window.open("https://wa.me/551199999999?text=Preciso+de+ajuda+com+o+checkout", "_blank")}
+                    >
+                      Falar com suporte
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {!hasError && (
+                <Button
+                  className="w-full gap-2"
+                  size="lg"
+                  onClick={handleCheckout}
+                  disabled={loading || !isEmailValid}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Redirecionando...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="h-4 w-4" />
+                      Pagar {PLANS[selectedPlan].price}
+                    </>
+                  )}
+                </Button>
+              )}
 
               <p className="text-center text-xs text-muted-foreground">
                 Pagamento seguro via Stripe. Cancele quando quiser.

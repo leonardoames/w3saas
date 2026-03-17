@@ -1,7 +1,7 @@
 import { AlertCircle, ArrowRight, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, parseISO, isWithinInterval, isValid, startOfDay, endOfDay, differenceInCalendarDays } from "date-fns";
 import { DateRange } from "react-day-picker";
@@ -169,26 +169,62 @@ export default function Dashboard() {
     if (user) loadData();
   }, [user, loadData]);
 
+  const prefSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prefInitialized = useRef(false);
+
+  // Load preferences: DB first, localStorage as fallback
   useEffect(() => {
     if (!user?.id) return;
+    prefInitialized.current = false;
     const key = `dashboard_preferences:${user.id}`;
-    try {
-      const saved = localStorage.getItem(key);
-      if (!saved) return;
-      const parsed = JSON.parse(saved) as Partial<DashboardPreferences>;
-      setPreferences({
-        widgets: { ...DEFAULT_DASHBOARD_PREFERENCES.widgets, ...(parsed.widgets || {}) },
-        kpis: { ...DEFAULT_DASHBOARD_PREFERENCES.kpis, ...(parsed.kpis || {}) },
+
+    supabase
+      .from("user_preferences" as any)
+      .select("preferences")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.preferences && typeof data.preferences === "object") {
+          const parsed = data.preferences as Partial<DashboardPreferences>;
+          const merged = {
+            widgets: { ...DEFAULT_DASHBOARD_PREFERENCES.widgets, ...(parsed.widgets || {}) },
+            kpis: { ...DEFAULT_DASHBOARD_PREFERENCES.kpis, ...(parsed.kpis || {}) },
+          };
+          setPreferences(merged);
+          localStorage.setItem(key, JSON.stringify(merged));
+        } else {
+          // Fallback to localStorage
+          try {
+            const saved = localStorage.getItem(key);
+            if (saved) {
+              const parsed = JSON.parse(saved) as Partial<DashboardPreferences>;
+              setPreferences({
+                widgets: { ...DEFAULT_DASHBOARD_PREFERENCES.widgets, ...(parsed.widgets || {}) },
+                kpis: { ...DEFAULT_DASHBOARD_PREFERENCES.kpis, ...(parsed.kpis || {}) },
+              });
+            }
+          } catch {
+            setPreferences(DEFAULT_DASHBOARD_PREFERENCES);
+          }
+        }
+        prefInitialized.current = true;
       });
-    } catch {
-      setPreferences(DEFAULT_DASHBOARD_PREFERENCES);
-    }
   }, [user?.id]);
 
+  // Save preferences with debounce: localStorage immediately, DB after 800ms
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !prefInitialized.current) return;
     const key = `dashboard_preferences:${user.id}`;
     localStorage.setItem(key, JSON.stringify(preferences));
+
+    if (prefSaveTimer.current) clearTimeout(prefSaveTimer.current);
+    prefSaveTimer.current = setTimeout(() => {
+      supabase.from("user_preferences" as any).upsert({
+        user_id: user.id,
+        preferences: preferences as any,
+        updated_at: new Date().toISOString(),
+      } as any, { onConflict: "user_id" });
+    }, 800);
   }, [preferences, user?.id]);
 
   const setWidget = (key: WidgetKey, checked: boolean | "indeterminate") => {

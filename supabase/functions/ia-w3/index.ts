@@ -587,7 +587,7 @@ serve(async (req) => {
     console.log("Calling OpenAI with mode:", mode || "default");
     console.log("Messages count:", messages.length);
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const openAIResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${OPENAI_API_KEY}`,
@@ -598,20 +598,21 @@ serve(async (req) => {
         messages,
         max_tokens: 4096,
         temperature: 0.3,
+        stream: true,
       }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("OpenAI API error:", response.status, errorText);
+    if (!openAIResponse.ok) {
+      const errorText = await openAIResponse.text();
+      console.error("OpenAI API error:", openAIResponse.status, errorText);
 
-      if (response.status === 429) {
+      if (openAIResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: "Limite de requisições atingido. Tente novamente em alguns segundos." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
-      if (response.status === 401) {
+      if (openAIResponse.status === 401) {
         return new Response(JSON.stringify({ error: "Chave da API OpenAI inválida ou expirada." }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -624,21 +625,57 @@ serve(async (req) => {
       });
     }
 
-    const data = await response.json();
-    const answerContent = data.choices?.[0]?.message?.content || "";
+    const encoder = new TextEncoder();
+    const openAIBody = openAIResponse.body!;
 
-    console.log("OpenAI response received, length:", answerContent.length);
+    const sseStream = new ReadableStream({
+      async start(controller) {
+        const reader = openAIBody.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let fullContent = "";
 
-    // Generate follow-up questions based on context
-    const followUpQuestions = generateFollowUpQuestions(mode, answerContent);
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-    return new Response(
-      JSON.stringify({
-        answerHtml: answerContent,
-        followUpQuestions,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              if (!line.startsWith("data: ")) continue;
+              const data = line.slice(6).trim();
+              if (data === "[DONE]") continue;
+              try {
+                const parsed = JSON.parse(data);
+                const chunk = parsed.choices?.[0]?.delta?.content || "";
+                if (chunk) {
+                  fullContent += chunk;
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ chunk })}\n\n`));
+                }
+              } catch {
+                // Ignore malformed chunks
+              }
+            }
+          }
+        } finally {
+          const followUpQuestions = generateFollowUpQuestions(mode, fullContent);
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ followup: followUpQuestions })}\n\n`));
+          controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(sseStream, {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+      },
+    });
   } catch (error) {
     console.error("Error in ia-w3 function:", error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }), {
