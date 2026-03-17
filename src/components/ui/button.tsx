@@ -114,7 +114,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
     onBlur?.(e as unknown as React.FocusEvent<HTMLButtonElement>);
   }} onClick={onClick as any} whileTap={!isDisabled ? {
     scale: 0.98
-  } : undefined} disabled={isDisabled}>
+  } : undefined} disabled={isDisabled} {...props}>
         <motion.div className={cn("absolute inset-0 z-0", currentStyle.curtain)} initial={{
       x: "100%"
     }} animate={isHovered ? {
