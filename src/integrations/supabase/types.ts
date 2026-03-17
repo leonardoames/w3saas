@@ -522,6 +522,30 @@ export type Database = {
         }
         Relationships: []
       }
+      ia_conversations: {
+        Row: {
+          id: string
+          messages: Json
+          mode: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          messages?: Json
+          mode?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          messages?: Json
+          mode?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ia_documents: {
         Row: {
           content_text: string | null
@@ -1555,6 +1579,24 @@ export type Database = {
           id?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_preferences: {
+        Row: {
+          preferences: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          preferences?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          preferences?: Json
           updated_at?: string
           user_id?: string
         }
