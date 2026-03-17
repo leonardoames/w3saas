@@ -111,11 +111,24 @@ export function KanbanView({ tasks, onTaskClick, onStatusChange }: KanbanViewPro
                         </span>
                       )}
                     </div>
-                    {task.checklist.length > 0 && (
-                      <p className="text-[10px] text-muted-foreground mt-1">
-                        {task.checklist.filter(i => i.checked).length}/{task.checklist.length} checklist
-                      </p>
-                    )}
+                    {task.checklist.length > 0 && (() => {
+                      const checked = task.checklist.filter(i => i.checked).length;
+                      const pct = (checked / task.checklist.length) * 100;
+                      return (
+                        <div className="mt-2">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="text-[10px] text-muted-foreground">{checked}/{task.checklist.length}</span>
+                            <span className="text-[10px] text-muted-foreground">{Math.round(pct)}%</span>
+                          </div>
+                          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${pct === 100 ? "bg-green-500" : "bg-primary"}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}

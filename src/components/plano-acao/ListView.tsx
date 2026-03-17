@@ -73,6 +73,21 @@ export function ListView({ tasks, onTaskClick }: ListViewProps) {
                     {task.section && (
                       <p className="text-xs text-muted-foreground mt-0.5">{task.section}</p>
                     )}
+                    {task.checklist.length > 0 && (() => {
+                      const checked = task.checklist.filter(i => i.checked).length;
+                      const pct = (checked / task.checklist.length) * 100;
+                      return (
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <div className="h-1.5 w-24 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${pct === 100 ? "bg-green-500" : "bg-primary"}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">{checked}/{task.checklist.length}</span>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {task.due_date && (

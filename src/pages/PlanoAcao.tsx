@@ -19,12 +19,14 @@ type PlanView = "list" | "kanban" | "timeline";
 export default function PlanoAcao() {
   const { user, isAdmin, hasRole } = useAuth();
   const isStaff = isAdmin || hasRole("master") || hasRole("tutor") || hasRole("cs");
+  const canEditDiag = isAdmin || hasRole("master") || hasRole("tutor");
 
   const {
     tasks,
     loading,
     updateTaskStatus,
     updateTask,
+    deleteTask,
   } = useTasks();
 
   const [planView, setPlanView] = useState<PlanView>("list");
@@ -140,7 +142,7 @@ export default function PlanoAcao() {
 
         {/* Diagnóstico 360 */}
         <TabsContent value="diagnostico" className="mt-6">
-          <Diagnostico360Tab userId={user?.id || ""} canEdit={isStaff} />
+          <Diagnostico360Tab userId={user?.id || ""} canEdit={canEditDiag} />
         </TabsContent>
 
         {/* Recursos */}
@@ -155,6 +157,7 @@ export default function PlanoAcao() {
         onOpenChange={setDrawerOpen}
         onStatusChange={handleStatusChange}
         onTaskUpdate={handleTaskUpdate}
+        onTaskDelete={isStaff ? deleteTask : undefined}
         canEditTask={isStaff}
       />
     </div>

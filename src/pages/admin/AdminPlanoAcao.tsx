@@ -131,7 +131,7 @@ const MIRO_PREFIX = "https://miro.com/app/live-embed/";
 const SRC_REGEX = /src="([^"]+)"/;
 
 function UserPlanView({ user, onBack }: { user: UserProfile; onBack: () => void }) {
-  const { tasks, loading, updateTaskStatus, createTask, updateTask, deleteTask } = useTasks(user.user_id);
+  const { tasks, loading, updateTaskStatus, createTask, updateTask, deleteTask, refetch } = useTasks(user.user_id);
   const { toast } = useToast();
 
   const [planView, setPlanView] = useState<"list" | "kanban" | "timeline">("list");
@@ -357,6 +357,7 @@ function UserPlanView({ user, onBack }: { user: UserProfile; onBack: () => void 
         onOpenChange={setDrawerOpen}
         onStatusChange={handleStatusChange}
         onTaskUpdate={handleTaskUpdate}
+        onTaskDelete={deleteTask}
         canEditTask={true}
       />
 
