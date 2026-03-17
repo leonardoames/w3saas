@@ -2,7 +2,7 @@ import { SidebarNavLink } from "./SidebarNavLink";
 import {
   LayoutDashboard, GraduationCap, ListChecks, Calculator, GitCompare,
   Sparkles, Brain, Store, ShoppingBag, CalendarDays, ChevronLeft,
-  ChevronRight, X, Shield, ChevronDown, BarChart3, BarChart2, Activity, Lightbulb, TrendingUp, PackageSearch, Package,
+  ChevronRight, X, Shield, ChevronDown, BarChart3, BarChart2, Activity, Lightbulb, TrendingUp, PackageSearch, Package, Kanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -58,6 +58,7 @@ const menuGroups: MenuGroup[] = [
     icon: GraduationCap,
     items: [
       { title: "Plano de Ação", icon: ListChecks, path: "/app/plano-acao", lockedWithoutAmes: true },
+      { title: "CRM Interno", icon: Kanban, path: "/app/crm-interno", staffOnly: true },
       { title: "Mentoria AMES", icon: GraduationCap, path: "/app/aulas/mentoria-ames", lockedWithoutAmes: true },
       { title: "Tutorias", icon: GraduationCap, path: "/app/aulas/tutorias", lockedWithoutAmes: true },
       { title: "Hotseats com Léo", icon: GraduationCap, path: "/app/aulas/hotseats", lockedWithoutAmes: true },
