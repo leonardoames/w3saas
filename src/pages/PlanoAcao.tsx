@@ -1,74 +1,53 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { Loader2, Plus, AlertCircle } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Loader2, List, Columns, Calendar } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTasks, SECTIONS, Task } from "@/hooks/useTasks";
-import { ProgressCard } from "@/components/plano-acao/ProgressCard";
-import { TaskSection } from "@/components/plano-acao/TaskSection";
-import { AddTaskDialog } from "@/components/plano-acao/AddTaskDialog";
+import { useTasks, Task, TaskStatus } from "@/hooks/useTasks";
+import { DashboardTab } from "@/components/plano-acao/DashboardTab";
+import { ListView } from "@/components/plano-acao/ListView";
+import { KanbanView } from "@/components/plano-acao/KanbanView";
+import { TimelineView } from "@/components/plano-acao/TimelineView";
+import { ActionDrawer } from "@/components/plano-acao/ActionDrawer";
 import { MiroEmbed } from "@/components/plano-acao/MiroEmbed";
+import { AuditoriasTab } from "@/components/plano-acao/AuditoriasTab";
+import { Diagnostico360Tab } from "@/components/plano-acao/Diagnostico360Tab";
 import { UserResourcesTab } from "@/components/plano-acao/UserResourcesTab";
 
+type PlanView = "list" | "kanban" | "timeline";
+
 export default function PlanoAcao() {
-  const { user, profile, hasRole } = useAuth();
-  const hasAmes = hasRole("cliente_ames") || hasRole("admin") || hasRole("master") || hasRole("tutor") || hasRole("cs");
-  const { 
-    tasks, 
-    loading, 
-    progress, 
-    completedCount, 
-    totalCount,
+  const { user, isAdmin, hasRole } = useAuth();
+  const isStaff = isAdmin || hasRole("master") || hasRole("tutor") || hasRole("cs");
+
+  const {
+    tasks,
+    loading,
     updateTaskStatus,
-    updateTaskDueDate,
-    createTask,
     updateTask,
-    deleteTask,
-    reorderTasks,
   } = useTasks();
 
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [editTask, setEditTask] = useState<Task | null>(null);
+  const [planView, setPlanView] = useState<PlanView>("list");
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Separate tasks by type
-  const amesTasks = useMemo(() => 
-    tasks.filter(t => t.origin !== 'mentorado'),
-    [tasks]
-  );
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+    setDrawerOpen(true);
+  };
 
-  const personalTasks = useMemo(() => 
-    tasks.filter(t => t.origin === 'mentorado'),
-    [tasks]
-  );
-
-  // Group AMES tasks by section
-  const tasksBySection = useMemo(() => {
-    const grouped: Record<string, Task[]> = {};
-    SECTIONS.forEach(section => {
-      grouped[section] = amesTasks.filter(t => t.section === section);
-    });
-    return grouped;
-  }, [amesTasks]);
-
-  const handleSubmitTask = async (taskData: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
-    if (editTask) {
-      await updateTask(editTask.id, taskData);
-      setEditTask(null);
-      return editTask;
-    } else {
-      return await createTask(taskData);
+  const handleStatusChange = (taskId: string, status: TaskStatus) => {
+    updateTaskStatus(taskId, status);
+    if (selectedTask?.id === taskId) {
+      setSelectedTask(prev => prev ? { ...prev, status } : prev);
     }
   };
 
-  const handleEditTask = (task: Task) => {
-    setEditTask(task);
-    setAddDialogOpen(true);
-  };
-
-  const handleDeleteTask = async (taskId: string) => {
-    await deleteTask(taskId);
+  const handleTaskUpdate = (taskId: string, updates: Partial<Task>) => {
+    updateTask(taskId, updates);
+    if (selectedTask?.id === taskId) {
+      setSelectedTask(prev => prev ? { ...prev, ...updates } : prev);
+    }
   };
 
   if (loading) {
@@ -84,117 +63,99 @@ export default function PlanoAcao() {
       <div>
         <h1 className="page-title">Plano de Ação</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Acompanhe as tarefas do seu plano e mantenha tudo organizado
+          Acompanhe e execute as ações do seu plano de consultoria
         </p>
       </div>
 
-      <ProgressCard 
-        completed={completedCount} 
-        total={totalCount} 
-        progress={progress} 
-      />
-
-      <Tabs defaultValue="ames" className="w-full">
-        <TabsList className={`grid w-full ${hasAmes ? 'grid-cols-4' : 'grid-cols-3'}`}>
-          <TabsTrigger value="ames">Plano AMES</TabsTrigger>
-          <TabsTrigger value="custom">Personalizado</TabsTrigger>
-          <TabsTrigger value="recursos">Recursos</TabsTrigger>
-          {hasAmes && (
-            <TabsTrigger value="mapa-mental">Mapa Mental</TabsTrigger>
-          )}
+      <Tabs defaultValue="dashboard" className="w-full">
+        <TabsList className="flex w-full h-auto flex-wrap gap-1">
+          <TabsTrigger value="dashboard" className="text-xs sm:text-sm">Dashboard</TabsTrigger>
+          <TabsTrigger value="plano" className="text-xs sm:text-sm">Plano de Ação</TabsTrigger>
+          <TabsTrigger value="mapa-mental" className="text-xs sm:text-sm">Mapa Mental</TabsTrigger>
+          <TabsTrigger value="auditorias" className="text-xs sm:text-sm">Auditorias</TabsTrigger>
+          <TabsTrigger value="diagnostico" className="text-xs sm:text-sm">Diagnóstico 360</TabsTrigger>
+          <TabsTrigger value="recursos" className="text-xs sm:text-sm">Recursos</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="ames" className="mt-6">
-          {amesTasks.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <AlertCircle className="mb-4 h-12 w-12 text-muted-foreground" />
-                <p className="text-lg font-medium text-muted-foreground">
-                  Nenhuma tarefa do Plano AMES ainda
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  As tarefas serão adicionadas pelo seu tutor
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <Accordion type="multiple" defaultValue={SECTIONS.slice()} className="space-y-2">
-              {SECTIONS.map(section => (
-                <TaskSection
-                  key={section}
-                  section={section}
-                  tasks={tasksBySection[section]}
-                  onStatusChange={updateTaskStatus}
-                  onDueDateChange={updateTaskDueDate}
-                  onReorder={reorderTasks}
-                />
-              ))}
-            </Accordion>
-          )}
+        {/* Dashboard */}
+        <TabsContent value="dashboard" className="mt-6">
+          <DashboardTab tasks={tasks} userId={user?.id || ""} canEdit={isStaff} />
         </TabsContent>
 
-        <TabsContent value="custom" className="mt-6">
-          <div className="mb-4">
-            <Button onClick={() => {
-              setEditTask(null);
-              setAddDialogOpen(true);
-            }}>
-              <Plus className="mr-2 h-4 w-4" />
-              Adicionar ação
-            </Button>
-          </div>
+        {/* Plano de Ação */}
+        <TabsContent value="plano" className="mt-6">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Button
+                variant={planView === "list" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setPlanView("list")}
+              >
+                <List className="h-3.5 w-3.5 mr-1.5" />
+                Lista
+              </Button>
+              <Button
+                variant={planView === "kanban" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setPlanView("kanban")}
+              >
+                <Columns className="h-3.5 w-3.5 mr-1.5" />
+                Kanban
+              </Button>
+              <Button
+                variant={planView === "timeline" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setPlanView("timeline")}
+              >
+                <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                Timeline
+              </Button>
+            </div>
 
-          {personalTasks.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <AlertCircle className="mb-4 h-12 w-12 text-muted-foreground" />
-                <p className="text-lg font-medium text-muted-foreground">
-                  Nenhuma ação personalizada ainda
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Clique em "Adicionar ação" para criar suas próprias tarefas
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <Accordion type="multiple" defaultValue={["Personalizado"]} className="space-y-2">
-              <TaskSection
-                section="Personalizado"
-                tasks={personalTasks.map(t => ({ ...t, section: 'Personalizado' }))}
-                onStatusChange={updateTaskStatus}
-                onDueDateChange={updateTaskDueDate}
-                onReorder={reorderTasks}
-                onEdit={handleEditTask}
-                onDelete={handleDeleteTask}
-                canEdit={true}
-                canDelete={true}
+            {planView === "list" && (
+              <ListView tasks={tasks} onTaskClick={handleTaskClick} />
+            )}
+            {planView === "kanban" && (
+              <KanbanView
+                tasks={tasks}
+                onTaskClick={handleTaskClick}
+                onStatusChange={handleStatusChange}
               />
-            </Accordion>
-          )}
+            )}
+            {planView === "timeline" && (
+              <TimelineView tasks={tasks} onTaskClick={handleTaskClick} />
+            )}
+          </div>
         </TabsContent>
 
+        {/* Mapa Mental */}
+        <TabsContent value="mapa-mental" className="mt-6">
+          <MiroEmbed />
+        </TabsContent>
+
+        {/* Auditorias */}
+        <TabsContent value="auditorias" className="mt-6">
+          <AuditoriasTab userId={user?.id || ""} canEdit={isStaff} />
+        </TabsContent>
+
+        {/* Diagnóstico 360 */}
+        <TabsContent value="diagnostico" className="mt-6">
+          <Diagnostico360Tab userId={user?.id || ""} canEdit={isStaff} />
+        </TabsContent>
+
+        {/* Recursos */}
         <TabsContent value="recursos" className="mt-6">
           <UserResourcesTab />
         </TabsContent>
-
-        {hasAmes && (
-          <TabsContent value="mapa-mental" className="mt-6">
-            <MiroEmbed />
-          </TabsContent>
-        )}
       </Tabs>
 
-      <AddTaskDialog
-        open={addDialogOpen}
-        onOpenChange={(open) => {
-          setAddDialogOpen(open);
-          if (!open) setEditTask(null);
-        }}
-        onSubmit={handleSubmitTask}
-        userId={user?.id || ''}
-        origin="mentorado"
-        defaultSection="Personalizado"
-        editTask={editTask}
+      <ActionDrawer
+        task={selectedTask}
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        onStatusChange={handleStatusChange}
+        onTaskUpdate={handleTaskUpdate}
+        canEditTask={isStaff}
       />
     </div>
   );

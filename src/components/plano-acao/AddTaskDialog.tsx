@@ -44,6 +44,7 @@ const formSchema = z.object({
   description: z.string().max(1000).optional(),
   section: z.string().min(1, "Seção é obrigatória"),
   priority: z.enum(["Baixa", "Média", "Alta"]).optional(),
+  start_date: z.date().optional(),
   due_date: z.date().optional(),
 });
 
@@ -79,6 +80,7 @@ export function AddTaskDialog({
       description: editTask?.description || "",
       section: editTask?.section || defaultSection || "",
       priority: editTask?.priority || undefined,
+      start_date: editTask?.start_date ? new Date(editTask.start_date) : undefined,
       due_date: editTask?.due_date ? new Date(editTask.due_date) : undefined,
     },
   });
@@ -91,6 +93,7 @@ export function AddTaskDialog({
         description: editTask?.description || "",
         section: editTask?.section || defaultSection || "",
         priority: editTask?.priority || undefined,
+        start_date: editTask?.start_date ? new Date(editTask.start_date) : undefined,
         due_date: editTask?.due_date ? new Date(editTask.due_date) : undefined,
       });
     }
@@ -105,7 +108,9 @@ export function AddTaskDialog({
         description: data.description || null,
         section: data.section,
         priority: data.priority || null,
+        start_date: data.start_date ? format(data.start_date, 'yyyy-MM-dd') : null,
         due_date: data.due_date ? format(data.due_date, 'yyyy-MM-dd') : null,
+        checklist: editTask?.checklist || [],
         status: editTask?.status || 'a_fazer',
         origin: editTask?.origin || origin,
         order_index: editTask?.order_index || 999,
@@ -216,6 +221,42 @@ export function AddTaskDialog({
                         <SelectItem value="Alta">Alta</SelectItem>
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="start_date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Início</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "justify-start text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? format(field.value, "dd/MM/yyyy") : "Opcional"}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}

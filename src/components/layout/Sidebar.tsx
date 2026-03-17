@@ -38,7 +38,6 @@ const menuGroups: MenuGroup[] = [
       { title: "Análise por Canal", icon: BarChart2, path: "/app/analise-por-canal" },
       { title: "Acompanhamento Diário", icon: BarChart3, path: "/app/acompanhamento" },
       { title: "DRE", icon: TrendingUp, path: "/app/dre" },
-      { title: "Plano de Ação", icon: ListChecks, path: "/app/plano-acao" },
       { title: "Banco de Ideias", icon: Lightbulb, path: "/app/banco-de-ideias" },
       { title: "Integrações", icon: Activity, path: "/app/integracoes" },
       { title: "Dash Admin", icon: Activity, path: "/app/dash-admin", staffOnly: true },
@@ -58,6 +57,7 @@ const menuGroups: MenuGroup[] = [
     title: "W3 Educação",
     icon: GraduationCap,
     items: [
+      { title: "Plano de Ação", icon: ListChecks, path: "/app/plano-acao", lockedWithoutAmes: true },
       { title: "Mentoria AMES", icon: GraduationCap, path: "/app/aulas/mentoria-ames", lockedWithoutAmes: true },
       { title: "Tutorias", icon: GraduationCap, path: "/app/aulas/tutorias", lockedWithoutAmes: true },
       { title: "Hotseats com Léo", icon: GraduationCap, path: "/app/aulas/hotseats", lockedWithoutAmes: true },

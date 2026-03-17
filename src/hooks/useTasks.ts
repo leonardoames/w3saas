@@ -6,6 +6,12 @@ import { useToast } from "@/hooks/use-toast";
 export type TaskStatus = 'a_fazer' | 'em_andamento' | 'concluida' | 'cancelada';
 export type TaskOrigin = 'sistema' | 'admin' | 'mentorado';
 
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  checked: boolean;
+}
+
 export interface Task {
   id: string;
   user_id: string;
@@ -14,6 +20,8 @@ export interface Task {
   description: string | null;
   priority: 'Baixa' | 'Média' | 'Alta' | null;
   due_date: string | null;
+  start_date: string | null;
+  checklist: ChecklistItem[];
   status: TaskStatus;
   origin: TaskOrigin;
   order_index: number;
@@ -62,6 +70,8 @@ export function useTasks(userId?: string) {
         status: task.status as TaskStatus,
         origin: task.origin as TaskOrigin,
         priority: task.priority as 'Baixa' | 'Média' | 'Alta' | null,
+        start_date: task.start_date ?? null,
+        checklist: (task.checklist as ChecklistItem[]) ?? [],
       }));
 
       setTasks(mappedTasks);
@@ -153,6 +163,8 @@ export function useTasks(userId?: string) {
         status: data.status as TaskStatus,
         origin: data.origin as TaskOrigin,
         priority: data.priority as 'Baixa' | 'Média' | 'Alta' | null,
+        start_date: data.start_date ?? null,
+        checklist: (data.checklist as ChecklistItem[]) ?? [],
       };
 
       setTasks(prev => [...prev, newTask]);
