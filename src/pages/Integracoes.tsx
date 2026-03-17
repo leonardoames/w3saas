@@ -137,7 +137,7 @@ const platforms: PlatformInfo[] = [
 ];
 
 // Platforms that have a working sync edge function
-const SYNCABLE_PLATFORMS = new Set(["nuvemshop", "shopee", "shopee_ads", "shopify", "olist_tiny", "mercado_livre"]);
+const SYNCABLE_PLATFORMS = new Set(["nuvemshop", "shopee", "shopee_ads", "shopify", "olist_tiny"]);
 
 // Webhook base URL for LGPD
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
