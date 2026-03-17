@@ -43,3 +43,9 @@ project_id = "jmbouivvkofocqaakenb"
     verify_jwt = false
   [functions.verify-checkout-session]
     verify_jwt = false
+  [functions.send-notification-email]
+    verify_jwt = false
+  [functions.check-expiring-access]
+    verify_jwt = false
+  [functions.mercado-livre-oauth]
+    verify_jwt = false
