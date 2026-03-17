@@ -39,7 +39,7 @@ function CompactCard({ card, onClick }: { card: CRMCardExtended; onClick: () => 
   return (
     <div
       onClick={onClick}
-      className={`flex items-center gap-2 h-12 rounded-lg border bg-background px-2.5 cursor-pointer hover:shadow-sm transition-all select-none border-l-[3px] ${info.borderColor}`}
+      className={`flex items-center gap-2 h-12 rounded-lg border bg-card px-2.5 cursor-pointer hover:shadow-md transition-all select-none border-l-[3px] ${info.borderColor}`}
     >
       {card.site && (
         <img
@@ -69,7 +69,7 @@ function CRMCardItem({ card, onClick, isDragging }: { card: CRMCardExtended; onC
   return (
     <div
       onClick={onClick}
-      className={`rounded-lg border bg-background p-3 cursor-pointer hover:shadow-md transition-all select-none group border-l-[3px] ${info.borderColor} ${isDragging ? "opacity-40 shadow-lg rotate-1" : ""}`}
+      className={`rounded-lg border bg-card p-3 cursor-pointer hover:shadow-md transition-all select-none group border-l-[3px] ${info.borderColor} ${isDragging ? "opacity-40 shadow-lg rotate-1" : ""}`}
     >
       {/* Brand / client name + health */}
       <div className="flex items-start gap-1.5 mb-1.5">
@@ -508,7 +508,7 @@ export default function CRMInterno() {
             {atRisk > 0 && (
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">Risco/Alerta</p>
-                <p className="text-2xl font-bold text-orange-500">{atRisk}</p>
+                <p className="text-2xl font-bold text-orange-500 dark:text-orange-400">{atRisk}</p>
               </div>
             )}
             <div className="text-center">
@@ -517,7 +517,7 @@ export default function CRMInterno() {
             </div>
             <div className="text-center">
               <p className="text-xs text-muted-foreground">Concluídos</p>
-              <p className="text-2xl font-bold text-emerald-600">
+              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                 {cards.filter(c => c.stage === "concluido").length}
               </p>
             </div>
@@ -532,10 +532,10 @@ export default function CRMInterno() {
 
       {/* Active filter banner */}
       {alertFilter && (
-        <div className="flex items-center gap-2 rounded-lg bg-muted/50 border px-3 py-2 text-xs">
-          <span className="font-medium">Filtro ativo:</span>
-          <span className="text-muted-foreground flex-1">{alertFilter.label}</span>
-          <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={clearAlertFilter}>
+        <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2 text-xs">
+          <span className="font-medium text-primary">Filtro ativo:</span>
+          <span className="text-muted-foreground flex-1 truncate">{alertFilter.label}</span>
+          <Button size="sm" variant="ghost" className="h-6 text-xs px-2 shrink-0" onClick={clearAlertFilter}>
             Limpar
           </Button>
         </div>

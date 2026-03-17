@@ -156,13 +156,13 @@ function CSRankingSection({ cards }: { cards: CRMCardExtended[] }) {
               {byCS.map((row, i) => {
                 const info = getHealthScoreInfo(row.avgHealth);
                 return (
-                  <tr key={row.id} className={`border-t ${i % 2 === 0 ? "bg-background" : "bg-muted/10"}`}>
+                  <tr key={row.id} className={`border-t ${i % 2 === 0 ? "bg-card" : "bg-muted/20"}`}>
                     <td className="px-3 py-2 font-medium text-xs">{row.name}</td>
                     <td className="px-3 py-2 text-right text-xs">{row.count}</td>
                     <td className="px-3 py-2 text-right">
                       <span className={`text-xs font-bold ${info.textColor}`}>{row.avgHealth}</span>
                     </td>
-                    <td className={`px-3 py-2 text-right text-xs font-medium ${row.atRisk > 0 ? "text-orange-600" : "text-muted-foreground"}`}>
+                    <td className={`px-3 py-2 text-right text-xs font-medium ${row.atRisk > 0 ? "text-orange-500 dark:text-orange-400" : "text-muted-foreground"}`}>
                       {row.atRisk}
                     </td>
                     <td className={`px-3 py-2 text-right text-xs font-medium ${Number(row.churnPct) > 10 ? "text-destructive" : "text-muted-foreground"}`}>
@@ -271,13 +271,13 @@ function RetentionCohortSection({ cards }: { cards: CRMCardExtended[] }) {
                   <td className="px-2 py-2 font-medium capitalize">{row.label}</td>
                   <td className="px-2 py-2 text-right">{row.total}</td>
                   <td className="px-2 py-2 text-right">{row.active}</td>
-                  <td className={`px-2 py-2 text-right font-bold ${row.retPct >= 80 ? "text-green-600" : row.retPct >= 60 ? "text-blue-600" : row.retPct >= 40 ? "text-amber-600" : "text-destructive"}`}>
+                  <td className={`px-2 py-2 text-right font-bold ${row.retPct >= 80 ? "text-green-600 dark:text-green-400" : row.retPct >= 60 ? "text-blue-600 dark:text-blue-400" : row.retPct >= 40 ? "text-amber-600 dark:text-amber-400" : "text-destructive"}`}>
                     {row.retPct}%
                   </td>
                   <td className="px-2 py-2">
                     <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
                       <div
-                        className={`h-full rounded-full ${row.retPct >= 80 ? "bg-green-500" : row.retPct >= 60 ? "bg-blue-500" : row.retPct >= 40 ? "bg-amber-500" : "bg-red-500"}`}
+                        className={`h-full rounded-full transition-all ${row.retPct >= 80 ? "bg-green-500" : row.retPct >= 60 ? "bg-blue-500" : row.retPct >= 40 ? "bg-amber-500" : "bg-red-500"}`}
                         style={{ width: `${row.retPct}%` }}
                       />
                     </div>
@@ -432,7 +432,7 @@ function EngagementHeatmapSection({ cards }: { cards: CRMCardExtended[] }) {
                         <div className={`mx-auto h-5 w-5 rounded-sm ${bucket === b.key ? getCellColor(b.key) : "bg-muted/20"}`} />
                       </td>
                     ))}
-                    <td className={`px-2 py-1.5 text-right font-medium ${c.lastLoginDaysAgo! > 30 ? "text-destructive" : c.lastLoginDaysAgo! > 14 ? "text-amber-600" : "text-green-600"}`}>
+                    <td className={`px-2 py-1.5 text-right font-medium ${c.lastLoginDaysAgo! > 30 ? "text-destructive" : c.lastLoginDaysAgo! > 14 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`}>
                       {c.lastLoginDaysAgo}d
                     </td>
                   </tr>
@@ -605,10 +605,10 @@ export function CRMDashboardView({ clientIds, cards }: CRMDashboardViewProps) {
       {/* Row 1: Stage counters */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <StatCard label="Total" value={data.total} icon={Users} />
-        <StatCard label="Ativos" value={data.active} sub={`${data.total > 0 ? Math.round((data.active / data.total) * 100) : 0}% do total`} icon={TrendingDown} color="text-blue-600" />
-        <StatCard label="Concluídos" value={data.completed} icon={CheckCircle2} color="text-emerald-600" />
-        <StatCard label="Cancelados" value={data.cancelled} icon={XCircle} color="text-rose-600" />
-        <StatCard label="Reembolsados" value={data.refunded} icon={RefreshCw} color="text-purple-600" />
+        <StatCard label="Ativos" value={data.active} sub={`${data.total > 0 ? Math.round((data.active / data.total) * 100) : 0}% do total`} icon={TrendingDown} color="text-blue-600 dark:text-blue-400" />
+        <StatCard label="Concluídos" value={data.completed} icon={CheckCircle2} color="text-emerald-600 dark:text-emerald-400" />
+        <StatCard label="Cancelados" value={data.cancelled} icon={XCircle} color="text-rose-600 dark:text-rose-400" />
+        <StatCard label="Reembolsados" value={data.refunded} icon={RefreshCw} color="text-purple-600 dark:text-purple-400" />
       </div>
 
       {/* Row 2: Metrics */}
@@ -618,7 +618,7 @@ export function CRMDashboardView({ clientIds, cards }: CRMDashboardViewProps) {
           value={`${data.churnRate.toFixed(1)}%`}
           sub="(cancelados + reembolsados) / total"
           icon={TrendingDown}
-          color={data.churnRate > 15 ? "text-destructive" : data.churnRate > 8 ? "text-orange-500" : "text-green-600"}
+          color={data.churnRate > 15 ? "text-destructive" : data.churnRate > 8 ? "text-orange-500 dark:text-orange-400" : "text-green-600 dark:text-green-400"}
         />
         <StatCard label="Tempo Médio de Contrato" value={formatDays(data.avgContractDays)} sub="contratos com datas preenchidas" icon={Clock} />
         <StatCard label="Valor Médio Pago" value={formatCurrency(data.avgContractValue)} sub="contratos com valor preenchido" icon={DollarSign} />
@@ -681,9 +681,9 @@ export function CRMDashboardView({ clientIds, cards }: CRMDashboardViewProps) {
         <CardContent>
           <div className="flex flex-wrap gap-4">
             {[
-              { id: "concluido", label: "Concluídos", count: data.completed, color: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-400" },
-              { id: "cancelado", label: "Cancelados", count: data.cancelled, color: "bg-rose-700", text: "text-rose-700 dark:text-rose-400" },
-              { id: "reembolsado", label: "Reembolsados", count: data.refunded, color: "bg-purple-500", text: "text-purple-700 dark:text-purple-400" },
+              { id: "concluido", label: "Concluídos", count: data.completed, color: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" },
+              { id: "cancelado", label: "Cancelados", count: data.cancelled, color: "bg-rose-600", text: "text-rose-600 dark:text-rose-400" },
+              { id: "reembolsado", label: "Reembolsados", count: data.refunded, color: "bg-purple-500", text: "text-purple-600 dark:text-purple-400" },
             ].map(item => (
               <div key={item.id} className="flex items-center gap-3 rounded-lg border p-4 flex-1 min-w-[120px]">
                 <span className={`h-3 w-3 rounded-full shrink-0 ${item.color}`} />

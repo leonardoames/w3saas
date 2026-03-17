@@ -293,15 +293,15 @@ export default function PlanoAcao() {
           <TabHelpBanner tabKey="plano" />
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2">
-                <Button variant={planView === "list" ? "default" : "outline"} size="sm" onClick={() => setPlanView("list")}>
-                  <List className="h-3.5 w-3.5 mr-1.5" />Lista
+              <div className="flex rounded-lg border p-0.5 gap-0.5">
+                <Button variant={planView === "list" ? "secondary" : "ghost"} size="sm" className="h-7 px-3 text-xs gap-1.5" onClick={() => setPlanView("list")}>
+                  <List className="h-3.5 w-3.5" />Lista
                 </Button>
-                <Button variant={planView === "kanban" ? "default" : "outline"} size="sm" onClick={() => setPlanView("kanban")}>
-                  <Columns className="h-3.5 w-3.5 mr-1.5" />Kanban
+                <Button variant={planView === "kanban" ? "secondary" : "ghost"} size="sm" className="h-7 px-3 text-xs gap-1.5" onClick={() => setPlanView("kanban")}>
+                  <Columns className="h-3.5 w-3.5" />Kanban
                 </Button>
-                <Button variant={planView === "timeline" ? "default" : "outline"} size="sm" onClick={() => setPlanView("timeline")}>
-                  <Calendar className="h-3.5 w-3.5 mr-1.5" />Timeline
+                <Button variant={planView === "timeline" ? "secondary" : "ghost"} size="sm" className="h-7 px-3 text-xs gap-1.5" onClick={() => setPlanView("timeline")}>
+                  <Calendar className="h-3.5 w-3.5" />Timeline
                 </Button>
               </div>
               {isStaff && (

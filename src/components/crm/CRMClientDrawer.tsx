@@ -685,7 +685,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                           </thead>
                           <tbody>
                             {data.audits.map((a, i) => (
-                              <tr key={a.id} className={`border-t ${i % 2 === 0 ? "bg-background" : "bg-muted/20"}`}>
+                              <tr key={a.id} className={`border-t ${i % 2 === 0 ? "bg-card" : "bg-muted/20"}`}>
                                 <td className="px-3 py-2 font-medium capitalize text-xs">
                                   {new Date(a.mes_referencia + "T00:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
                                 </td>
@@ -728,7 +728,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                         {data.tasks.map(task => {
                           const isOverdue = task.due_date && task.due_date < today && task.status !== "concluida" && task.status !== "cancelada";
                           return (
-                            <div key={task.id} className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${task.status === "concluida" ? "bg-muted/20 text-muted-foreground" : "bg-background border"}`}>
+                            <div key={task.id} className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${task.status === "concluida" ? "bg-muted/20 text-muted-foreground" : "bg-card border"}`}>
                               {task.status === "concluida" ? (
                                 <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
                               ) : task.is_next_action ? (

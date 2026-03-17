@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, Clock } from "lucide-react";
 import { HealthScoreBadge, getHealthScoreInfo } from "./HealthScoreBadge";
 import { MiniSparkline } from "./MiniSparkline";
 import type { CRMCardExtended } from "./types";
@@ -114,8 +114,8 @@ export function CRMListView({ cards, search, onCardClick }: CRMListViewProps) {
               const planPct = card.totalTasks > 0 ? Math.round((card.completedTasks / card.totalTasks) * 100) : null;
               const contactOverdue = card.nextContactDate && card.nextContactDate < today;
               const rowHighlight = card.slaExceeded || contactOverdue
-                ? "bg-red-50/50 dark:bg-red-950/20"
-                : i % 2 === 0 ? "bg-background" : "bg-muted/10";
+                ? "bg-red-50/60 dark:bg-red-950/20"
+                : i % 2 === 0 ? "bg-card" : "bg-muted/20";
 
               return (
                 <tr
@@ -172,9 +172,9 @@ export function CRMListView({ cards, search, onCardClick }: CRMListViewProps) {
                   {/* Next contact */}
                   <td className="px-3 py-2.5">
                     {card.nextContactDate ? (
-                      <span className={`text-xs font-medium ${contactOverdue ? "text-destructive" : "text-muted-foreground"}`}>
+                      <span className={`inline-flex items-center gap-1 text-xs font-medium ${contactOverdue ? "text-destructive" : "text-muted-foreground"}`}>
                         {new Date(card.nextContactDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-                        {contactOverdue && " ⚠"}
+                        {contactOverdue && <Clock className="h-3 w-3" />}
                       </span>
                     ) : (
                       <span className="text-xs text-muted-foreground/40">—</span>
@@ -206,9 +206,9 @@ export function CRMListView({ cards, search, onCardClick }: CRMListViewProps) {
                   {/* SLA */}
                   <td className="px-3 py-2.5">
                     {card.slaLabel ? (
-                      <span className={`text-xs font-medium ${card.slaExceeded ? "text-destructive" : "text-muted-foreground"}`}>
+                      <span className={`inline-flex items-center gap-1 text-xs font-medium ${card.slaExceeded ? "text-destructive" : "text-muted-foreground"}`}>
                         {card.slaLabel}
-                        {card.slaExceeded && " 🔴"}
+                        {card.slaExceeded && <AlertTriangle className="h-3 w-3" />}
                       </span>
                     ) : (
                       <span className="text-xs text-muted-foreground/30">—</span>
