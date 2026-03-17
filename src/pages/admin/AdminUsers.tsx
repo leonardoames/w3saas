@@ -29,15 +29,9 @@ import { BulkUserImportDialog } from "@/components/admin/BulkUserImportDialog";
 import { AdminWhatsAppConfig } from "@/components/admin/AdminWhatsAppConfig";
 import { UserEditSheet } from "@/components/admin/UserEditSheet";
 
-// Plano de Ação imports
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion } from "@/components/ui/accordion";
-import { Textarea } from "@/components/ui/textarea";
-import { useTasks, SECTIONS, Task } from "@/hooks/useTasks";
-import { ProgressCard } from "@/components/plano-acao/ProgressCard";
-import { TaskSection } from "@/components/plano-acao/TaskSection";
-import { AddTaskDialog } from "@/components/plano-acao/AddTaskDialog";
 import { useMemo } from "react";
+import { UserPlanView } from "./AdminPlanoAcao";
+import { CRMClientDrawer } from "@/components/crm/CRMClientDrawer";
 
 export interface UserProfile {
   id: string;
@@ -112,6 +106,7 @@ export default function AdminUsers() {
   const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false);
 
   const [planoUser, setPlanoUser] = useState<UserProfile | null>(null);
+  const [crmUserId, setCrmUserId] = useState<string | null>(null);
   const [actionsDialog, setActionsDialog] = useState<{ open: boolean; user: UserProfile | null }>({ open: false, user: null });
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; user: UserProfile | null }>({ open: false, user: null });
   const [suspendDialog, setSuspendDialog] = useState<{ open: boolean; user: UserProfile | null; action: "active" | "suspended" }>({ open: false, user: null, action: "suspended" });
@@ -536,6 +531,14 @@ export default function AdminUsers() {
         onOpenChange={(open) => setActionsDialog({ open, user: open ? actionsDialog.user : null })}
         onRefresh={fetchUsers}
         onViewPlano={(u) => { setPlanoUser(u); setActionsDialog({ open: false, user: null }); }}
+        onViewCRM={(u) => { setCrmUserId(u.user_id); setActionsDialog({ open: false, user: null }); }}
+      />
+
+      <CRMClientDrawer
+        userId={crmUserId}
+        open={!!crmUserId}
+        onClose={() => setCrmUserId(null)}
+        onStageChange={() => {}}
       />
 
       {/* Add User Sheet */}
@@ -694,147 +697,3 @@ export default function AdminUsers() {
   );
 }
 
-// ============================================================
-// UserPlanView
-// ============================================================
-const MIRO_PREFIX = "https://miro.com/app/live-embed/";
-const SRC_REGEX = /src="([^"]+)"/;
-
-interface UserPlanViewUser { user_id: string; email: string | null; full_name: string | null; }
-
-function UserPlanView({ user, onBack }: { user: UserPlanViewUser; onBack: () => void }) {
-  const {
-    tasks, loading, progress, completedCount, totalCount,
-    updateTaskStatus, updateTaskDueDate, createTask, updateTask, deleteTask, reorderTasks,
-  } = useTasks(user.user_id);
-
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [editTask, setEditTask] = useState<Task | null>(null);
-  const [selectedSection, setSelectedSection] = useState<string | null>(null);
-  const [embedSrc, setEmbedSrc] = useState("");
-  const [inputValue, setInputValue] = useState("");
-  const [saving, setSaving] = useState(false);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    supabase.from("miro_embeds").select("embed_src").eq("user_id", user.user_id).maybeSingle()
-      .then(({ data }) => { if (data?.embed_src) { setEmbedSrc(data.embed_src); setInputValue(data.embed_src); } });
-  }, [user.user_id]);
-
-  const handleSaveEmbed = async () => {
-    const srcMatch = SRC_REGEX.exec(inputValue);
-    const extracted = srcMatch ? srcMatch[1] : inputValue.trim();
-    if (!extracted.startsWith(MIRO_PREFIX)) {
-      toast({ title: "URL inválida", description: "O src deve começar com https://miro.com/app/live-embed/", variant: "destructive" });
-      return;
-    }
-    setSaving(true);
-    const { error } = await supabase.from("miro_embeds").upsert({ user_id: user.user_id, embed_src: extracted }, { onConflict: "user_id" });
-    setSaving(false);
-    if (error) toast({ title: "Erro ao salvar embed", variant: "destructive" });
-    else { setEmbedSrc(extracted); toast({ title: "Embed salvo com sucesso!" }); }
-  };
-
-  const handleRemoveEmbed = async () => {
-    const { error } = await supabase.from("miro_embeds").delete().eq("user_id", user.user_id);
-    if (error) toast({ title: "Erro ao remover embed", variant: "destructive" });
-    else { setEmbedSrc(""); setInputValue(""); toast({ title: "Embed removido" }); }
-  };
-
-  const amesTasks = useMemo(() => tasks.filter(t => t.origin !== "mentorado"), [tasks]);
-  const personalTasks = useMemo(() => tasks.filter(t => t.origin === "mentorado"), [tasks]);
-  const tasksBySection = useMemo(() => {
-    const grouped: Record<string, Task[]> = {};
-    SECTIONS.forEach(section => { grouped[section] = amesTasks.filter(t => t.section === section); });
-    return grouped;
-  }, [amesTasks]);
-
-  const handleSubmitTask = async (taskData: Omit<Task, "id" | "created_at" | "updated_at">) => {
-    if (editTask) { await updateTask(editTask.id, taskData); setEditTask(null); return editTask; }
-    return await createTask(taskData);
-  };
-
-  if (loading) return <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
-
-  return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0"><ArrowLeft className="h-4 w-4" /></Button>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-lg sm:text-2xl font-bold truncate">{user.full_name || user.email}</h2>
-          <p className="text-sm text-muted-foreground truncate">{user.email}</p>
-        </div>
-      </div>
-      <ProgressCard completed={completedCount} total={totalCount} progress={progress} />
-      <Tabs defaultValue="ames" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 h-auto">
-          <TabsTrigger value="ames" className="text-xs sm:text-sm py-2">Plano AMES</TabsTrigger>
-          <TabsTrigger value="custom" className="text-xs sm:text-sm py-2">Personalizado</TabsTrigger>
-          <TabsTrigger value="mapa-mental" className="text-xs sm:text-sm py-2">Mapa Mental</TabsTrigger>
-        </TabsList>
-        <TabsContent value="ames" className="mt-6">
-          <div className="space-y-4">
-            {SECTIONS.map(section => (
-              <div key={section}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-muted-foreground">{section}</span>
-                  <Button variant="ghost" size="sm" onClick={() => { setSelectedSection(section); setEditTask(null); setAddDialogOpen(true); }}>
-                    <Plus className="mr-1 h-3 w-3" />Adicionar
-                  </Button>
-                </div>
-                {tasksBySection[section].length > 0 ? (
-                  <Accordion type="multiple" defaultValue={[section]} className="space-y-2">
-                    <TaskSection section={section} tasks={tasksBySection[section]} onStatusChange={updateTaskStatus} onDueDateChange={updateTaskDueDate} onReorder={reorderTasks} onEdit={(t) => { setEditTask(t); setAddDialogOpen(true); }} onDelete={deleteTask} canEdit canDelete />
-                  </Accordion>
-                ) : (
-                  <Card className="border-dashed"><CardContent className="py-4 text-center text-sm text-muted-foreground">Nenhuma tarefa nesta seção</CardContent></Card>
-                )}
-              </div>
-            ))}
-          </div>
-        </TabsContent>
-        <TabsContent value="custom" className="mt-6">
-          <div className="mb-4">
-            <Button onClick={() => { setSelectedSection("Personalizado"); setEditTask(null); setAddDialogOpen(true); }}>
-              <Plus className="mr-2 h-4 w-4" />Adicionar ação personalizada
-            </Button>
-          </div>
-          {personalTasks.length === 0 ? (
-            <Card><CardContent className="flex flex-col items-center justify-center py-12"><AlertCircle className="mb-4 h-12 w-12 text-muted-foreground" /><p className="text-muted-foreground">Nenhuma ação personalizada</p></CardContent></Card>
-          ) : (
-            <Accordion type="multiple" defaultValue={["Personalizado"]} className="space-y-2">
-              <TaskSection section="Personalizado" tasks={personalTasks.map(t => ({ ...t, section: "Personalizado" }))} onStatusChange={updateTaskStatus} onDueDateChange={updateTaskDueDate} onReorder={reorderTasks} onEdit={(t) => { setEditTask(t); setAddDialogOpen(true); }} onDelete={deleteTask} canEdit canDelete />
-            </Accordion>
-          )}
-        </TabsContent>
-        <TabsContent value="mapa-mental" className="mt-6">
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Cole o iframe HTML do Miro ou a URL direta do embed:</p>
-            <Textarea value={inputValue} onChange={(e) => setInputValue(e.target.value)} placeholder='<iframe src="https://miro.com/app/live-embed/..." />' rows={4} className="font-mono text-xs" />
-            <div className="flex gap-2">
-              <Button onClick={handleSaveEmbed} disabled={saving || !inputValue.trim()}>
-                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar embed
-              </Button>
-              {embedSrc && <Button variant="destructive" onClick={handleRemoveEmbed}><Trash2 className="mr-2 h-4 w-4" />Remover</Button>}
-            </div>
-            {embedSrc && embedSrc.startsWith(MIRO_PREFIX) && (
-              <div className="w-full rounded-lg overflow-hidden border">
-                <iframe src={embedSrc} className="w-full" style={{ height: "500px" }} allow="fullscreen; clipboard-read; clipboard-write" allowFullScreen />
-              </div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
-      <AddTaskDialog
-        open={addDialogOpen}
-        onOpenChange={(open) => { setAddDialogOpen(open); if (!open) { setEditTask(null); setSelectedSection(null); } }}
-        onSubmit={handleSubmitTask}
-        userId={user.user_id}
-        origin="admin"
-        defaultSection={selectedSection || undefined}
-        editTask={editTask}
-        isAdmin
-      />
-    </div>
-  );
-}

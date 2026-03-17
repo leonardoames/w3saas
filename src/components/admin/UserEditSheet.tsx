@@ -49,6 +49,7 @@ interface UserEditSheetProps {
   onOpenChange: (open: boolean) => void;
   onRefresh: () => void;
   onViewPlano: (user: UserProfile) => void;
+  onViewCRM?: (user: UserProfile) => void;
 }
 
 // ─── Inline carteira / team manager ────────────────────────────
@@ -215,7 +216,7 @@ function CarteiraSection({
 }
 
 // ────────────────────────────────────────────────────────────────
-export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano }: UserEditSheetProps) {
+export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano, onViewCRM }: UserEditSheetProps) {
   const { toast } = useToast();
 
   // Base fields
@@ -615,6 +616,11 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
             {/* Actions */}
             <div className="space-y-3">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ações</h3>
+              {onViewCRM && (
+                <Button variant="outline" className="w-full justify-start" onClick={() => { onViewCRM(user); onOpenChange(false); }}>
+                  <Users className="mr-2 h-4 w-4" /> Dados do Cliente (CRM)
+                </Button>
+              )}
               <Button variant="outline" className="w-full justify-start" onClick={() => { onViewPlano(user); onOpenChange(false); }}>
                 <ClipboardList className="mr-2 h-4 w-4" /> Ver Plano de Ação
               </Button>

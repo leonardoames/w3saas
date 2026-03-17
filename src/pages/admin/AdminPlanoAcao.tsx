@@ -135,7 +135,7 @@ export default function AdminPlanoAcao() {
 const MIRO_PREFIX = "https://miro.com/app/live-embed/";
 const SRC_REGEX = /src="([^"]+)"/;
 
-function UserPlanView({ user, onBack }: { user: UserProfile; onBack: () => void }) {
+export function UserPlanView({ user, onBack }: { user: UserProfile; onBack: () => void }) {
   const { tasks, loading, updateTaskStatus, createTask, updateTask, deleteTask, refetch } = useTasks(user.user_id);
   const { toast } = useToast();
 
