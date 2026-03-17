@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { CurrencyInput } from "@/components/ui/currency-input";
 
 interface Audit {
   id: string;
@@ -186,12 +187,10 @@ export function AuditoriasTab({ userId, canEdit = false }: AuditoriasTabProps) {
             </div>
             <div className="space-y-1">
               <Label>Faturamento (R$)</Label>
-              <Input
-                type="number"
-                step="0.01"
+              <CurrencyInput
                 value={form.faturamento}
-                onChange={e => setForm(f => ({ ...f, faturamento: e.target.value }))}
-                placeholder="0,00"
+                onChange={v => setForm(f => ({ ...f, faturamento: v }))}
+                placeholder="R$ 0"
               />
             </div>
             <div className="space-y-1">

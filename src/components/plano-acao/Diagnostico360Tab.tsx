@@ -8,6 +8,7 @@ import { Loader2, Save, Lock, Target, DollarSign, FileText, Lightbulb } from "lu
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { CurrencyInput } from "@/components/ui/currency-input";
 
 interface Diagnostico360TabProps {
   userId: string;
@@ -175,12 +176,10 @@ export function Diagnostico360Tab({ userId, canEdit = false }: Diagnostico360Tab
                 <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
                 Fat. no Início (R$)
               </Label>
-              <Input
-                type="number"
-                step="0.01"
+              <CurrencyInput
                 value={draft.faturamento_inicial}
-                onChange={e => setDraft(d => ({ ...d, faturamento_inicial: e.target.value }))}
-                placeholder="Ex: 30000"
+                onChange={v => setDraft(d => ({ ...d, faturamento_inicial: v }))}
+                placeholder="R$ 0"
               />
               <p className="text-xs text-muted-foreground">Faturamento real ao início da mentoria</p>
             </div>
@@ -190,12 +189,10 @@ export function Diagnostico360Tab({ userId, canEdit = false }: Diagnostico360Tab
                 <DollarSign className="h-3.5 w-3.5 text-primary" />
                 Fat. Ideal / Meta (R$)
               </Label>
-              <Input
-                type="number"
-                step="0.01"
+              <CurrencyInput
                 value={draft.faturamento_ideal}
-                onChange={e => setDraft(d => ({ ...d, faturamento_ideal: e.target.value }))}
-                placeholder="Ex: 100000"
+                onChange={v => setDraft(d => ({ ...d, faturamento_ideal: v }))}
+                placeholder="R$ 0"
               />
               <p className="text-xs text-muted-foreground">Meta de faturamento mensal</p>
             </div>

@@ -1,8 +1,22 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Star } from "lucide-react";
+import { AlertCircle, Star, Lock } from "lucide-react";
 import type { Task, TaskStatus } from "@/hooks/useTasks";
+
+function isSprintComplete(tasks: Task[], sprint: number): boolean {
+  const sprintTasks = tasks.filter(t => t.sprint === sprint && t.status !== "cancelada");
+  return sprintTasks.length > 0 && sprintTasks.every(t => t.status === "concluida");
+}
+
+function isTaskLocked(task: Task, tasks: Task[]): boolean {
+  if (task.sprint === null || task.sprint === undefined || task.sprint === 0) return false;
+  const prevSprints = tasks
+    .filter(t => t.sprint !== null && t.sprint !== undefined && t.sprint < task.sprint!)
+    .map(t => t.sprint as number);
+  const uniquePrev = [...new Set(prevSprints)];
+  return uniquePrev.some(s => !isSprintComplete(tasks, s));
+}
 
 const COLUMNS: { status: TaskStatus; label: string; colorClass: string }[] = [
   { status: "a_fazer", label: "Não Iniciado", colorClass: "border-muted" },
@@ -25,10 +39,12 @@ interface KanbanViewProps {
 export function KanbanView({ tasks, onTaskClick, onStatusChange }: KanbanViewProps) {
   const [dragging, setDragging] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<TaskStatus | null>(null);
+  const lockedIds = new Set(tasks.filter(t => isTaskLocked(t, tasks)).map(t => t.id));
 
   const today = new Date().toISOString().split("T")[0];
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
+    if (lockedIds.has(taskId)) { e.preventDefault(); return; }
     setDragging(taskId);
     e.dataTransfer.effectAllowed = "move";
   };
@@ -82,22 +98,29 @@ export function KanbanView({ tasks, onTaskClick, onStatusChange }: KanbanViewPro
                 return (
                   <div
                     key={task.id}
-                    draggable
+                    draggable={!lockedIds.has(task.id)}
                     onDragStart={e => handleDragStart(e, task.id)}
                     onDragEnd={handleDragEnd}
-                    onClick={() => onTaskClick(task)}
-                    className={`rounded-md border bg-background p-3 cursor-pointer hover:shadow-sm transition-all select-none ${
-                      dragging === task.id ? "opacity-50" : ""
-                    }`}
+                    onClick={() => !lockedIds.has(task.id) && onTaskClick(task)}
+                    className={`rounded-md border bg-background p-3 transition-all select-none ${
+                      lockedIds.has(task.id)
+                        ? "opacity-50 cursor-not-allowed"
+                        : "cursor-pointer hover:shadow-sm"
+                    } ${dragging === task.id ? "opacity-50" : ""}`}
                   >
                     <div className="flex items-start gap-1.5">
-                      {task.is_next_action && (
+                      {lockedIds.has(task.id) ? (
+                        <Lock className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
+                      ) : task.is_next_action ? (
                         <Star className="h-3 w-3 text-amber-500 fill-amber-500 shrink-0 mt-0.5" />
-                      )}
+                      ) : null}
                       <p className={`text-sm font-medium leading-snug ${task.status === "concluida" ? "line-through text-muted-foreground" : ""}`}>
                         {task.title}
                       </p>
                     </div>
+                    {lockedIds.has(task.id) && (
+                      <p className="text-[10px] text-muted-foreground mt-1">Sprint bloqueado</p>
+                    )}
                     {task.section && (
                       <p className="text-xs text-muted-foreground mt-1">{task.section}</p>
                     )}

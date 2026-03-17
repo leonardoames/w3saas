@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Search, TrendingUp, TrendingDown, Minus, CheckCircle2, XCircle, ExternalLink, Filter, X } from "lucide-react";
+import { Loader2, Search, TrendingUp, TrendingDown, Minus, CheckCircle2, XCircle, ExternalLink, X, Globe } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -12,17 +12,15 @@ interface ClientRow {
   user_id: string;
   full_name: string | null;
   email: string | null;
-  // Tasks
   total_tasks: number;
   completed_tasks: number;
-  // Billing
   faturamento_inicial: number | null;
   faturamento_atual: number | null;
-  // Audit
   has_checkpoint_this_month: boolean;
-  // CS info
   cs_name: string | null;
   cs_id: string | null;
+  nome_loja: string | null;
+  site: string | null;
 }
 
 interface InternoTabProps {
@@ -105,28 +103,31 @@ export function InternoTab({ onSelectClient }: InternoTabProps) {
       const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
 
       // 2. Parallel fetch all needed data
-      const [profilesRes, tasksRes, billingRes, auditsRes, csRes] = await Promise.all([
-        // Profiles
+      const [profilesRes, tasksRes, diagRes, auditsAllRes, auditsMonthRes, csRes, brandsRes] = await Promise.all([
         supabase.from("profiles").select("user_id, full_name, email").in("user_id", clientIds),
-        // Tasks: fetch all and aggregate
         supabase.from("tarefas").select("user_id, status").in("user_id", clientIds),
-        // Billing
-        (supabase as any).from("client_billing").select("user_id, faturamento_inicial, faturamento_atual").in("user_id", clientIds),
-        // Current month audit check
+        // faturamento_inicial from diagnostico_360
+        (supabase as any).from("diagnostico_360").select("user_id, faturamento_inicial").in("user_id", clientIds),
+        // All audits to find latest faturamento_atual per user
         (supabase as any).from("result_audits")
-          .select("user_id, mes_referencia")
+          .select("user_id, faturamento, mes_referencia")
+          .in("user_id", clientIds)
+          .order("mes_referencia", { ascending: false }),
+        // Current month checkpoint check
+        (supabase as any).from("result_audits")
+          .select("user_id")
           .in("user_id", clientIds)
           .gte("mes_referencia", currentMonth + "-01")
           .lte("mes_referencia", currentMonth + "-31"),
-        // CS assignments (who is the CS of each client)
         (supabase as any).from("staff_carteiras").select("mentorado_id, staff_id").in("mentorado_id", clientIds),
+        // Brand name + site
+        supabase.from("brands").select("user_id, name, website_url").in("user_id", clientIds),
       ]);
 
       // 3. Build lookup maps
       const profileMap: Record<string, { full_name: string | null; email: string | null }> = {};
       (profilesRes.data || []).forEach((p: any) => { profileMap[p.user_id] = p; });
 
-      // Task counts per user
       const taskMap: Record<string, { total: number; completed: number }> = {};
       (tasksRes.data || []).forEach((t: any) => {
         if (!taskMap[t.user_id]) taskMap[t.user_id] = { total: 0, completed: 0 };
@@ -134,12 +135,29 @@ export function InternoTab({ onSelectClient }: InternoTabProps) {
         if (t.status === "concluida") taskMap[t.user_id].completed++;
       });
 
-      const billingMap: Record<string, { faturamento_inicial: number | null; faturamento_atual: number | null }> = {};
-      (billingRes.data || []).forEach((b: any) => { billingMap[b.user_id] = b; });
+      // faturamento_inicial from diagnostico_360
+      const diagMap: Record<string, number | null> = {};
+      (diagRes.data || []).forEach((d: any) => { diagMap[d.user_id] = d.faturamento_inicial ?? null; });
+
+      // faturamento_atual = latest audit per user
+      const latestAuditMap: Record<string, number | null> = {};
+      (auditsAllRes.data || []).forEach((a: any) => {
+        if (!(a.user_id in latestAuditMap) && a.faturamento !== null) {
+          latestAuditMap[a.user_id] = a.faturamento;
+        }
+      });
 
       const checkpointSet = new Set<string>(
-        (auditsRes.data || []).map((a: any) => a.user_id)
+        (auditsMonthRes.data || []).map((a: any) => a.user_id)
       );
+
+      // brands: nome_loja + site (pick first brand per user)
+      const brandMap: Record<string, { nome_loja: string | null; site: string | null }> = {};
+      (brandsRes.data || []).forEach((b: any) => {
+        if (!brandMap[b.user_id]) {
+          brandMap[b.user_id] = { nome_loja: b.name || null, site: b.website_url || null };
+        }
+      });
 
       // CS name lookup: mentorado_id → cs profile
       const csAssignments: Record<string, string> = {};
@@ -164,19 +182,21 @@ export function InternoTab({ onSelectClient }: InternoTabProps) {
       const rows: ClientRow[] = clientIds.map(id => {
         const profile = profileMap[id] || { full_name: null, email: null };
         const tasks = taskMap[id] || { total: 0, completed: 0 };
-        const billing = billingMap[id] || { faturamento_inicial: null, faturamento_atual: null };
         const csId = csAssignments[id] || null;
+        const brand = brandMap[id] || { nome_loja: null, site: null };
         return {
           user_id: id,
           full_name: profile.full_name,
           email: profile.email,
           total_tasks: tasks.total,
           completed_tasks: tasks.completed,
-          faturamento_inicial: billing.faturamento_inicial,
-          faturamento_atual: billing.faturamento_atual,
+          faturamento_inicial: diagMap[id] ?? null,
+          faturamento_atual: latestAuditMap[id] ?? null,
           has_checkpoint_this_month: checkpointSet.has(id),
           cs_id: csId,
           cs_name: csId ? (csProfileMap[csId] || null) : null,
+          nome_loja: brand.nome_loja,
+          site: brand.site,
         };
       });
 
@@ -355,6 +375,7 @@ export function InternoTab({ onSelectClient }: InternoTabProps) {
         <table className="w-full text-sm min-w-[640px]">
           <thead className="bg-muted/50 border-b">
             <tr>
+              <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Loja</th>
               <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Cliente</th>
               {showCS && <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">CS</th>}
               <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Plano de Ação</th>
@@ -375,6 +396,34 @@ export function InternoTab({ onSelectClient }: InternoTabProps) {
                   key={c.user_id}
                   className={`border-b last:border-0 hover:bg-accent/30 transition-colors ${i % 2 === 0 ? "" : "bg-muted/10"}`}
                 >
+                  {/* Loja */}
+                  <td className="px-4 py-3">
+                    {c.nome_loja ? (
+                      c.site ? (
+                        <a
+                          href={c.site.startsWith("http") ? c.site : `https://${c.site}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 hover:underline text-sm font-medium"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <img
+                            src={`https://www.google.com/s2/favicons?domain=${c.site}&sz=16`}
+                            alt=""
+                            className="h-4 w-4 rounded-sm shrink-0"
+                            onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          />
+                          {c.nome_loja}
+                          <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+                        </a>
+                      ) : (
+                        <span className="text-sm font-medium">{c.nome_loja}</span>
+                      )
+                    ) : (
+                      <span className="text-xs text-muted-foreground/40">—</span>
+                    )}
+                  </td>
+                  {/* Cliente */}
                   <td className="px-4 py-3">
                     <div>
                       <p className="font-medium leading-tight">{c.full_name || "—"}</p>
