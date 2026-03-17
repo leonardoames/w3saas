@@ -204,7 +204,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
       const { data: staffRoles } = await (supabase as any)
         .from("user_roles")
         .select("user_id")
-        .in("role", ["cs", "tutor", "master", "admin"]);
+        .in("role", ["cs", "tutor", "admin"]);
       const staffIds = [...new Set((staffRoles || []).map((r: any) => r.user_id).filter(Boolean))];
       let staffMap: Record<string, string> = {};
       if (staffIds.length > 0) {
