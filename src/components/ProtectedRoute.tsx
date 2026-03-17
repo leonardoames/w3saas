@@ -5,11 +5,13 @@ import { Loader2 } from "lucide-react";
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
+  requireStaff?: boolean;
 }
 
-export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requireAdmin = false, requireStaff = false }: ProtectedRouteProps) {
   const { user, isAdmin, hasRole, isLoading, hasAccess, accessDeniedReason, profile } = useAuth();
   const isMaster = isAdmin || hasRole("master");
+  const isStaff = isMaster || hasRole("tutor") || hasRole("cs");
   const location = useLocation();
 
   if (isLoading) {
@@ -43,6 +45,11 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
 
   // Admin route check (admin or master can access)
   if (requireAdmin && !isMaster) {
+    return <Navigate to="/app" replace />;
+  }
+
+  // Staff route check (admin, master, tutor, cs)
+  if (requireStaff && !isStaff) {
     return <Navigate to="/app" replace />;
   }
 

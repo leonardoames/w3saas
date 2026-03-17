@@ -132,7 +132,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
   const [scheduledActivities, setScheduledActivities] = useState<ScheduledActivity[]>([]);
   const [newActivityTitle, setNewActivityTitle] = useState("");
   const [newActivityType, setNewActivityType] = useState("task");
-  const [newActivityDate, setNewActivityDate] = useState("");
+  const [newActivityDate, setNewActivityDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [newActivityAssigned, setNewActivityAssigned] = useState("");
   const [addingActivity, setAddingActivity] = useState(false);
 
@@ -205,7 +205,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
         .from("user_roles")
         .select("user_id")
         .in("role", ["cs", "tutor", "master", "admin"]);
-      const staffIds = (staffRoles || []).map((r: any) => r.user_id).filter(Boolean);
+      const staffIds = [...new Set((staffRoles || []).map((r: any) => r.user_id).filter(Boolean))];
       let staffMap: Record<string, string> = {};
       if (staffIds.length > 0) {
         const { data: staffProfiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", staffIds);
@@ -460,7 +460,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
   };
 
   const handleAddActivity = async () => {
-    if (!newActivityTitle.trim() || !newActivityDate || !userId || !user?.id) return;
+    if (!newActivityTitle.trim() || !userId || !user?.id) return;
     setAddingActivity(true);
     let crmId = data?.crmClientId;
     if (!crmId) {
@@ -486,7 +486,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
       const assignedName = newActivityAssigned ? (staffList.find(s => s.user_id === newActivityAssigned)?.name || null) : null;
       setScheduledActivities(prev => [...prev, { ...inserted, assigned_name: assignedName, clientName: "" }]);
       setNewActivityTitle("");
-      setNewActivityDate("");
+      setNewActivityDate(new Date().toISOString().split("T")[0]);
       setNewActivityAssigned("");
       setNewActivityType("task");
       toast({ title: "Atividade agendada" });
@@ -1065,46 +1065,54 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                     )}
 
                     {/* Add activity form */}
-                    <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t">
-                      <Input
-                        value={newActivityTitle}
-                        onChange={e => setNewActivityTitle(e.target.value)}
-                        placeholder="+ Nova atividade..."
-                        className="h-7 text-xs flex-1 min-w-[140px]"
-                        onKeyDown={e => { if (e.key === "Enter") handleAddActivity(); }}
-                      />
-                      <Select value={newActivityType} onValueChange={setNewActivityType}>
-                        <SelectTrigger className="h-7 text-xs w-28">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ACTIVITY_TYPES.map(t => (
-                            <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        type="date"
-                        value={newActivityDate}
-                        onChange={e => setNewActivityDate(e.target.value)}
-                        className="h-7 text-xs w-32"
-                      />
-                      {staffList.length > 0 && (
-                        <Select value={newActivityAssigned || "__none__"} onValueChange={v => setNewActivityAssigned(v === "__none__" ? "" : v)}>
-                          <SelectTrigger className="h-7 text-xs w-36">
-                            <SelectValue placeholder="Responsável" />
+                    <div className="mt-4 pt-3 border-t space-y-2">
+                      <div className="flex gap-2">
+                        <Input
+                          value={newActivityTitle}
+                          onChange={e => setNewActivityTitle(e.target.value)}
+                          placeholder="Título da atividade..."
+                          className="h-8 text-sm flex-1"
+                          onKeyDown={e => { if (e.key === "Enter") handleAddActivity(); }}
+                        />
+                        <Button size="sm" type="button" className="h-8 px-3 shrink-0" onClick={handleAddActivity} disabled={addingActivity || !newActivityTitle.trim()}>
+                          {addingActivity ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5 mr-1" />}
+                          {!addingActivity && "Adicionar"}
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Select value={newActivityType} onValueChange={setNewActivityType}>
+                          <SelectTrigger className="h-7 text-xs w-28">
+                            <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="__none__">Sem responsável</SelectItem>
-                            {staffList.map(s => (
-                              <SelectItem key={s.user_id} value={s.user_id}>{s.name}</SelectItem>
+                            {ACTIVITY_TYPES.map(t => (
+                              <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                      )}
-                      <Button size="sm" type="button" className="h-7 px-2" onClick={handleAddActivity} disabled={addingActivity || !newActivityTitle.trim() || !newActivityDate}>
-                        {addingActivity ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                      </Button>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-muted-foreground">Data:</span>
+                          <Input
+                            type="date"
+                            value={newActivityDate}
+                            onChange={e => setNewActivityDate(e.target.value)}
+                            className="h-7 text-xs w-32"
+                          />
+                        </div>
+                        {staffList.length > 0 && (
+                          <Select value={newActivityAssigned || "__none__"} onValueChange={v => setNewActivityAssigned(v === "__none__" ? "" : v)}>
+                            <SelectTrigger className="h-7 text-xs w-36">
+                              <SelectValue placeholder="Responsável" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">Sem responsável</SelectItem>
+                              {staffList.map(s => (
+                                <SelectItem key={s.user_id} value={s.user_id}>{s.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
                     </div>
                   </div>
 
