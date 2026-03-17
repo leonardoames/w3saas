@@ -308,7 +308,7 @@ export default function PlanoAcao() {
 
         {/* Recursos */}
         <TabsContent value="recursos" className="mt-6">
-          <UserResourcesTab />
+          <UserResourcesTab userId={viewUserId} canEdit={isStaff} />
         </TabsContent>
       </Tabs>
 

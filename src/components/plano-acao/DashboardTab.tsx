@@ -13,6 +13,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
 } from "recharts";
 
 interface DashboardTabProps {
@@ -32,8 +33,9 @@ const fmt = (v: number | null | undefined) => {
 
 export function DashboardTab({ tasks, userId, canEdit = false }: DashboardTabProps) {
   const [faturamentoInicial, setFaturamentoInicial] = useState<number | null>(null);
+  const [faturamentoIdeal, setFaturamentoIdeal] = useState<number | null>(null);
   const [faturamentoAtual, setFaturamentoAtual] = useState<number | null>(null);
-  const [chartData, setChartData] = useState<{ label: string; faturamento: number | null }[]>([]);
+  const [chartData, setChartData] = useState<{ label: string; faturamento: number }[]>([]);
   const [dataInicio, setDataInicio] = useState<string | null>(null);
   const [editingInicio, setEditingInicio] = useState(false);
   const [draftInicio, setDraftInicio] = useState("");
@@ -43,48 +45,64 @@ export function DashboardTab({ tasks, userId, canEdit = false }: DashboardTabPro
   useEffect(() => {
     if (!userId) return;
 
-    // faturamento_inicial from diagnostico_360
-    (supabase as any)
-      .from("diagnostico_360")
-      .select("faturamento_inicial")
-      .eq("user_id", userId)
-      .maybeSingle()
-      .then(({ data }: any) => {
-        setFaturamentoInicial(data?.faturamento_inicial ?? null);
+    const toLabel = (dateStr: string) =>
+      new Date(dateStr + "T00:00:00").toLocaleDateString("pt-BR", {
+        month: "short",
+        year: "2-digit",
       });
 
-    // result_audits for chart + faturamento_atual
-    (supabase as any)
-      .from("result_audits")
-      .select("mes_referencia, faturamento")
-      .eq("user_id", userId)
-      .order("mes_referencia", { ascending: true })
-      .then(({ data }: any) => {
-        const rows = (data || []).filter((r: any) => r.faturamento !== null);
-        const chart = rows.map((r: any) => ({
-          label: r.mes_referencia
-            ? new Date(r.mes_referencia + "T00:00:00").toLocaleDateString("pt-BR", {
-                month: "short",
-                year: "2-digit",
-              })
-            : "",
-          faturamento: r.faturamento as number,
-        }));
-        setChartData(chart);
-        if (rows.length > 0) {
-          setFaturamentoAtual(rows[rows.length - 1].faturamento);
-        }
-      });
+    Promise.all([
+      (supabase as any)
+        .from("diagnostico_360")
+        .select("faturamento_inicial, faturamento_ideal")
+        .eq("user_id", userId)
+        .maybeSingle(),
+      (supabase as any)
+        .from("profiles")
+        .select("data_inicio_mentoria")
+        .eq("user_id", userId)
+        .maybeSingle(),
+      (supabase as any)
+        .from("result_audits")
+        .select("mes_referencia, faturamento")
+        .eq("user_id", userId)
+        .order("mes_referencia", { ascending: true }),
+    ]).then(([diagRes, profileRes, auditsRes]) => {
+      const fatInicial: number | null = diagRes.data?.faturamento_inicial ?? null;
+      const fatIdeal: number | null = diagRes.data?.faturamento_ideal ?? null;
+      const inicio: string | null = profileRes.data?.data_inicio_mentoria ?? null;
+      const auditRows = (auditsRes.data || []).filter((r: any) => r.faturamento !== null);
 
-    // data_inicio_mentoria from profiles
-    (supabase as any)
-      .from("profiles")
-      .select("data_inicio_mentoria")
-      .eq("user_id", userId)
-      .maybeSingle()
-      .then(({ data }: any) => {
-        setDataInicio(data?.data_inicio_mentoria ?? null);
-      });
+      setFaturamentoInicial(fatInicial);
+      setFaturamentoIdeal(fatIdeal);
+      setDataInicio(inicio);
+
+      if (auditRows.length > 0) {
+        setFaturamentoAtual(auditRows[auditRows.length - 1].faturamento);
+      }
+
+      // Build chart: start point + audit points
+      const auditPoints = auditRows.map((r: any) => ({
+        label: toLabel(r.mes_referencia),
+        faturamento: r.faturamento as number,
+        monthKey: r.mes_referencia?.slice(0, 7) ?? "",
+      }));
+
+      // Prepend initial point if we have start date + initial billing
+      // and it doesn't duplicate the first audit month
+      const startMonthKey = inicio?.slice(0, 7) ?? "";
+      const firstAuditMonth = auditPoints[0]?.monthKey ?? "";
+      const hasInitialPoint = inicio && fatInicial !== null;
+      const isDuplicate = hasInitialPoint && startMonthKey === firstAuditMonth;
+
+      const combined: { label: string; faturamento: number }[] = [];
+      if (hasInitialPoint && !isDuplicate) {
+        combined.push({ label: toLabel(inicio!), faturamento: fatInicial! });
+      }
+      combined.push(...auditPoints.map(p => ({ label: p.label, faturamento: p.faturamento })));
+
+      setChartData(combined);
+    });
   }, [userId]);
 
   const handleSaveInicio = async () => {
@@ -291,6 +309,15 @@ export function DashboardTab({ tasks, userId, canEdit = false }: DashboardTabPro
                   fill="url(#fatGradient)"
                   dot={{ r: 3, fill: "hsl(var(--primary))" }}
                 />
+                {faturamentoIdeal && (
+                  <ReferenceLine
+                    y={faturamentoIdeal}
+                    stroke="hsl(var(--primary))"
+                    strokeDasharray="6 3"
+                    strokeOpacity={0.5}
+                    label={{ value: `Meta: ${fmt(faturamentoIdeal)}`, position: "insideTopRight", fontSize: 10, fill: "hsl(var(--primary))" }}
+                  />
+                )}
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
