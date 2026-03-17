@@ -44,6 +44,7 @@ const formSchema = z.object({
   description: z.string().max(1000).optional(),
   section: z.string().min(1, "Seção é obrigatória"),
   priority: z.enum(["Baixa", "Média", "Alta"]).optional(),
+  sprint: z.string().optional(),
   start_date: z.date().optional(),
   due_date: z.date().optional(),
 });
@@ -80,6 +81,7 @@ export function AddTaskDialog({
       description: editTask?.description || "",
       section: editTask?.section || defaultSection || "",
       priority: editTask?.priority || undefined,
+      sprint: editTask?.sprint !== null && editTask?.sprint !== undefined ? String(editTask.sprint) : "",
       start_date: editTask?.start_date ? new Date(editTask.start_date) : undefined,
       due_date: editTask?.due_date ? new Date(editTask.due_date) : undefined,
     },
@@ -108,6 +110,8 @@ export function AddTaskDialog({
         description: data.description || null,
         section: data.section,
         priority: data.priority || null,
+        sprint: data.sprint && data.sprint !== "" ? parseInt(data.sprint, 10) : null,
+        is_next_action: editTask?.is_next_action || false,
         start_date: data.start_date ? format(data.start_date, 'yyyy-MM-dd') : null,
         due_date: data.due_date ? format(data.due_date, 'yyyy-MM-dd') : null,
         checklist: editTask?.checklist || [],
@@ -201,6 +205,30 @@ export function AddTaskDialog({
                 )}
               />
             )}
+
+            <FormField
+              control={form.control}
+              name="sprint"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sprint</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sem sprint" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">Sem sprint</SelectItem>
+                      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+                        <SelectItem key={n} value={String(n)}>Sprint {n}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <FormField

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, List, Columns, Calendar, Search, X, ChevronDown, Users, Plus, ArrowLeft } from "lucide-react";
+import { Loader2, List, Columns, Calendar, Search, X, ChevronDown, Users, Plus, ArrowLeft, Info } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTasks, Task, TaskStatus } from "@/hooks/useTasks";
 import { supabase } from "@/integrations/supabase/client";
@@ -133,6 +133,35 @@ function ClientSelector({
   );
 }
 
+const TAB_HELP: Record<string, string> = {
+  dashboard: "Aqui você acompanha o progresso geral do seu plano, incluindo a próxima ação recomendada pela consultoria e o histórico de faturamento ao longo da mentoria.",
+  plano: "Estas são as ações definidas pela sua consultoria. Acompanhe o status de cada uma, marque itens do checklist e deixe comentários. As ações estão organizadas em sprints — complete o sprint atual antes de prosseguir para o próximo.",
+  "mapa-mental": "Este é seu mapa mental estratégico, criado e atualizado pela equipe de consultoria para mapear a visão do seu negócio.",
+  auditorias: "Aqui ficam os checkpoints mensais de resultado, com histórico de faturamento e observações da consultoria.",
+  diagnostico: "Este é o diagnóstico completo do seu negócio, preenchido pela consultoria no início da mentoria. Define seus objetivos e metas de faturamento.",
+  recursos: "Aqui sua consultoria disponibiliza aulas e materiais exclusivos para apoiar a sua jornada.",
+};
+
+function TabHelpBanner({ tabKey }: { tabKey: string }) {
+  const storageKey = `plano-help-v1-${tabKey}`;
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem(storageKey) === "1");
+  const message = TAB_HELP[tabKey];
+  if (dismissed || !message) return null;
+  return (
+    <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30 px-4 py-3 mb-4">
+      <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+      <p className="text-sm text-blue-700 dark:text-blue-300 flex-1">{message}</p>
+      <button
+        onClick={() => { localStorage.setItem(storageKey, "1"); setDismissed(true); }}
+        className="text-blue-400 hover:text-blue-600 shrink-0"
+        aria-label="Fechar"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
 export default function PlanoAcao() {
   const { user, isAdmin, hasRole } = useAuth();
   const isStaff = isAdmin || hasRole("master") || hasRole("tutor") || hasRole("cs");
@@ -251,6 +280,7 @@ export default function PlanoAcao() {
 
         {/* Dashboard */}
         <TabsContent value="dashboard" className="mt-6">
+          <TabHelpBanner tabKey="dashboard" />
           {loading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
           ) : (
@@ -260,6 +290,7 @@ export default function PlanoAcao() {
 
         {/* Plano de Ação */}
         <TabsContent value="plano" className="mt-6">
+          <TabHelpBanner tabKey="plano" />
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
@@ -293,21 +324,25 @@ export default function PlanoAcao() {
 
         {/* Mapa Mental */}
         <TabsContent value="mapa-mental" className="mt-6">
+          <TabHelpBanner tabKey="mapa-mental" />
           <MiroEmbed userId={viewUserId !== user?.id ? viewUserId : undefined} />
         </TabsContent>
 
         {/* Auditorias */}
         <TabsContent value="auditorias" className="mt-6">
+          <TabHelpBanner tabKey="auditorias" />
           <AuditoriasTab userId={viewUserId} canEdit={isStaff} />
         </TabsContent>
 
         {/* Diagnóstico 360 */}
         <TabsContent value="diagnostico" className="mt-6">
+          <TabHelpBanner tabKey="diagnostico" />
           <Diagnostico360Tab userId={viewUserId} canEdit={canEditDiag} />
         </TabsContent>
 
         {/* Recursos */}
         <TabsContent value="recursos" className="mt-6">
+          <TabHelpBanner tabKey="recursos" />
           <UserResourcesTab userId={viewUserId} canEdit={isStaff} />
         </TabsContent>
       </Tabs>

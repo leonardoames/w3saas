@@ -25,6 +25,8 @@ export interface Task {
   status: TaskStatus;
   origin: TaskOrigin;
   order_index: number;
+  sprint: number | null;
+  is_next_action: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -72,6 +74,8 @@ export function useTasks(userId?: string) {
         priority: task.priority as 'Baixa' | 'Média' | 'Alta' | null,
         start_date: task.start_date ?? null,
         checklist: (task.checklist as ChecklistItem[]) ?? [],
+        sprint: task.sprint ?? null,
+        is_next_action: task.is_next_action ?? false,
       }));
 
       setTasks(mappedTasks);
@@ -165,6 +169,8 @@ export function useTasks(userId?: string) {
         priority: data.priority as 'Baixa' | 'Média' | 'Alta' | null,
         start_date: data.start_date ?? null,
         checklist: (data.checklist as ChecklistItem[]) ?? [],
+        sprint: data.sprint ?? null,
+        is_next_action: data.is_next_action ?? false,
       };
 
       setTasks(prev => [...prev, newTask]);

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Plus, Trash2, Send, Pencil, Check, X, Calendar } from "lucide-react";
+import { Loader2, Plus, Trash2, Send, Pencil, Check, X, Calendar, Star } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -221,6 +221,29 @@ export function ActionDrawer({
     const value = date ? format(date, "yyyy-MM-dd") : null;
     await (supabase as any).from("tarefas").update({ [field]: value }).eq("id", task.id);
     onTaskUpdate?.(task.id, { [field]: value });
+  };
+
+  const handleSaveSprint = async (sprintStr: string) => {
+    if (!task) return;
+    const sprint = sprintStr === "" ? null : parseInt(sprintStr, 10);
+    await (supabase as any).from("tarefas").update({ sprint }).eq("id", task.id);
+    onTaskUpdate?.(task.id, { sprint });
+  };
+
+  const handleToggleNextAction = async () => {
+    if (!task) return;
+    const newValue = !task.is_next_action;
+    if (newValue) {
+      // Clear is_next_action from other tasks of same user
+      await (supabase as any).from("tarefas")
+        .update({ is_next_action: false })
+        .eq("user_id", task.user_id)
+        .eq("is_next_action", true)
+        .neq("id", task.id);
+    }
+    await (supabase as any).from("tarefas").update({ is_next_action: newValue }).eq("id", task.id);
+    onTaskUpdate?.(task.id, { is_next_action: newValue });
+    toast({ title: newValue ? "Definida como próxima ação" : "Removida como próxima ação" });
   };
 
   const handleDelete = async () => {
@@ -453,6 +476,43 @@ export function ActionDrawer({
               )}
             </div>
           </div>
+
+          {/* Sprint + Next action (staff only) */}
+          {isStaff && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Sprint</Label>
+                <Select
+                  value={task.sprint !== null && task.sprint !== undefined ? String(task.sprint) : ""}
+                  onValueChange={handleSaveSprint}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Sem sprint" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="" className="text-xs">Sem sprint</SelectItem>
+                    {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+                      <SelectItem key={n} value={String(n)} className="text-xs">Sprint {n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Destaque</Label>
+                <button
+                  onClick={handleToggleNextAction}
+                  className={`flex items-center gap-2 h-8 px-3 rounded-md border text-xs w-full transition-colors ${
+                    task.is_next_action
+                      ? "border-amber-300 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+                      : "border-input bg-transparent text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  <Star className={`h-3.5 w-3.5 ${task.is_next_action ? "fill-amber-500 text-amber-500" : ""}`} />
+                  {task.is_next_action ? "Próxima ação" : "Definir como próxima"}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Checklist */}
           <div>

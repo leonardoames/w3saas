@@ -4,8 +4,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Search, TrendingUp, TrendingDown, Minus, CheckCircle2, XCircle, ExternalLink } from "lucide-react";
+import { Loader2, Search, TrendingUp, TrendingDown, Minus, CheckCircle2, XCircle, ExternalLink, Filter, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ClientRow {
   user_id: string;
@@ -79,6 +80,9 @@ export function InternoTab({ onSelectClient }: InternoTabProps) {
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [filterCS, setFilterCS] = useState<string>("all");
+  const [filterCheckpoint, setFilterCheckpoint] = useState<string>("all");
+  const [filterTrend, setFilterTrend] = useState<string>("all");
 
   useEffect(() => {
     loadData();
@@ -193,15 +197,45 @@ export function InternoTab({ onSelectClient }: InternoTabProps) {
     }
   };
 
+  const csOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const opts: { id: string; name: string }[] = [];
+    clients.forEach(c => {
+      if (c.cs_id && !seen.has(c.cs_id)) {
+        seen.add(c.cs_id);
+        opts.push({ id: c.cs_id, name: c.cs_name || c.cs_id });
+      }
+    });
+    return opts.sort((a, b) => a.name.localeCompare(b.name));
+  }, [clients]);
+
+  const hasFilters = filterCS !== "all" || filterCheckpoint !== "all" || filterTrend !== "all";
+
   const filtered = useMemo(() => {
-    if (!search.trim()) return clients;
-    const q = search.toLowerCase();
-    return clients.filter(c =>
-      c.full_name?.toLowerCase().includes(q) ||
-      c.email?.toLowerCase().includes(q) ||
-      c.cs_name?.toLowerCase().includes(q)
-    );
-  }, [clients, search]);
+    let result = clients;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(c =>
+        c.full_name?.toLowerCase().includes(q) ||
+        c.email?.toLowerCase().includes(q) ||
+        c.cs_name?.toLowerCase().includes(q)
+      );
+    }
+    if (filterCS !== "all") {
+      result = result.filter(c => c.cs_id === filterCS);
+    }
+    if (filterCheckpoint === "with") {
+      result = result.filter(c => c.has_checkpoint_this_month);
+    } else if (filterCheckpoint === "without") {
+      result = result.filter(c => !c.has_checkpoint_this_month);
+    }
+    if (filterTrend === "growing") {
+      result = result.filter(c => c.faturamento_inicial && c.faturamento_atual && c.faturamento_atual > c.faturamento_inicial * 1.05);
+    } else if (filterTrend === "declining") {
+      result = result.filter(c => c.faturamento_inicial && c.faturamento_atual && c.faturamento_atual < c.faturamento_inicial * 0.95);
+    }
+    return result;
+  }, [clients, search, filterCS, filterCheckpoint, filterTrend]);
 
   const currentMonthLabel = new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
@@ -260,15 +294,60 @@ export function InternoTab({ onSelectClient }: InternoTabProps) {
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar cliente, CS..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      {/* Search + filters */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar cliente, CS..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        {showCS && csOptions.length > 0 && (
+          <Select value={filterCS} onValueChange={setFilterCS}>
+            <SelectTrigger className="h-9 w-auto min-w-[140px] text-xs">
+              <SelectValue placeholder="Filtrar por CS" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">Todos os CS</SelectItem>
+              {csOptions.map(cs => (
+                <SelectItem key={cs.id} value={cs.id} className="text-xs">{cs.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        <Select value={filterCheckpoint} onValueChange={setFilterCheckpoint}>
+          <SelectTrigger className="h-9 w-auto min-w-[140px] text-xs">
+            <SelectValue placeholder="Checkpoint" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">Todos</SelectItem>
+            <SelectItem value="with" className="text-xs">Com checkpoint</SelectItem>
+            <SelectItem value="without" className="text-xs">Sem checkpoint</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterTrend} onValueChange={setFilterTrend}>
+          <SelectTrigger className="h-9 w-auto min-w-[140px] text-xs">
+            <SelectValue placeholder="Tendência" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">Qualquer tendência</SelectItem>
+            <SelectItem value="growing" className="text-xs">Crescendo (&gt;5%)</SelectItem>
+            <SelectItem value="declining" className="text-xs">Caindo (&gt;5%)</SelectItem>
+          </SelectContent>
+        </Select>
+        {hasFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 px-2 text-xs text-muted-foreground"
+            onClick={() => { setFilterCS("all"); setFilterCheckpoint("all"); setFilterTrend("all"); }}
+          >
+            <X className="h-3.5 w-3.5 mr-1" />Limpar
+          </Button>
+        )}
       </div>
 
       {/* Table */}

@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, Clock, AlertTriangle, TrendingUp, Pencil, Check, X, CalendarDays } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { CheckCircle2, Clock, AlertTriangle, TrendingUp, Pencil, Check, X, CalendarDays, Star, StickyNote, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Task } from "@/hooks/useTasks";
 import {
   AreaChart,
@@ -32,6 +34,39 @@ const fmt = (v: number | null | undefined) => {
 };
 
 export function DashboardTab({ tasks, userId, canEdit = false }: DashboardTabProps) {
+  const { user } = useAuth();
+
+  // Staff private notes
+  const [note, setNote] = useState("");
+  const [noteDraft, setNoteDraft] = useState("");
+  const [editingNote, setEditingNote] = useState(false);
+  const [savingNote, setSavingNote] = useState(false);
+
+  const fetchNote = useCallback(async () => {
+    if (!canEdit || !user?.id || !userId) return;
+    const { data } = await (supabase as any)
+      .from("staff_client_notes")
+      .select("content")
+      .eq("staff_id", user.id)
+      .eq("client_id", userId)
+      .maybeSingle();
+    setNote(data?.content || "");
+  }, [canEdit, user?.id, userId]);
+
+  useEffect(() => { fetchNote(); }, [fetchNote]);
+
+  const handleSaveNote = async () => {
+    if (!user?.id || !userId) return;
+    setSavingNote(true);
+    await (supabase as any)
+      .from("staff_client_notes")
+      .upsert({ staff_id: user.id, client_id: userId, content: noteDraft, updated_at: new Date().toISOString() },
+        { onConflict: "staff_id,client_id" });
+    setSavingNote(false);
+    setNote(noteDraft);
+    setEditingNote(false);
+  };
+
   const [faturamentoInicial, setFaturamentoInicial] = useState<number | null>(null);
   const [faturamentoIdeal, setFaturamentoIdeal] = useState<number | null>(null);
   const [faturamentoAtual, setFaturamentoAtual] = useState<number | null>(null);
@@ -134,8 +169,33 @@ export function DashboardTab({ tasks, userId, canEdit = false }: DashboardTabPro
       ? ((faturamentoAtual - faturamentoInicial) / faturamentoInicial) * 100
       : null;
 
+  const nextAction = tasks.find(t => t.is_next_action && t.status !== "concluida" && t.status !== "cancelada");
+
   return (
     <div className="space-y-6">
+      {/* Próxima Ação */}
+      {nextAction && (
+        <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-start gap-3">
+              <Star className="h-4 w-4 text-amber-500 fill-amber-500 mt-0.5 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-1">Próxima Ação</p>
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">{nextAction.title}</p>
+                {nextAction.description && (
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5 line-clamp-2">{nextAction.description}</p>
+                )}
+                {nextAction.due_date && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                    Prazo: {new Date(nextAction.due_date + "T00:00:00").toLocaleDateString("pt-BR")}
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card>
@@ -271,6 +331,53 @@ export function DashboardTab({ tasks, userId, canEdit = false }: DashboardTabPro
           </CardContent>
         </Card>
       </div>
+
+      {/* Staff private notes */}
+      {canEdit && (
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <StickyNote className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Anotações privadas</span>
+              </div>
+              {!editingNote && (
+                <button
+                  onClick={() => { setNoteDraft(note); setEditingNote(true); }}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            {editingNote ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={noteDraft}
+                  onChange={e => setNoteDraft(e.target.value)}
+                  placeholder="Anotações visíveis apenas para você..."
+                  rows={3}
+                  className="text-sm"
+                  autoFocus
+                />
+                <div className="flex gap-1">
+                  <button onClick={handleSaveNote} disabled={savingNote} className="flex items-center gap-1 text-xs text-green-600 hover:text-green-700 p-1">
+                    {savingNote ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                    Salvar
+                  </button>
+                  <button onClick={() => setEditingNote(false)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground p-1 ml-1">
+                    <X className="h-3.5 w-3.5" />Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className={`text-sm whitespace-pre-wrap ${note ? "" : "text-muted-foreground italic"}`}>
+                {note || "Sem anotações. Clique no lápis para adicionar."}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Faturamento evolution chart */}
       {chartData.length > 0 && (

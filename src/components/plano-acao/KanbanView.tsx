@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Star } from "lucide-react";
 import type { Task, TaskStatus } from "@/hooks/useTasks";
 
 const COLUMNS: { status: TaskStatus; label: string; colorClass: string }[] = [
@@ -90,9 +90,14 @@ export function KanbanView({ tasks, onTaskClick, onStatusChange }: KanbanViewPro
                       dragging === task.id ? "opacity-50" : ""
                     }`}
                   >
-                    <p className={`text-sm font-medium leading-snug ${task.status === "concluida" ? "line-through text-muted-foreground" : ""}`}>
-                      {task.title}
-                    </p>
+                    <div className="flex items-start gap-1.5">
+                      {task.is_next_action && (
+                        <Star className="h-3 w-3 text-amber-500 fill-amber-500 shrink-0 mt-0.5" />
+                      )}
+                      <p className={`text-sm font-medium leading-snug ${task.status === "concluida" ? "line-through text-muted-foreground" : ""}`}>
+                        {task.title}
+                      </p>
+                    </div>
                     {task.section && (
                       <p className="text-xs text-muted-foreground mt-1">{task.section}</p>
                     )}
