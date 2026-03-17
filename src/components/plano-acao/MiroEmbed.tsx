@@ -6,19 +6,20 @@ import { Loader2, Map } from "lucide-react";
 
 const MIRO_PREFIX = "https://miro.com/app/live-embed/";
 
-export function MiroEmbed() {
+export function MiroEmbed({ userId }: { userId?: string }) {
   const { user } = useAuth();
+  const targetId = userId || user?.id;
   const [embedSrc, setEmbedSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user?.id) return;
-
+    if (!targetId) return;
+    setLoading(true);
     const fetchEmbed = async () => {
       const { data } = await supabase
         .from("miro_embeds")
         .select("embed_src")
-        .eq("user_id", user.id)
+        .eq("user_id", targetId)
         .maybeSingle();
 
       setEmbedSrc(data?.embed_src ?? null);
@@ -26,7 +27,7 @@ export function MiroEmbed() {
     };
 
     fetchEmbed();
-  }, [user?.id]);
+  }, [targetId]);
 
   if (loading) {
     return (
