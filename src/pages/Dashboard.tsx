@@ -184,8 +184,8 @@ export default function Dashboard() {
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.preferences && typeof data.preferences === "object") {
-          const parsed = data.preferences as Partial<DashboardPreferences>;
+        if ((data as any)?.preferences && typeof (data as any).preferences === "object") {
+          const parsed = (data as any).preferences as Partial<DashboardPreferences>;
           const merged = {
             widgets: { ...DEFAULT_DASHBOARD_PREFERENCES.widgets, ...(parsed.widgets || {}) },
             kpis: { ...DEFAULT_DASHBOARD_PREFERENCES.kpis, ...(parsed.kpis || {}) },

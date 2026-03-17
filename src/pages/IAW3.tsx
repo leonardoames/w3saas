@@ -69,8 +69,8 @@ export default function IAW3() {
       .eq("mode", modeKey)
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.messages && Array.isArray(data.messages)) {
-          setChatHistory(data.messages as ChatMessage[]);
+        if ((data as any)?.messages && Array.isArray((data as any).messages)) {
+          setChatHistory((data as any).messages as ChatMessage[]);
         } else {
           setChatHistory([]);
         }

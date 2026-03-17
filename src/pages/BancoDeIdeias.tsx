@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Lightbulb, Plus, List, Columns3, ChevronDown, ChevronUp, Camera, LayoutKanban, TrendingUp } from "lucide-react";
+import { Lightbulb, Plus, List, Columns3, ChevronDown, ChevronUp, Camera, Kanban, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
