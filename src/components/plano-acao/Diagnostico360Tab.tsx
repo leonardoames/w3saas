@@ -16,6 +16,7 @@ interface Diagnostico360TabProps {
 
 interface DiagData {
   objetivo_principal: string;
+  faturamento_inicial: string;
   faturamento_ideal: string;
   observacoes: string;
   pontos_diagnostico: string;
@@ -23,6 +24,7 @@ interface DiagData {
 
 const EMPTY: DiagData = {
   objetivo_principal: "",
+  faturamento_inicial: "",
   faturamento_ideal: "",
   observacoes: "",
   pontos_diagnostico: "",
@@ -69,11 +71,12 @@ export function Diagnostico360Tab({ userId, canEdit = false }: Diagnostico360Tab
       .then(({ data: row }: any) => {
         const d: DiagData = {
           objetivo_principal: row?.objetivo_principal ?? "",
+          faturamento_inicial: row?.faturamento_inicial?.toString() ?? "",
           faturamento_ideal: row?.faturamento_ideal?.toString() ?? "",
           observacoes: row?.observacoes ?? "",
           pontos_diagnostico: row?.pontos_diagnostico ?? "",
         };
-        const hasData = !!(row?.objetivo_principal || row?.faturamento_ideal || row?.observacoes || row?.pontos_diagnostico);
+        const hasData = !!(row?.objetivo_principal || row?.faturamento_inicial || row?.faturamento_ideal || row?.observacoes || row?.pontos_diagnostico);
         setData(d);
         setDraft(d);
         // Lock if already filled — only staff can unlock to edit again
@@ -89,6 +92,7 @@ export function Diagnostico360Tab({ userId, canEdit = false }: Diagnostico360Tab
       .upsert({
         user_id: userId,
         objetivo_principal: draft.objetivo_principal || null,
+        faturamento_inicial: draft.faturamento_inicial ? parseFloat(draft.faturamento_inicial) : null,
         faturamento_ideal: draft.faturamento_ideal ? parseFloat(draft.faturamento_ideal) : null,
         observacoes: draft.observacoes || null,
         pontos_diagnostico: draft.pontos_diagnostico || null,
@@ -121,7 +125,7 @@ export function Diagnostico360Tab({ userId, canEdit = false }: Diagnostico360Tab
   }
 
   const showForm = canEdit && (!isLocked || editing);
-  const isEmpty = !data.objetivo_principal && !data.faturamento_ideal && !data.observacoes && !data.pontos_diagnostico;
+  const isEmpty = !data.objetivo_principal && !data.faturamento_inicial && !data.faturamento_ideal && !data.observacoes && !data.pontos_diagnostico;
 
   return (
     <div className="space-y-4 max-w-2xl">
@@ -165,19 +169,36 @@ export function Diagnostico360Tab({ userId, canEdit = false }: Diagnostico360Tab
             />
           </div>
 
-          <div className="space-y-1">
-            <Label className="flex items-center gap-1.5">
-              <DollarSign className="h-3.5 w-3.5 text-primary" />
-              Faturamento Ideal (R$)
-            </Label>
-            <Input
-              type="number"
-              step="0.01"
-              value={draft.faturamento_ideal}
-              onChange={e => setDraft(d => ({ ...d, faturamento_ideal: e.target.value }))}
-              placeholder="Ex: 100000"
-            />
-            <p className="text-xs text-muted-foreground">Meta de faturamento mensal a ser atingida</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="flex items-center gap-1.5">
+                <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                Fat. no Início (R$)
+              </Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={draft.faturamento_inicial}
+                onChange={e => setDraft(d => ({ ...d, faturamento_inicial: e.target.value }))}
+                placeholder="Ex: 30000"
+              />
+              <p className="text-xs text-muted-foreground">Faturamento real ao início da mentoria</p>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="flex items-center gap-1.5">
+                <DollarSign className="h-3.5 w-3.5 text-primary" />
+                Fat. Ideal / Meta (R$)
+              </Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={draft.faturamento_ideal}
+                onChange={e => setDraft(d => ({ ...d, faturamento_ideal: e.target.value }))}
+                placeholder="Ex: 100000"
+              />
+              <p className="text-xs text-muted-foreground">Meta de faturamento mensal</p>
+            </div>
           </div>
 
           <div className="space-y-1">
@@ -228,16 +249,31 @@ export function Diagnostico360Tab({ userId, canEdit = false }: Diagnostico360Tab
       ) : (
         /* View mode — good visual hierarchy */
         <div className="space-y-3">
-          {/* Faturamento ideal — destaque */}
-          {data.faturamento_ideal && (
-            <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-5 text-center">
-              <p className="text-xs font-semibold uppercase tracking-widest text-primary/70 mb-1">
-                Faturamento Ideal
-              </p>
-              <p className="text-3xl font-bold text-primary">
-                {formatCurrency(data.faturamento_ideal)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">Meta mensal</p>
+          {/* Faturamento cards */}
+          {(data.faturamento_inicial || data.faturamento_ideal) && (
+            <div className="grid grid-cols-2 gap-3">
+              {data.faturamento_inicial && (
+                <div className="rounded-lg border bg-muted/40 p-4 text-center">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                    Fat. Inicial
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {formatCurrency(data.faturamento_inicial)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Ao entrar na mentoria</p>
+                </div>
+              )}
+              {data.faturamento_ideal && (
+                <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4 text-center">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-primary/70 mb-1">
+                    Fat. Ideal / Meta
+                  </p>
+                  <p className="text-2xl font-bold text-primary">
+                    {formatCurrency(data.faturamento_ideal)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Meta mensal</p>
+                </div>
+              )}
             </div>
           )}
 

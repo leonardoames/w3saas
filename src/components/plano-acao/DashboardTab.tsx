@@ -1,12 +1,19 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { CheckCircle2, Clock, AlertTriangle, TrendingUp, Pencil, Check, X } from "lucide-react";
+import { CheckCircle2, Clock, AlertTriangle, TrendingUp, Pencil, Check, X, CalendarDays } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { Task } from "@/hooks/useTasks";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 interface DashboardTabProps {
   tasks: Task[];
@@ -14,31 +21,87 @@ interface DashboardTabProps {
   canEdit?: boolean;
 }
 
-interface Billing {
-  faturamento_inicial: number | null;
-  faturamento_atual: number | null;
-}
+const fmt = (v: number | null | undefined) => {
+  if (v === null || v === undefined) return "—";
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  }).format(v);
+};
 
 export function DashboardTab({ tasks, userId, canEdit = false }: DashboardTabProps) {
-  const [billing, setBilling] = useState<Billing>({ faturamento_inicial: null, faturamento_atual: null });
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<Billing>({ faturamento_inicial: null, faturamento_atual: null });
-  const [saving, setSaving] = useState(false);
+  const [faturamentoInicial, setFaturamentoInicial] = useState<number | null>(null);
+  const [faturamentoAtual, setFaturamentoAtual] = useState<number | null>(null);
+  const [chartData, setChartData] = useState<{ label: string; faturamento: number | null }[]>([]);
+  const [dataInicio, setDataInicio] = useState<string | null>(null);
+  const [editingInicio, setEditingInicio] = useState(false);
+  const [draftInicio, setDraftInicio] = useState("");
+  const [savingInicio, setSavingInicio] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    supabase
-      .from("client_billing" as any)
-      .select("faturamento_inicial, faturamento_atual")
+    if (!userId) return;
+
+    // faturamento_inicial from diagnostico_360
+    (supabase as any)
+      .from("diagnostico_360")
+      .select("faturamento_inicial")
       .eq("user_id", userId)
       .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setBilling(data as Billing);
-          setDraft(data as Billing);
+      .then(({ data }: any) => {
+        setFaturamentoInicial(data?.faturamento_inicial ?? null);
+      });
+
+    // result_audits for chart + faturamento_atual
+    (supabase as any)
+      .from("result_audits")
+      .select("mes_referencia, faturamento")
+      .eq("user_id", userId)
+      .order("mes_referencia", { ascending: true })
+      .then(({ data }: any) => {
+        const rows = (data || []).filter((r: any) => r.faturamento !== null);
+        const chart = rows.map((r: any) => ({
+          label: r.mes_referencia
+            ? new Date(r.mes_referencia + "T00:00:00").toLocaleDateString("pt-BR", {
+                month: "short",
+                year: "2-digit",
+              })
+            : "",
+          faturamento: r.faturamento as number,
+        }));
+        setChartData(chart);
+        if (rows.length > 0) {
+          setFaturamentoAtual(rows[rows.length - 1].faturamento);
         }
       });
+
+    // data_inicio_mentoria from profiles
+    (supabase as any)
+      .from("profiles")
+      .select("data_inicio_mentoria")
+      .eq("user_id", userId)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        setDataInicio(data?.data_inicio_mentoria ?? null);
+      });
   }, [userId]);
+
+  const handleSaveInicio = async () => {
+    setSavingInicio(true);
+    const { error } = await (supabase as any)
+      .from("profiles")
+      .update({ data_inicio_mentoria: draftInicio || null })
+      .eq("user_id", userId);
+    setSavingInicio(false);
+    if (error) {
+      toast({ title: "Erro ao salvar data de início", variant: "destructive" });
+    } else {
+      setDataInicio(draftInicio || null);
+      setEditingInicio(false);
+      toast({ title: "Data de início salva" });
+    }
+  };
 
   const today = new Date().toISOString().split("T")[0];
   const nonCanceled = tasks.filter(t => t.status !== "cancelada");
@@ -48,29 +111,9 @@ export function DashboardTab({ tasks, userId, canEdit = false }: DashboardTabPro
   );
   const progress = nonCanceled.length > 0 ? (completed.length / nonCanceled.length) * 100 : 0;
 
-  const handleSaveBilling = async () => {
-    setSaving(true);
-    const { error } = await (supabase as any)
-      .from("client_billing")
-      .upsert({ user_id: userId, ...draft, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
-    setSaving(false);
-    if (error) {
-      toast({ title: "Erro ao salvar faturamento", variant: "destructive" });
-    } else {
-      setBilling(draft);
-      setEditing(false);
-      toast({ title: "Faturamento salvo" });
-    }
-  };
-
-  const formatCurrency = (value: number | null) => {
-    if (value === null || value === undefined) return "—";
-    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
-  };
-
   const growthPct =
-    billing.faturamento_inicial && billing.faturamento_atual
-      ? ((billing.faturamento_atual - billing.faturamento_inicial) / billing.faturamento_inicial) * 100
+    faturamentoInicial && faturamentoAtual
+      ? ((faturamentoAtual - faturamentoInicial) / faturamentoInicial) * 100
       : null;
 
   return (
@@ -123,7 +166,9 @@ export function DashboardTab({ tasks, userId, canEdit = false }: DashboardTabPro
         <CardContent className="pt-4 pb-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">Progresso geral</span>
-            <span className="text-sm text-muted-foreground">{completed.length} / {nonCanceled.length}</span>
+            <span className="text-sm text-muted-foreground">
+              {completed.length} / {nonCanceled.length}
+            </span>
           </div>
           <div className="h-3 w-full rounded-full bg-muted overflow-hidden">
             <div
@@ -134,75 +179,123 @@ export function DashboardTab({ tasks, userId, canEdit = false }: DashboardTabPro
         </CardContent>
       </Card>
 
-      {/* Billing */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Faturamento</CardTitle>
-            {canEdit && !editing && (
-              <Button variant="ghost" size="sm" onClick={() => { setDraft(billing); setEditing(true); }}>
-                <Pencil className="h-3.5 w-3.5 mr-1" />
-                Editar
-              </Button>
-            )}
-            {canEdit && editing && (
-              <div className="flex gap-1">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleSaveBilling} disabled={saving}>
-                  <Check className="h-3.5 w-3.5 text-green-600" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditing(false)}>
-                  <X className="h-3.5 w-3.5 text-destructive" />
-                </Button>
+      {/* Faturamento summary + data início */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {/* Data início da mentoria */}
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Início da mentoria</span>
               </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {editing ? (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label className="text-xs">Faturamento Inicial (R$)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={draft.faturamento_inicial ?? ""}
-                  onChange={e => setDraft(d => ({ ...d, faturamento_inicial: e.target.value ? parseFloat(e.target.value) : null }))}
-                  placeholder="0,00"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Faturamento Atual (R$)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={draft.faturamento_atual ?? ""}
-                  onChange={e => setDraft(d => ({ ...d, faturamento_atual: e.target.value ? parseFloat(e.target.value) : null }))}
-                  placeholder="0,00"
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Inicial</p>
-                <p className="text-lg font-semibold">{formatCurrency(billing.faturamento_inicial)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Atual</p>
-                <p className="text-lg font-semibold">{formatCurrency(billing.faturamento_atual)}</p>
-              </div>
-              {growthPct !== null && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Crescimento</p>
-                  <p className={`text-lg font-semibold ${growthPct >= 0 ? "text-green-600" : "text-destructive"}`}>
-                    {growthPct >= 0 ? "+" : ""}{growthPct.toFixed(1)}%
-                  </p>
-                </div>
+              {canEdit && !editingInicio && (
+                <button
+                  onClick={() => { setDraftInicio(dataInicio || ""); setEditingInicio(true); }}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
               )}
             </div>
-          )}
-        </CardContent>
-      </Card>
+            {editingInicio ? (
+              <div className="flex items-center gap-1 mt-1">
+                <Input
+                  type="date"
+                  value={draftInicio}
+                  onChange={e => setDraftInicio(e.target.value)}
+                  className="h-7 text-xs"
+                />
+                <button onClick={handleSaveInicio} disabled={savingInicio} className="p-1">
+                  <Check className="h-3.5 w-3.5 text-green-600" />
+                </button>
+                <button onClick={() => setEditingInicio(false)} className="p-1">
+                  <X className="h-3.5 w-3.5 text-destructive" />
+                </button>
+              </div>
+            ) : (
+              <p className="text-lg font-semibold mt-1">
+                {dataInicio
+                  ? new Date(dataInicio + "T00:00:00").toLocaleDateString("pt-BR")
+                  : <span className="text-muted-foreground text-sm font-normal">Não definido</span>}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Faturamento inicial (from diagnostico) */}
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <p className="text-xs text-muted-foreground mb-1">Fat. Inicial</p>
+            <p className="text-lg font-semibold">{fmt(faturamentoInicial)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Definido no diagnóstico 360°</p>
+          </CardContent>
+        </Card>
+
+        {/* Faturamento atual (from latest audit) */}
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <p className="text-xs text-muted-foreground mb-1">Fat. Atual</p>
+            <p className="text-lg font-semibold">{fmt(faturamentoAtual)}</p>
+            {growthPct !== null && (
+              <p
+                className={`text-xs font-medium mt-0.5 ${
+                  growthPct >= 0 ? "text-green-600" : "text-destructive"
+                }`}
+              >
+                {growthPct >= 0 ? "+" : ""}
+                {growthPct.toFixed(1)}% desde o início
+              </p>
+            )}
+            {!faturamentoAtual && (
+              <p className="text-xs text-muted-foreground mt-0.5">Da última auditoria</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Faturamento evolution chart */}
+      {chartData.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Evolução do Faturamento</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="fatGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(v: number) =>
+                    v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)
+                  }
+                  width={50}
+                />
+                <Tooltip
+                  formatter={(v: number) => [fmt(v), "Faturamento"]}
+                  labelStyle={{ fontSize: 12 }}
+                  contentStyle={{ fontSize: 12 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="faturamento"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={2}
+                  fill="url(#fatGradient)"
+                  dot={{ r: 3, fill: "hsl(var(--primary))" }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

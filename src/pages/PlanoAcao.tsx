@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, List, Columns, Calendar, Search, X, ChevronDown, Users } from "lucide-react";
+import { Loader2, List, Columns, Calendar, Search, X, ChevronDown, Users, Plus, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTasks, Task, TaskStatus } from "@/hooks/useTasks";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ import { ListView } from "@/components/plano-acao/ListView";
 import { KanbanView } from "@/components/plano-acao/KanbanView";
 import { TimelineView } from "@/components/plano-acao/TimelineView";
 import { ActionDrawer } from "@/components/plano-acao/ActionDrawer";
+import { AddTaskDialog } from "@/components/plano-acao/AddTaskDialog";
 import { MiroEmbed } from "@/components/plano-acao/MiroEmbed";
 import { AuditoriasTab } from "@/components/plano-acao/AuditoriasTab";
 import { Diagnostico360Tab } from "@/components/plano-acao/Diagnostico360Tab";
@@ -138,6 +139,7 @@ export default function PlanoAcao() {
   const canEditDiag = isAdmin || hasRole("master") || hasRole("tutor");
 
   const [selectedClient, setSelectedClient] = useState<ClientOption | null>(null);
+  const [activeTab, setActiveTab] = useState("dashboard");
   const viewUserId = isStaff && selectedClient ? selectedClient.user_id : (user?.id || "");
 
   const {
@@ -146,11 +148,13 @@ export default function PlanoAcao() {
     updateTaskStatus,
     updateTask,
     deleteTask,
+    createTask,
   } = useTasks(isStaff && selectedClient ? selectedClient.user_id : undefined);
 
   const [planView, setPlanView] = useState<PlanView>("list");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [addTaskOpen, setAddTaskOpen] = useState(false);
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
@@ -169,7 +173,33 @@ export default function PlanoAcao() {
 
   const handleSelectClientFromInterno = (userId: string, name: string) => {
     setSelectedClient({ user_id: userId, full_name: name, email: null });
+    setActiveTab("plano");
   };
+
+  const handleClearClient = () => {
+    setSelectedClient(null);
+    setActiveTab("dashboard");
+  };
+
+  // ── Staff without a client selected: show portfolio overview ──
+  if (isStaff && !selectedClient) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="page-title">Plano de Ação</h1>
+            <p className="text-sm text-muted-foreground mt-1">Visão geral da sua carteira</p>
+          </div>
+          <ClientSelector
+            selected={null}
+            onSelect={c => { setSelectedClient(c); setActiveTab("plano"); }}
+            onClear={handleClearClient}
+          />
+        </div>
+        <InternoTab onSelectClient={handleSelectClientFromInterno} />
+      </div>
+    );
+  }
 
   if (loading && !isStaff) {
     return (
@@ -179,10 +209,20 @@ export default function PlanoAcao() {
     );
   }
 
+  // ── Client view (staff with client selected, or regular user) ──
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
+          {isStaff && (
+            <button
+              onClick={handleClearClient}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-1 transition-colors"
+            >
+              <ArrowLeft className="h-3 w-3" />
+              Voltar à carteira
+            </button>
+          )}
           <h1 className="page-title">Plano de Ação</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isStaff && selectedClient
@@ -193,17 +233,14 @@ export default function PlanoAcao() {
         {isStaff && (
           <ClientSelector
             selected={selectedClient}
-            onSelect={setSelectedClient}
-            onClear={() => setSelectedClient(null)}
+            onSelect={c => { setSelectedClient(c); setActiveTab("plano"); }}
+            onClear={handleClearClient}
           />
         )}
       </div>
 
-      <Tabs defaultValue={isStaff ? "interno" : "dashboard"} className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="flex w-full h-auto flex-wrap gap-1">
-          {isStaff && (
-            <TabsTrigger value="interno" className="text-xs sm:text-sm">Interno</TabsTrigger>
-          )}
           <TabsTrigger value="dashboard" className="text-xs sm:text-sm">Dashboard</TabsTrigger>
           <TabsTrigger value="plano" className="text-xs sm:text-sm">Plano de Ação</TabsTrigger>
           <TabsTrigger value="mapa-mental" className="text-xs sm:text-sm">Mapa Mental</TabsTrigger>
@@ -211,13 +248,6 @@ export default function PlanoAcao() {
           <TabsTrigger value="diagnostico" className="text-xs sm:text-sm">Diagnóstico 360</TabsTrigger>
           <TabsTrigger value="recursos" className="text-xs sm:text-sm">Recursos</TabsTrigger>
         </TabsList>
-
-        {/* Interno (staff only) */}
-        {isStaff && (
-          <TabsContent value="interno" className="mt-6">
-            <InternoTab onSelectClient={handleSelectClientFromInterno} />
-          </TabsContent>
-        )}
 
         {/* Dashboard */}
         <TabsContent value="dashboard" className="mt-6">
@@ -231,16 +261,23 @@ export default function PlanoAcao() {
         {/* Plano de Ação */}
         <TabsContent value="plano" className="mt-6">
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Button variant={planView === "list" ? "default" : "outline"} size="sm" onClick={() => setPlanView("list")}>
-                <List className="h-3.5 w-3.5 mr-1.5" />Lista
-              </Button>
-              <Button variant={planView === "kanban" ? "default" : "outline"} size="sm" onClick={() => setPlanView("kanban")}>
-                <Columns className="h-3.5 w-3.5 mr-1.5" />Kanban
-              </Button>
-              <Button variant={planView === "timeline" ? "default" : "outline"} size="sm" onClick={() => setPlanView("timeline")}>
-                <Calendar className="h-3.5 w-3.5 mr-1.5" />Timeline
-              </Button>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Button variant={planView === "list" ? "default" : "outline"} size="sm" onClick={() => setPlanView("list")}>
+                  <List className="h-3.5 w-3.5 mr-1.5" />Lista
+                </Button>
+                <Button variant={planView === "kanban" ? "default" : "outline"} size="sm" onClick={() => setPlanView("kanban")}>
+                  <Columns className="h-3.5 w-3.5 mr-1.5" />Kanban
+                </Button>
+                <Button variant={planView === "timeline" ? "default" : "outline"} size="sm" onClick={() => setPlanView("timeline")}>
+                  <Calendar className="h-3.5 w-3.5 mr-1.5" />Timeline
+                </Button>
+              </div>
+              {isStaff && (
+                <Button size="sm" onClick={() => setAddTaskOpen(true)}>
+                  <Plus className="h-3.5 w-3.5 mr-1.5" />Nova Ação
+                </Button>
+              )}
             </div>
             {loading ? (
               <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
@@ -284,6 +321,17 @@ export default function PlanoAcao() {
         onTaskDelete={isStaff ? deleteTask : undefined}
         canEditTask={isStaff}
       />
+
+      {isStaff && (
+        <AddTaskDialog
+          open={addTaskOpen}
+          onOpenChange={setAddTaskOpen}
+          onSubmit={createTask}
+          userId={viewUserId}
+          origin="mentorado"
+          isAdmin={true}
+        />
+      )}
     </div>
   );
 }
