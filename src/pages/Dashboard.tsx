@@ -268,6 +268,38 @@ export default function Dashboard() {
     if (user) loadData();
   }, [user, loadData, selectedClient]);
 
+  // Auto-sync stale integrations when user opens their own dashboard
+  useEffect(() => {
+    if (!user || isStaff) return; // Staff viewing clients: skip (no token for client)
+    const SIX_HOURS = 6 * 60 * 60 * 1000;
+    const SYNCABLE = ["nuvemshop", "shopee", "shopee_ads", "shopify", "olist_tiny"];
+    const run = async () => {
+      const { data: integrations } = await (supabase as any)
+        .from("user_integrations")
+        .select("platform, last_sync_at")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .eq("sync_status", "connected")
+        .in("platform", SYNCABLE);
+      if (!integrations?.length) return;
+      const stale = (integrations as any[]).filter(i =>
+        !i.last_sync_at || Date.now() - new Date(i.last_sync_at).getTime() > SIX_HOURS
+      );
+      if (!stale.length) return;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) return;
+      await Promise.allSettled(
+        stale.map((i: any) => {
+          const fn = i.platform === "shopee_ads" ? "sync-shopee-ads" : `sync-${i.platform}`;
+          return supabase.functions.invoke(fn, { headers: { Authorization: `Bearer ${token}` } });
+        })
+      );
+      loadData();
+    };
+    run();
+  }, [user, isStaff]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const prefSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prefInitialized = useRef(false);
 
