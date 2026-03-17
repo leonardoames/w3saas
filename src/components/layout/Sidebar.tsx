@@ -11,7 +11,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation } from "react-router-dom";
 import { LucideIcon } from "lucide-react";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MenuItem {
   title: string;
@@ -176,6 +177,16 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
   const { isAdmin, hasRole } = useAuth();
   const location = useLocation();
   const isExpanded = isMobile ? true : !isCollapsed;
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from("app_settings" as any)
+      .select("value")
+      .eq("key", "logo_url")
+      .maybeSingle()
+      .then(({ data }) => setLogoUrl((data as any)?.value ?? null));
+  }, []);
 
   const isStaff = isAdmin || INTERNAL_ROLES.some((r) => hasRole(r));
   const hasAmes = hasRole("cliente_ames");
@@ -277,9 +288,13 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
         >
           <div className="flex h-full flex-col">
             <div className="flex h-14 items-center justify-between border-b border-sidebar-border px-5">
-              <span className="text-base font-semibold tracking-tight">
-                W3 <span className="text-primary">SaaS</span>
-              </span>
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="h-8 max-w-[140px] object-contain" />
+              ) : (
+                <span className="text-base font-semibold tracking-tight">
+                  W3 <span className="text-primary">SaaS</span>
+                </span>
+              )}
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onMobileClose}>
                 <X className="h-4 w-4" />
               </Button>
@@ -309,9 +324,13 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
           )}>
             {isExpanded ? (
               <>
-                <span className="text-base font-semibold tracking-tight whitespace-nowrap">
-                  W3 <span className="text-primary">SaaS</span>
-                </span>
+                {logoUrl ? (
+                  <img src={logoUrl} alt="Logo" className="h-8 max-w-[140px] object-contain" />
+                ) : (
+                  <span className="text-base font-semibold tracking-tight whitespace-nowrap">
+                    W3 <span className="text-primary">SaaS</span>
+                  </span>
+                )}
                 <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={onToggle}>
                   <ChevronLeft className="h-3.5 w-3.5" />
                 </Button>

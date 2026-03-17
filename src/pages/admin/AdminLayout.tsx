@@ -8,6 +8,7 @@ import {
   BookUser,
   ClipboardList,
   Settings,
+  SlidersHorizontal,
   Store,
   Users
 } from "lucide-react";
@@ -22,6 +23,7 @@ const adminLinks = [
   { href: "/admin/modulos", label: "Módulos", icon: Settings },
   { href: "/admin/marcas", label: "Marcas", icon: Store },
   { href: "/admin/plano-acao", label: "Plano de Ação", icon: ClipboardList },
+  { href: "/admin/configuracoes", label: "Configurações", icon: SlidersHorizontal },
 ];
 
 export function AdminLayout({ children }: AdminLayoutProps) {
