@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { BusinessInfoSection } from "@/components/admin/BusinessInfoSection";
 import {
   Loader2, Shield, Crown, Users, Key, Trash2, Save,
   ClipboardList, Check, UserX, ChevronDown, GraduationCap, ShoppingBag,
@@ -442,6 +443,11 @@ export function UserEditSheet({ user, open, onOpenChange, onRefresh, onViewPlano
                 </div>
               </div>
             </div>
+
+            <Separator />
+
+            {/* Business Info */}
+            <BusinessInfoSection userId={user.user_id} canEdit={true} />
 
             <Separator />
 

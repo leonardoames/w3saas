@@ -33,6 +33,8 @@ import { PlanFerramentasTab } from "@/components/plano-acao/PlanFerramentasTab";
 import { CRM_STAGES } from "@/components/crm/CRMClientDrawer";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { BusinessInfoSection } from "@/components/admin/BusinessInfoSection";
+import { Separator } from "@/components/ui/separator";
 
 interface UserProfile {
   user_id: string;
@@ -347,6 +349,10 @@ export function UserPlanView({ user, onBack }: { user: UserProfile; onBack: () =
 
         {/* CRM */}
         <TabsContent value="crm" className="mt-6">
+          <div className="space-y-6 max-w-lg">
+            <BusinessInfoSection userId={user.user_id} canEdit={true} />
+            <Separator />
+          </div>
           {loadingCrm ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

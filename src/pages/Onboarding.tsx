@@ -21,9 +21,14 @@ export default function Onboarding() {
   const { user, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
-  const [step, setStep] = useState<"type" | "details">("type");
+  const [step, setStep] = useState<"type" | "contact" | "details">("type");
   const [isEcommerce, setIsEcommerce] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Contact fields (all users)
+  const [nomeNegocio, setNomeNegocio] = useState("");
+  const [cnpj, setCnpj] = useState("");
+  const [phone, setPhone] = useState("");
 
   // Ecommerce form fields
   const [website, setWebsite] = useState("");
@@ -32,13 +37,22 @@ export default function Onboarding() {
   const [descricao, setDescricao] = useState("");
   const [aparecerCatalogo, setAparecerCatalogo] = useState(false);
 
-  const handleTypeSelection = async (ecommerce: boolean) => {
+  // Store links
+  const [lojaShopeeUrl, setLojaShopeeUrl] = useState("");
+  const [lojaMercadoLivreUrl, setLojaMercadoLivreUrl] = useState("");
+  const [lojaSheinUrl, setLojaSheinUrl] = useState("");
+  const [lojaTemuUrl, setLojaTemuUrl] = useState("");
+
+  const handleTypeSelection = (ecommerce: boolean) => {
     setIsEcommerce(ecommerce);
-    if (!ecommerce) {
-      // Not ecommerce — save and skip to app
-      await finishOnboarding(false);
-    } else {
+    setStep("contact");
+  };
+
+  const handleContactContinue = () => {
+    if (isEcommerce) {
       setStep("details");
+    } else {
+      finishOnboarding(false);
     }
   };
 
@@ -53,12 +67,20 @@ export default function Onboarding() {
     setLoading(true);
 
     try {
-      // Update profile
-      const { error: profileError } = await supabase
+      // Update profile with all fields
+      const { error: profileError } = await (supabase as any)
         .from("profiles")
         .update({
           is_ecommerce: ecommerce,
           onboarding_completed: true,
+          nome_negocio: nomeNegocio || null,
+          cnpj: cnpj || null,
+          phone: phone || null,
+          loja_online_url: brandData?.website || website || null,
+          loja_shopee_url: lojaShopeeUrl || null,
+          loja_mercado_livre_url: lojaMercadoLivreUrl || null,
+          loja_shein_url: lojaSheinUrl || null,
+          loja_temu_url: lojaTemuUrl || null,
         })
         .eq("user_id", user.id);
 
@@ -66,7 +88,6 @@ export default function Onboarding() {
 
       // If ecommerce and wants to appear in catalog, create/update brand
       if (ecommerce && brandData?.aparecerCatalogo) {
-        // Check if user already has a brand
         const { data: existingBrand } = await supabase
           .from("brands")
           .select("id")
@@ -74,7 +95,6 @@ export default function Onboarding() {
           .maybeSingle();
 
         if (existingBrand) {
-          // Update existing brand
           await supabase
             .from("brands")
             .update({
@@ -82,17 +102,16 @@ export default function Onboarding() {
               category: brandData.nicho,
               instagram_url: brandData.instagram || null,
               short_description: brandData.descricao,
-              name: profile?.full_name || "Minha Marca",
+              name: nomeNegocio || profile?.full_name || "Minha Marca",
               is_active: true,
               approval_status: "pending",
               status: "pending",
             })
             .eq("id", existingBrand.id);
         } else {
-          // Create new brand
           await supabase.from("brands").insert({
             user_id: user.id,
-            name: profile?.full_name || "Minha Marca",
+            name: nomeNegocio || profile?.full_name || "Minha Marca",
             website_url: brandData.website,
             category: brandData.nicho,
             instagram_url: brandData.instagram || null,
@@ -132,7 +151,7 @@ export default function Onboarding() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-lg">
-        {step === "type" ? (
+        {step === "type" && (
           <div className="space-y-8 text-center">
             <div>
               <h1 className="text-2xl font-bold text-foreground mb-2">
@@ -172,14 +191,70 @@ export default function Onboarding() {
                 </div>
               </button>
             </div>
-
-            {loading && (
-              <div className="flex justify-center">
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              </div>
-            )}
           </div>
-        ) : (
+        )}
+
+        {step === "contact" && (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-foreground mb-2">
+                Dados de contato
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                Tudo opcional — você pode preencher depois.
+              </p>
+            </div>
+
+            <div className="space-y-4 bg-card rounded-2xl border border-border/60 p-6">
+              <div className="space-y-2">
+                <Label htmlFor="nomeNegocio">Nome do negócio</Label>
+                <Input
+                  id="nomeNegocio"
+                  placeholder="Ex: Minha Loja"
+                  value={nomeNegocio}
+                  onChange={(e) => setNomeNegocio(e.target.value)}
+                  maxLength={100}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cnpj">CNPJ</Label>
+                <Input
+                  id="cnpj"
+                  placeholder="XX.XXX.XXX/XXXX-XX"
+                  value={cnpj}
+                  onChange={(e) => setCnpj(e.target.value)}
+                  maxLength={20}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Telefone / WhatsApp</Label>
+                <Input
+                  id="phone"
+                  placeholder="(11) 99999-9999"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  maxLength={20}
+                />
+              </div>
+            </div>
+
+            <Button
+              onClick={handleContactContinue}
+              disabled={loading}
+              className="w-full gap-2"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  Continuar <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+
+        {step === "details" && (
           <div className="space-y-6">
             <div className="text-center">
               <h1 className="text-2xl font-bold text-foreground mb-2">
@@ -238,6 +313,28 @@ export default function Onboarding() {
                   rows={3}
                 />
                 <p className="text-xs text-muted-foreground text-right">{descricao.length}/160</p>
+              </div>
+
+              <div className="border-t pt-4 space-y-3">
+                <p className="text-sm font-medium">Onde você vende? <span className="text-muted-foreground font-normal text-xs">(opcional)</span></p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="shopee" className="text-xs">Shopee</Label>
+                    <Input id="shopee" placeholder="https://shopee.com.br/..." value={lojaShopeeUrl} onChange={(e) => setLojaShopeeUrl(e.target.value)} className="h-8 text-sm" maxLength={255} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="ml" className="text-xs">Mercado Livre</Label>
+                    <Input id="ml" placeholder="https://lista.mercadolivre.com.br/..." value={lojaMercadoLivreUrl} onChange={(e) => setLojaMercadoLivreUrl(e.target.value)} className="h-8 text-sm" maxLength={255} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="shein" className="text-xs">Shein</Label>
+                    <Input id="shein" placeholder="https://shein.com/..." value={lojaSheinUrl} onChange={(e) => setLojaSheinUrl(e.target.value)} className="h-8 text-sm" maxLength={255} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="temu" className="text-xs">Temu</Label>
+                    <Input id="temu" placeholder="https://temu.com/..." value={lojaTemuUrl} onChange={(e) => setLojaTemuUrl(e.target.value)} className="h-8 text-sm" maxLength={255} />
+                  </div>
+                </div>
               </div>
             </div>
 

@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { HealthScoreBadge, computeHealthScore } from "./HealthScoreBadge";
+import { BusinessInfoSection } from "@/components/admin/BusinessInfoSection";
 import { ACTIVITY_TYPES, type ScheduledActivity } from "./CRMActivitiesView";
 
 type ActivityGroup = "Atrasadas" | "Hoje" | "Esta semana" | "Próximas" | "Concluídas";
@@ -745,6 +746,11 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
                       Diagnóstico 360 ainda não preenchido
                     </div>
                   )}
+
+                  {/* Business Info */}
+                  <div className="rounded-lg border p-4">
+                    <BusinessInfoSection userId={userId} canEdit={true} compact />
+                  </div>
 
                   {/* Nota Interna */}
                   <div className="rounded-lg border p-4 space-y-2">
