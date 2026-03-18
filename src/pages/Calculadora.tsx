@@ -185,10 +185,21 @@ const channelTabs: { value: Channel; label: string; icon: string }[] = [
 
 const channelHasAutoRules = (ch: Channel) => ch !== "site";
 
+const STORAGE_KEY = "w3_calc_draft";
+
+function loadDraft(): { inputs: ProductInputs; channel: Channel } {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { inputs: defaultInputs, channel: "site" };
+}
+
 export default function Calculadora() {
-  const [inputs, setInputs] = useState<ProductInputs>(defaultInputs);
+  const draft = loadDraft();
+  const [inputs, setInputs] = useState<ProductInputs>(draft.inputs);
   const [savedInputs, setSavedInputs] = useState<ProductInputs>(defaultInputs);
-  const [channel, setChannel] = useState<Channel>("site");
+  const [channel, setChannel] = useState<Channel>(draft.channel);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [productsListOpen, setProductsListOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -196,6 +207,11 @@ export default function Calculadora() {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const results = useCalculatorResults(inputs, channel);
+
+  // Persist draft on every change
+  useEffect(() => {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ inputs, channel }));
+  }, [inputs, channel]);
 
   const hasUnsavedChanges = JSON.stringify(inputs) !== JSON.stringify(savedInputs);
 
