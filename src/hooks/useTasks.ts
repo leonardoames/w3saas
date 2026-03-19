@@ -167,8 +167,8 @@ export function useTasks(userId?: string) {
         status: data.status as TaskStatus,
         origin: data.origin as TaskOrigin,
         priority: data.priority as 'Baixa' | 'Média' | 'Alta' | null,
-        start_date: data.start_date ?? null,
-        checklist: (data.checklist as ChecklistItem[]) ?? [],
+        start_date: (data as any).start_date ?? null,
+        checklist: (data.checklist as unknown as ChecklistItem[]) ?? [],
         sprint: data.sprint ?? null,
         is_next_action: data.is_next_action ?? false,
       };
