@@ -509,7 +509,7 @@ export function CRMDashboardView({ clientIds, cards }: CRMDashboardViewProps) {
       const staffIds = [...new Set((rolesRes.data || []).map((r: any) => r.user_id))];
       let staffProfiles: Record<string, string> = {};
       if (staffIds.length > 0) {
-        const { data: profiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", staffIds);
+        const { data: profiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", staffIds as string[]);
         (profiles || []).forEach((p: any) => { staffProfiles[p.user_id] = p.full_name || p.email || p.user_id; });
       }
 
