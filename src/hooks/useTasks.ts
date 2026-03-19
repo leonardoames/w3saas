@@ -156,7 +156,7 @@ export function useTasks(userId?: string) {
     try {
       const { data, error } = await supabase
         .from('tarefas')
-        .insert(task)
+        .insert(task as any)
         .select()
         .single();
 
