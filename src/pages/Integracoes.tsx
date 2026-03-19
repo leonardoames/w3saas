@@ -90,9 +90,9 @@ const platforms: PlatformInfo[] = [
   {
     id: "mercado_livre",
     name: "Mercado Livre",
-    description: "Conecte sua conta Mercado Livre via OAuth. Sincronização automática em breve.",
+    description: "Conecte sua conta Mercado Livre via OAuth para sincronizar pedidos e faturamento.",
     color: "bg-yellow-500",
-    syncTags: ["Em breve"],
+    syncTags: ["Faturamento", "Pedidos"],
     fields: [],
     docsUrl: "https://developers.mercadolivre.com.br/pt_br/api-docs-pt-br",
     oauth: true,
@@ -191,7 +191,7 @@ const platforms: PlatformInfo[] = [
 ];
 
 // Platforms that have a working sync edge function
-const SYNCABLE_PLATFORMS = new Set(["nuvemshop", "shopee", "shopee_ads", "shopify", "olist_tiny"]);
+const SYNCABLE_PLATFORMS = new Set(["nuvemshop", "shopee", "shopee_ads", "shopify", "olist_tiny", "mercado_livre"]);
 
 // Webhook base URL for LGPD
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -239,7 +239,7 @@ export default function Integracoes() {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
       
-      const syncFnName = platformId === 'shopee_ads' ? 'sync-shopee-ads' : `sync-${platformId}`;
+      const syncFnName = platformId === 'shopee_ads' ? 'sync-shopee-ads' : platformId === 'mercado_livre' ? 'sync-mercado_livre' : `sync-${platformId}`;
       const res = await supabase.functions.invoke(syncFnName, {
         headers: { Authorization: `Bearer ${token}` },
       });

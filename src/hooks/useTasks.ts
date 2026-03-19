@@ -72,10 +72,10 @@ export function useTasks(userId?: string) {
         status: task.status as TaskStatus,
         origin: task.origin as TaskOrigin,
         priority: task.priority as 'Baixa' | 'Média' | 'Alta' | null,
-        start_date: task.start_date ?? null,
-        checklist: (task.checklist as ChecklistItem[]) ?? [],
-        sprint: task.sprint ?? null,
-        is_next_action: task.is_next_action ?? false,
+        start_date: (task as any).start_date ?? null,
+        checklist: (task.checklist as unknown as ChecklistItem[]) ?? [],
+        sprint: (task as any).sprint ?? null,
+        is_next_action: (task as any).is_next_action ?? false,
       }));
 
       setTasks(mappedTasks);
@@ -156,7 +156,7 @@ export function useTasks(userId?: string) {
     try {
       const { data, error } = await supabase
         .from('tarefas')
-        .insert(task)
+        .insert(task as any)
         .select()
         .single();
 
@@ -167,10 +167,10 @@ export function useTasks(userId?: string) {
         status: data.status as TaskStatus,
         origin: data.origin as TaskOrigin,
         priority: data.priority as 'Baixa' | 'Média' | 'Alta' | null,
-        start_date: data.start_date ?? null,
-        checklist: (data.checklist as ChecklistItem[]) ?? [],
-        sprint: data.sprint ?? null,
-        is_next_action: data.is_next_action ?? false,
+        start_date: (data as any).start_date ?? null,
+        checklist: (data.checklist as unknown as ChecklistItem[]) ?? [],
+        sprint: (data as any).sprint ?? null,
+        is_next_action: (data as any).is_next_action ?? false,
       };
 
       setTasks(prev => [...prev, newTask]);
@@ -196,7 +196,7 @@ export function useTasks(userId?: string) {
     try {
       const { error } = await supabase
         .from('tarefas')
-        .update(updates)
+        .update(updates as any)
         .eq('id', taskId);
 
       if (error) throw error;

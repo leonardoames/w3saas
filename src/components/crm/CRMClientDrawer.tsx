@@ -209,7 +209,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
       const staffIds = [...new Set((staffRoles || []).map((r: any) => r.user_id).filter(Boolean))];
       let staffMap: Record<string, string> = {};
       if (staffIds.length > 0) {
-        const { data: staffProfiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", staffIds);
+        const { data: staffProfiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", staffIds as string[]);
         (staffProfiles || []).forEach((p: any) => {
           staffMap[p.user_id] = p.full_name || p.email || "—";
         });
@@ -221,7 +221,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
       const assignedIds = [...new Set((scheduledActivitiesRes.data || []).map((a: any) => a.assigned_to).filter(Boolean))];
       const missingIds = assignedIds.filter((id: string) => !staffMap[id]);
       if (missingIds.length > 0) {
-        const { data: extraProfiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", missingIds);
+        const { data: extraProfiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", missingIds as string[]);
         (extraProfiles || []).forEach((p: any) => { staffMap[p.user_id] = p.full_name || p.email || "—"; });
       }
       setScheduledActivities((scheduledActivitiesRes.data || []).map((a: any) => ({
@@ -234,7 +234,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
       const rawCsTasks = csTasksRes.data || [];
       const responsibleIds = [...new Set(rawCsTasks.map((t: any) => t.responsible_id).filter(Boolean))];
       if (responsibleIds.length > 0) {
-        const { data: rProfiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", responsibleIds);
+        const { data: rProfiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", responsibleIds as string[]);
         (rProfiles || []).forEach((p: any) => { staffMap[p.user_id] = p.full_name || p.email || "—"; });
       }
 

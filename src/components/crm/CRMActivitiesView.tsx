@@ -77,7 +77,7 @@ export function CRMActivitiesView({ cards, onCardClick }: CRMActivitiesViewProps
     const assigneeMap = new Map<string, string>();
     if (assigneeIds.length > 0) {
       const { data: profiles } = await supabase
-        .from("profiles").select("user_id, full_name, email").in("user_id", assigneeIds);
+        .from("profiles").select("user_id, full_name, email").in("user_id", assigneeIds as string[]);
       (profiles || []).forEach((p: any) => assigneeMap.set(p.user_id, p.full_name || p.email || "—"));
     }
 

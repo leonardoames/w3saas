@@ -49,3 +49,5 @@ project_id = "jmbouivvkofocqaakenb"
     verify_jwt = false
   [functions.mercado-livre-oauth]
     verify_jwt = false
+  [functions.sync-mercado_livre]
+    verify_jwt = false
