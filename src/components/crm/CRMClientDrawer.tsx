@@ -221,7 +221,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
       const assignedIds = [...new Set((scheduledActivitiesRes.data || []).map((a: any) => a.assigned_to).filter(Boolean))];
       const missingIds = assignedIds.filter((id: string) => !staffMap[id]);
       if (missingIds.length > 0) {
-        const { data: extraProfiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", missingIds);
+        const { data: extraProfiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", missingIds as string[]);
         (extraProfiles || []).forEach((p: any) => { staffMap[p.user_id] = p.full_name || p.email || "—"; });
       }
       setScheduledActivities((scheduledActivitiesRes.data || []).map((a: any) => ({
