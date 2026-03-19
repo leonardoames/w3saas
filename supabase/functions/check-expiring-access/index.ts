@@ -1,7 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
-import * as React from 'npm:react@18.3.1'
-import { renderAsync } from 'npm:@react-email/components@0.0.22'
-import { AccessExpiringEmail } from '../_shared/email-templates/access-expiring.tsx'
+import { renderAccessExpiringEmail } from '../_shared/email-templates/access-expiring.tsx'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,7 +12,6 @@ const SENDER_DOMAIN = 'notify.app.leonardoames.com.br'
 const FROM_DOMAIN = 'notify.app.leonardoames.com.br'
 const SITE_URL = 'https://app.leonardoames.com.br'
 
-// Days before expiration to send warning emails
 const WARNING_DAYS = [7, 3, 1]
 
 Deno.serve(async (req) => {
@@ -30,16 +27,13 @@ Deno.serve(async (req) => {
     if (!apiKey) throw new Error('LOVABLE_API_KEY not configured')
 
     const supabase = createClient(supabaseUrl, serviceRoleKey)
-
-    // Find users whose access expires within warning days
     const now = new Date()
     const results: any[] = []
 
     for (const days of WARNING_DAYS) {
       const targetDate = new Date(now)
       targetDate.setDate(targetDate.getDate() + days)
-      
-      // Get users expiring on this specific day (within a 24h window)
+
       const startOfDay = new Date(targetDate)
       startOfDay.setHours(0, 0, 0, 0)
       const endOfDay = new Date(targetDate)
@@ -63,23 +57,19 @@ Deno.serve(async (req) => {
 
         const expiresAt = new Date(user.access_expires_at)
         const formattedDate = expiresAt.toLocaleDateString('pt-BR', {
-          day: '2-digit', month: '2-digit', year: 'numeric'
+          day: '2-digit', month: '2-digit', year: 'numeric',
         })
 
-        const templateProps = {
+        const { html, text } = renderAccessExpiringEmail({
           siteName: SITE_NAME,
           siteUrl: SITE_URL,
           userName: user.full_name || undefined,
           daysRemaining: days,
           expiresAt: formattedDate,
-        }
-
-        const html = await renderAsync(React.createElement(AccessExpiringEmail, templateProps))
-        const text = await renderAsync(React.createElement(AccessExpiringEmail, templateProps), { plainText: true })
+        })
 
         try {
-          const lovableApiUrl = 'https://api.lovable.dev/v1/email/send'
-          const sendResponse = await fetch(lovableApiUrl, {
+          const sendResponse = await fetch('https://api.lovable.dev/v1/email/send', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -107,7 +97,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log('Expiring access check complete', { sent: results.filter(r => r.status === 'sent').length, errors: results.filter(r => r.status === 'error').length })
+    console.log('Expiring access check complete', {
+      sent: results.filter(r => r.status === 'sent').length,
+      errors: results.filter(r => r.status === 'error').length,
+    })
 
     return new Response(
       JSON.stringify({ success: true, results }),

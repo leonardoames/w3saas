@@ -1,9 +1,7 @@
-import * as React from 'npm:react@18.3.1'
-import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
-import { WelcomeEmail } from '../_shared/email-templates/welcome.tsx'
-import { AccessBlockedEmail } from '../_shared/email-templates/access-blocked.tsx'
-import { AccessExpiringEmail } from '../_shared/email-templates/access-expiring.tsx'
+import { renderWelcomeEmail } from '../_shared/email-templates/welcome.tsx'
+import { renderAccessBlockedEmail } from '../_shared/email-templates/access-blocked.tsx'
+import { renderAccessExpiringEmail } from '../_shared/email-templates/access-expiring.tsx'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,10 +20,12 @@ const EMAIL_SUBJECTS: Record<string, string> = {
   access_expiring: `Seu acesso à ${SITE_NAME} está expirando`,
 }
 
-const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
-  welcome: WelcomeEmail,
-  access_blocked: AccessBlockedEmail,
-  access_expiring: AccessExpiringEmail,
+type RenderFn = (props: any) => { html: string; text: string }
+
+const RENDERERS: Record<string, RenderFn> = {
+  welcome: renderWelcomeEmail,
+  access_blocked: renderAccessBlockedEmail,
+  access_expiring: renderAccessExpiringEmail,
 }
 
 interface NotificationRequest {
@@ -45,16 +45,12 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const apiKey = Deno.env.get('LOVABLE_API_KEY')
 
-    if (!apiKey) {
-      throw new Error('LOVABLE_API_KEY not configured')
-    }
+    if (!apiKey) throw new Error('LOVABLE_API_KEY not configured')
 
-    // Allow calls from DB triggers (with service role) or authenticated admin users
     const authHeader = req.headers.get('Authorization')
     const isServiceRole = authHeader === `Bearer ${serviceRoleKey}`
 
     if (!isServiceRole) {
-      // Validate as admin user
       const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
       const anonClient = createClient(supabaseUrl, anonKey, {
         global: { headers: { Authorization: authHeader || '' } },
@@ -70,11 +66,9 @@ Deno.serve(async (req) => {
 
     const { type, user_id, email: directEmail, data: extraData }: NotificationRequest = await req.json()
 
-    if (!type || !EMAIL_TEMPLATES[type]) {
-      throw new Error(`Unknown notification type: ${type}`)
-    }
+    const renderer = RENDERERS[type]
+    if (!renderer) throw new Error(`Unknown notification type: ${type}`)
 
-    // Get user info
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
     let recipientEmail = directEmail
     let userName: string | null = null
@@ -92,30 +86,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (!recipientEmail) {
-      throw new Error('No email address available')
-    }
+    if (!recipientEmail) throw new Error('No email address available')
 
-    const EmailTemplate = EMAIL_TEMPLATES[type]
-
-    const templateProps: Record<string, any> = {
+    const { html, text } = renderer({
       siteName: SITE_NAME,
       siteUrl: SITE_URL,
       userName: userName || undefined,
       ...extraData,
-    }
-
-    const html = await renderAsync(React.createElement(EmailTemplate, templateProps))
-    const text = await renderAsync(React.createElement(EmailTemplate, templateProps), {
-      plainText: true,
     })
 
-    // Send via Lovable Email API
-    const emailApiUrl = `${supabaseUrl}/functions/v1/send-notification-email/send`
-    
-    // Use the Lovable Email API directly
-    const lovableApiUrl = 'https://api.lovable.dev/v1/email/send'
-    const sendResponse = await fetch(lovableApiUrl, {
+    const sendResponse = await fetch('https://api.lovable.dev/v1/email/send', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
