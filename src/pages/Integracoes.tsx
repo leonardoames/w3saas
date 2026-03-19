@@ -90,9 +90,9 @@ const platforms: PlatformInfo[] = [
   {
     id: "mercado_livre",
     name: "Mercado Livre",
-    description: "Conecte sua conta Mercado Livre via OAuth. Sincronização automática em breve.",
+    description: "Conecte sua conta Mercado Livre via OAuth para sincronizar pedidos e faturamento.",
     color: "bg-yellow-500",
-    syncTags: ["Em breve"],
+    syncTags: ["Faturamento", "Pedidos"],
     fields: [],
     docsUrl: "https://developers.mercadolivre.com.br/pt_br/api-docs-pt-br",
     oauth: true,
