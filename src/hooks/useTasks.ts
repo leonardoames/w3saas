@@ -72,8 +72,8 @@ export function useTasks(userId?: string) {
         status: task.status as TaskStatus,
         origin: task.origin as TaskOrigin,
         priority: task.priority as 'Baixa' | 'Média' | 'Alta' | null,
-        start_date: task.start_date ?? null,
-        checklist: (task.checklist as ChecklistItem[]) ?? [],
+        start_date: (task as any).start_date ?? null,
+        checklist: (task.checklist as unknown as ChecklistItem[]) ?? [],
         sprint: task.sprint ?? null,
         is_next_action: task.is_next_action ?? false,
       }));
