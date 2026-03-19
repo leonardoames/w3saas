@@ -74,8 +74,8 @@ export function useTasks(userId?: string) {
         priority: task.priority as 'Baixa' | 'Média' | 'Alta' | null,
         start_date: (task as any).start_date ?? null,
         checklist: (task.checklist as unknown as ChecklistItem[]) ?? [],
-        sprint: task.sprint ?? null,
-        is_next_action: task.is_next_action ?? false,
+        sprint: (task as any).sprint ?? null,
+        is_next_action: (task as any).is_next_action ?? false,
       }));
 
       setTasks(mappedTasks);
