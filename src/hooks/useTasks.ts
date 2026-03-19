@@ -169,8 +169,8 @@ export function useTasks(userId?: string) {
         priority: data.priority as 'Baixa' | 'Média' | 'Alta' | null,
         start_date: (data as any).start_date ?? null,
         checklist: (data.checklist as unknown as ChecklistItem[]) ?? [],
-        sprint: data.sprint ?? null,
-        is_next_action: data.is_next_action ?? false,
+        sprint: (data as any).sprint ?? null,
+        is_next_action: (data as any).is_next_action ?? false,
       };
 
       setTasks(prev => [...prev, newTask]);
