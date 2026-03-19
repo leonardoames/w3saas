@@ -96,7 +96,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
   }
   const currentStyle = variantCurtainStyles[variant || "default"];
   const isDisabled = disabled || isLoading;
-  return <motion.button ref={ref} className={cn("relative overflow-hidden", buttonVariants({
+  return <(motion.button as any) ref={ref} className={cn("relative overflow-hidden", buttonVariants({
     variant,
     size,
     className
