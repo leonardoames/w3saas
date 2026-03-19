@@ -234,7 +234,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
       const rawCsTasks = csTasksRes.data || [];
       const responsibleIds = [...new Set(rawCsTasks.map((t: any) => t.responsible_id).filter(Boolean))];
       if (responsibleIds.length > 0) {
-        const { data: rProfiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", responsibleIds);
+        const { data: rProfiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", responsibleIds as string[]);
         (rProfiles || []).forEach((p: any) => { staffMap[p.user_id] = p.full_name || p.email || "—"; });
       }
 

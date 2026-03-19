@@ -471,7 +471,7 @@ export function CRMDashboardView({ clientIds, cards }: CRMDashboardViewProps) {
         (supabase as any).from("staff_carteiras")
           .select("mentorado_id, staff_id")
           .in("mentorado_id", clientIds),
-        supabase.from("user_roles" as any).select("user_id, role").in("role" as any, ["tutor", "cs"] as any),
+        (supabase as any).from("user_roles").select("user_id, role").in("role", ["tutor", "cs"]),
         (supabase as any).from("tutor_cs_assignments").select("tutor_id, cs_id"),
       ]);
 

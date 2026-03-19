@@ -196,7 +196,7 @@ export function useTasks(userId?: string) {
     try {
       const { error } = await supabase
         .from('tarefas')
-        .update(updates)
+        .update(updates as any)
         .eq('id', taskId);
 
       if (error) throw error;

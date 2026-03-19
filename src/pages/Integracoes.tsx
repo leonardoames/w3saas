@@ -239,7 +239,7 @@ export default function Integracoes() {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
       
-      const syncFnName = platformId === 'shopee_ads' ? 'sync-shopee-ads' : `sync-${platformId}`;
+      const syncFnName = platformId === 'shopee_ads' ? 'sync-shopee-ads' : platformId === 'mercado_livre' ? 'sync-mercado_livre' : `sync-${platformId}`;
       const res = await supabase.functions.invoke(syncFnName, {
         headers: { Authorization: `Bearer ${token}` },
       });
