@@ -14,6 +14,73 @@ export type Database = {
   }
   public: {
     Tables: {
+      action_activity_log: {
+        Row: {
+          created_at: string
+          event: string
+          id: string
+          payload: Json | null
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event: string
+          id?: string
+          payload?: Json | null
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event?: string
+          id?: string
+          payload?: Json | null
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_activity_log_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tarefas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      action_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tarefas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       action_plans: {
         Row: {
           created_at: string | null
@@ -280,6 +347,63 @@ export type Database = {
         }
         Relationships: []
       }
+      client_billing: {
+        Row: {
+          faturamento_atual: number | null
+          faturamento_inicial: number | null
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          faturamento_atual?: number | null
+          faturamento_inicial?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          faturamento_atual?: number | null
+          faturamento_inicial?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      client_resources: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          title: string
+          type: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          title: string
+          type?: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          title?: string
+          type?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       course_modules: {
         Row: {
           course_id: string | null
@@ -354,6 +478,198 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_activity_log: {
+        Row: {
+          author_id: string
+          created_at: string
+          crm_client_id: string
+          event: string
+          id: string
+          payload: Json
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          crm_client_id: string
+          event: string
+          id?: string
+          payload?: Json
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          crm_client_id?: string
+          event?: string
+          id?: string
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_activity_log_crm_client_id_fkey"
+            columns: ["crm_client_id"]
+            isOneToOne: false
+            referencedRelation: "crm_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_clients: {
+        Row: {
+          created_at: string
+          data_fim_contrato: string | null
+          data_inicio_contrato: string | null
+          id: string
+          next_contact_date: string | null
+          quick_note: string | null
+          responsible_cs_id: string | null
+          stage: string
+          stage_updated_at: string
+          updated_at: string
+          user_id: string
+          valor_contrato: number | null
+        }
+        Insert: {
+          created_at?: string
+          data_fim_contrato?: string | null
+          data_inicio_contrato?: string | null
+          id?: string
+          next_contact_date?: string | null
+          quick_note?: string | null
+          responsible_cs_id?: string | null
+          stage?: string
+          stage_updated_at?: string
+          updated_at?: string
+          user_id: string
+          valor_contrato?: number | null
+        }
+        Update: {
+          created_at?: string
+          data_fim_contrato?: string | null
+          data_inicio_contrato?: string | null
+          id?: string
+          next_contact_date?: string | null
+          quick_note?: string | null
+          responsible_cs_id?: string | null
+          stage?: string
+          stage_updated_at?: string
+          updated_at?: string
+          user_id?: string
+          valor_contrato?: number | null
+        }
+        Relationships: []
+      }
+      crm_comments: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          crm_client_id: string
+          id: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          crm_client_id: string
+          id?: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          crm_client_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_comments_crm_client_id_fkey"
+            columns: ["crm_client_id"]
+            isOneToOne: false
+            referencedRelation: "crm_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_scheduled_activities: {
+        Row: {
+          assigned_to: string | null
+          client_user_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          crm_client_id: string
+          id: string
+          scheduled_for: string
+          title: string
+          type: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          client_user_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          crm_client_id: string
+          id?: string
+          scheduled_for: string
+          title: string
+          type?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          client_user_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          crm_client_id?: string
+          id?: string
+          scheduled_for?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_scheduled_activities_crm_client_id_fkey"
+            columns: ["crm_client_id"]
+            isOneToOne: false
+            referencedRelation: "crm_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cs_tasks: {
+        Row: {
+          client_user_id: string | null
+          completed_at: string | null
+          created_at: string
+          cs_id: string
+          due_date: string | null
+          id: string
+          responsible_id: string | null
+          title: string
+        }
+        Insert: {
+          client_user_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          cs_id: string
+          due_date?: string | null
+          id?: string
+          responsible_id?: string | null
+          title: string
+        }
+        Update: {
+          client_user_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          cs_id?: string
+          due_date?: string | null
+          id?: string
+          responsible_id?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       daily_results: {
         Row: {
           created_at: string | null
@@ -386,6 +702,39 @@ export type Database = {
           receita_paga?: number | null
           sessoes?: number | null
           updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      diagnostico_360: {
+        Row: {
+          created_by: string | null
+          faturamento_ideal: number | null
+          faturamento_inicial: number | null
+          objetivo_principal: string | null
+          observacoes: string | null
+          pontos_diagnostico: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_by?: string | null
+          faturamento_ideal?: number | null
+          faturamento_inicial?: number | null
+          objetivo_principal?: string | null
+          observacoes?: string | null
+          pontos_diagnostico?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_by?: string | null
+          faturamento_ideal?: number | null
+          faturamento_inicial?: number | null
+          objetivo_principal?: string | null
+          observacoes?: string | null
+          pontos_diagnostico?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -797,6 +1146,64 @@ export type Database = {
         }
         Relationships: []
       }
+      lesson_favorites: {
+        Row: {
+          created_at: string
+          id: string
+          lesson_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lesson_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_favorites_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_likes: {
+        Row: {
+          created_at: string
+          id: string
+          lesson_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lesson_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_likes_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lesson_progress: {
         Row: {
           completed: boolean | null
@@ -1146,7 +1553,9 @@ export type Database = {
         Row: {
           access_expires_at: string | null
           access_status: string
+          cnpj: string | null
           created_at: string
+          data_inicio_mentoria: string | null
           email: string | null
           full_name: string | null
           id: string
@@ -1155,8 +1564,15 @@ export type Database = {
           is_mentorado: boolean
           is_w3_client: boolean
           last_login_at: string | null
+          loja_mercado_livre_url: string | null
+          loja_online_url: string | null
+          loja_shein_url: string | null
+          loja_shopee_url: string | null
+          loja_temu_url: string | null
           must_change_password: boolean
+          nome_negocio: string | null
           onboarding_completed: boolean | null
+          phone: string | null
           plan_type: string
           revenue_goal: number | null
           updated_at: string
@@ -1165,7 +1581,9 @@ export type Database = {
         Insert: {
           access_expires_at?: string | null
           access_status?: string
+          cnpj?: string | null
           created_at?: string
+          data_inicio_mentoria?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
@@ -1174,8 +1592,15 @@ export type Database = {
           is_mentorado?: boolean
           is_w3_client?: boolean
           last_login_at?: string | null
+          loja_mercado_livre_url?: string | null
+          loja_online_url?: string | null
+          loja_shein_url?: string | null
+          loja_shopee_url?: string | null
+          loja_temu_url?: string | null
           must_change_password?: boolean
+          nome_negocio?: string | null
           onboarding_completed?: boolean | null
+          phone?: string | null
           plan_type?: string
           revenue_goal?: number | null
           updated_at?: string
@@ -1184,7 +1609,9 @@ export type Database = {
         Update: {
           access_expires_at?: string | null
           access_status?: string
+          cnpj?: string | null
           created_at?: string
+          data_inicio_mentoria?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
@@ -1193,10 +1620,50 @@ export type Database = {
           is_mentorado?: boolean
           is_w3_client?: boolean
           last_login_at?: string | null
+          loja_mercado_livre_url?: string | null
+          loja_online_url?: string | null
+          loja_shein_url?: string | null
+          loja_shopee_url?: string | null
+          loja_temu_url?: string | null
           must_change_password?: boolean
+          nome_negocio?: string | null
           onboarding_completed?: boolean | null
+          phone?: string | null
           plan_type?: string
           revenue_goal?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      result_audits: {
+        Row: {
+          comentario: string | null
+          created_at: string
+          created_by: string | null
+          faturamento: number | null
+          id: string
+          mes_referencia: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comentario?: string | null
+          created_at?: string
+          created_by?: string | null
+          faturamento?: number | null
+          id?: string
+          mes_referencia: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comentario?: string | null
+          created_at?: string
+          created_by?: string | null
+          faturamento?: number | null
+          id?: string
+          mes_referencia?: string
           updated_at?: string
           user_id?: string
         }
@@ -1395,44 +1862,80 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_client_notes: {
+        Row: {
+          client_id: string
+          content: string
+          id: string
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          content?: string
+          id?: string
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          content?: string
+          id?: string
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tarefas: {
         Row: {
+          checklist: Json
           created_at: string
           description: string | null
           due_date: string | null
           id: string
+          is_next_action: boolean
           order_index: number
           origin: Database["public"]["Enums"]["task_origin"]
           priority: string | null
           section: string
+          sprint: number | null
+          start_date: string | null
           status: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          checklist?: Json
           created_at?: string
           description?: string | null
           due_date?: string | null
           id?: string
+          is_next_action?: boolean
           order_index?: number
           origin?: Database["public"]["Enums"]["task_origin"]
           priority?: string | null
           section: string
+          sprint?: number | null
+          start_date?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          checklist?: Json
           created_at?: string
           description?: string | null
           due_date?: string | null
           id?: string
+          is_next_action?: boolean
           order_index?: number
           origin?: Database["public"]["Enums"]["task_origin"]
           priority?: string | null
           section?: string
+          sprint?: number | null
+          start_date?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
           updated_at?: string
@@ -1811,6 +2314,7 @@ export type Database = {
         Args: { check_user_id: string }
         Returns: number
       }
+      has_ames_access: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

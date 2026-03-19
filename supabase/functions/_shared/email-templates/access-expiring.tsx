@@ -1,18 +1,3 @@
-/// <reference types="npm:@types/react@18.3.1" />
-
-import * as React from 'npm:react@18.3.1'
-
-import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Heading,
-  Html,
-  Preview,
-  Text,
-} from 'npm:@react-email/components@0.0.22'
-
 interface AccessExpiringEmailProps {
   siteName: string
   siteUrl: string
@@ -21,77 +6,21 @@ interface AccessExpiringEmailProps {
   expiresAt: string
 }
 
-export const AccessExpiringEmail = ({
-  siteName,
-  siteUrl,
-  userName,
-  daysRemaining,
-  expiresAt,
-}: AccessExpiringEmailProps) => (
-  <Html lang="pt-BR" dir="ltr">
-    <Head />
-    <Preview>Seu acesso à {siteName} expira em {daysRemaining} dia{daysRemaining > 1 ? 's' : ''}</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Heading style={h1}>⏳ Acesso expirando</Heading>
-        <Text style={text}>
-          {userName ? `Olá, ${userName}.` : 'Olá.'}
-        </Text>
-        <Text style={text}>
-          Seu acesso à plataforma <strong>{siteName}</strong> expira em{' '}
-          <strong>{daysRemaining} dia{daysRemaining > 1 ? 's' : ''}</strong> ({expiresAt}).
-        </Text>
-        <Text style={warningBox}>
-          Após a data de expiração, você não conseguirá mais acessar a plataforma e seus dados.
-        </Text>
-        <Text style={text}>
-          Para renovar seu acesso e continuar utilizando todas as funcionalidades, 
-          entre em contato com nossa equipe.
-        </Text>
-        <Button style={button} href={siteUrl}>
-          Renovar acesso
-        </Button>
-        <Text style={footer}>
-          Este é um email automático. Se você já renovou seu acesso, pode ignorar este email.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
-)
+export function renderAccessExpiringEmail({ siteName, siteUrl, userName, daysRemaining, expiresAt }: AccessExpiringEmailProps) {
+  const greeting = userName ? `Olá, ${userName}.` : 'Olá.'
+  const plural = daysRemaining > 1 ? 's' : ''
 
-export default AccessExpiringEmail
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"/></head>
+<body style="background:#fff;font-family:'Montserrat',Arial,sans-serif;padding:20px 25px">
+<h1 style="font-size:22px;font-weight:bold;color:#0a0a0a;margin:0 0 20px">⏳ Acesso expirando</h1>
+<p style="font-size:14px;color:#666;line-height:1.5;margin:0 0 15px">${greeting}</p>
+<p style="font-size:14px;color:#666;line-height:1.5;margin:0 0 15px">Seu acesso à plataforma <strong>${siteName}</strong> expira em <strong>${daysRemaining} dia${plural}</strong> (${expiresAt}).</p>
+<p style="font-size:14px;color:#92400E;line-height:1.5;margin:0 0 15px;padding:12px 16px;background:#FFFBEB;border-left:4px solid #F59E0B;border-radius:4px">Após a data de expiração, você não conseguirá mais acessar a plataforma e seus dados.</p>
+<p style="font-size:14px;color:#666;line-height:1.5;margin:0 0 15px">Para renovar seu acesso e continuar utilizando todas as funcionalidades, entre em contato com nossa equipe.</p>
+<a href="${siteUrl}" style="display:inline-block;background:#F97316;color:#fff;font-size:14px;border-radius:12px;padding:12px 24px;text-decoration:none;font-weight:600">Renovar acesso</a>
+<p style="font-size:12px;color:#999;margin:30px 0 0">Este é um email automático. Se você já renovou seu acesso, pode ignorar este email.</p>
+</body></html>`
 
-const main = { backgroundColor: '#ffffff', fontFamily: "'Montserrat', Arial, sans-serif" }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#0a0a0a',
-  margin: '0 0 20px',
+  const text = `${greeting}\n\nSeu acesso à ${siteName} expira em ${daysRemaining} dia${plural} (${expiresAt}).\n\nRenove: ${siteUrl}`
+  return { html, text }
 }
-const text = {
-  fontSize: '14px',
-  color: '#666666',
-  lineHeight: '1.5',
-  margin: '0 0 15px',
-}
-const warningBox = {
-  fontSize: '14px',
-  color: '#92400E',
-  lineHeight: '1.5',
-  margin: '0 0 15px',
-  padding: '12px 16px',
-  backgroundColor: '#FFFBEB',
-  borderLeft: '4px solid #F59E0B',
-  borderRadius: '4px',
-}
-const button = {
-  backgroundColor: '#F97316',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '12px',
-  padding: '12px 24px',
-  textDecoration: 'none',
-  fontWeight: '600' as const,
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
