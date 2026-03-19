@@ -209,7 +209,7 @@ export function CRMClientDrawer({ userId, open, onClose, onStageChange }: CRMCli
       const staffIds = [...new Set((staffRoles || []).map((r: any) => r.user_id).filter(Boolean))];
       let staffMap: Record<string, string> = {};
       if (staffIds.length > 0) {
-        const { data: staffProfiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", staffIds);
+        const { data: staffProfiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", staffIds as string[]);
         (staffProfiles || []).forEach((p: any) => {
           staffMap[p.user_id] = p.full_name || p.email || "—";
         });
